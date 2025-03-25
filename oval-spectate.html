@@ -88,7 +88,7 @@
           this.camera.lookAt(0, 0, 0)
 
           // Load track
-          var track = await this.loadGltf('/assets/glb/rcc-oval.glb')
+          var track = await this.loadGltf('assets/glb/rcc-oval.glb')
           const TRACK_SCALE = 1.6
           track.scale.set(TRACK_SCALE, TRACK_SCALE, TRACK_SCALE)
           this.physics.add.existing(track, { collisionFlags: 1, mass: 0, shape: 'concave' })
