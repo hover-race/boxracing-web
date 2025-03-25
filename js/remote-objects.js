@@ -7,7 +7,7 @@ class RemoteObjectManager {
 
   async preloadCarModel() {
     console.log("Preloading car model...");
-    const gltf = await this.scene.load.gltf('/assets/glb/red-mustang-bigwheel.glb');
+    const gltf = await this.scene.load.gltf('assets/glb/red-mustang-bigwheel.glb');
     this.carModel = gltf.scenes[0];
     console.log("Car model preloaded successfully");
   }

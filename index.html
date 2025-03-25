@@ -64,7 +64,7 @@
 
           // Preload car model once
           console.log("Preloading car model...");
-          const carGltf = await this.load.gltf('/assets/glb/red-mustang-bigwheel.glb');
+          const carGltf = await this.load.gltf('assets/glb/red-mustang-bigwheel.glb');
           const carModel = carGltf.scenes[0];
           console.log("Car model preloaded successfully");
 
@@ -77,7 +77,7 @@
           // Flip the geometry inside out
           skyGeometry.scale(-1, 1, 1)
           
-          const skyTexture = new THREE.TextureLoader().load('/assets/img/sky.png')
+          const skyTexture = new THREE.TextureLoader().load('assets/img/sky.png')
           const skyMaterial = new THREE.MeshBasicMaterial({
             map: skyTexture
           })
