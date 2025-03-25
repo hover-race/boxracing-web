@@ -306,7 +306,7 @@ class Vehicle {
     if (preloadedModel) {
       scene3D = preloadedModel;
     } else {
-      const gltf = await scene.load.gltf('/assets/glb/red-mustang-bigwheel.glb')
+      const gltf = await scene.load.gltf('assets/glb/red-mustang-bigwheel.glb')
       scene3D = gltf.scenes[0]
     }
 
@@ -350,7 +350,7 @@ class Vehicle {
     // Add engine sound
     const engineSound = new THREE.Audio(scene.listener) // Get the audio listener from camera
     const audioLoader = new THREE.AudioLoader()
-    audioLoader.load('/assets/winston_high.wav', function(buffer) {
+    audioLoader.load('assets/winston_high.wav', function(buffer) {
       engineSound.setBuffer(buffer)
       engineSound.setLoop(true)
       engineSound.setVolume(0.5)
