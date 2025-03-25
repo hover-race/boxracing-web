@@ -1,0 +1,42 @@
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#info-text {
+    position: fixed;
+    top: 20px;
+    width: 100%;
+    text-align: center;
+    color: white;
+    font-family: monospace;
+    font-size: 16px;
+    z-index: 1;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+}
+
+#speedometer {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    color: white;
+    font-family: monospace;
+    font-size: 34px;
+    z-index: 1;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+}
+
+.dg.ac {
+    z-index: 2 !important;
+} 
