@@ -11,11 +11,13 @@
     <title>Box Racing</title>
     <script src="lib/enable3d.framework.0.25.4.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.2/nipplejs.min.js"></script>
   </head>
 
   <body>
     <!-- <div id="info-text">Car using Raycast Vehicle<br />WASD and SPACE</div> -->
     <div id="speedometer" style="position: fixed; bottom: 20px; left: 20px; color: white; font-family: monospace; font-size: 34px;">0 mph</div>
+    <div id="joystick-zone" style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); width: 120px; height: 120px;"></div>
     <script src="js/camera.js"></script>
     <script src="js/wheel.js"></script>
     <script src="js/vehicle.js"></script>
@@ -41,6 +43,7 @@
         }
         vehicleSteering = 0
         light
+        joystick = null
 
         async loadGltf(path) {
           const obj = await this.load.gltf(path)
@@ -177,6 +180,53 @@
           }
           document.addEventListener('keydown', e => keyEvent(e, true))
           document.addEventListener('keyup', e => keyEvent(e, false))
+
+          // Initialize joystick
+          this.joystick = nipplejs.create({
+            zone: document.getElementById('joystick-zone'),
+            mode: 'static',
+            position: { left: '50%', bottom: '60px' },
+            color: 'white',
+            size: 120
+          });
+
+          // Handle joystick events
+          this.joystick.on('move', (evt, data) => {
+            const angle = data.angle.radian;
+            const force = Math.min(data.force, 1.0);
+            
+            // Reset all keys
+            this.keys.w = false;
+            this.keys.s = false;
+            this.keys.a = false;
+            this.keys.d = false;
+
+            // Forward/Backward based on Y axis (cosine)
+            if (Math.abs(Math.sin(angle)) > 0.5) {
+              if (Math.sin(angle) < 0) {  // Up
+                this.keys.s = true;
+              } else {  // Down
+                this.keys.w = true;
+              }
+            }
+
+            // Left/Right based on X axis (sine)
+            if (Math.abs(Math.cos(angle)) > 0.5) {
+              if (Math.cos(angle) > 0) {  // Right
+                this.keys.d = true;
+              } else {  // Left
+                this.keys.a = true;
+              }
+            }
+          });
+
+          // Handle joystick release
+          this.joystick.on('end', () => {
+            this.keys.w = false;
+            this.keys.s = false;
+            this.keys.a = false;
+            this.keys.d = false;
+          });
         }
 
         update() {
