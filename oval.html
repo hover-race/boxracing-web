@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Raycast Vehicle</title>
+    <link rel="stylesheet" href="/css/examples.css?ver=1.0.0" />
+    <script src="/js/examples.js?ver=1.1.1"></script>
+    <script src="/lib/enable3d/enable3d.framework.0.25.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+  </head>
+
+  <body>
+    <div id="info-text">Car using Raycast Vehicle<br />WASD and SPACE</div>
+    <div id="speedometer" style="position: fixed; bottom: 20px; left: 20px; color: white; font-family: monospace; font-size: 34px;">0 mph</div>
+    <script src="js/camera.js"></script>
+    <script src="js/wheel.js"></script>
+    <script src="js/vehicle.js"></script>
+    <script src="js/curves.js"></script>
+    <script src="js/gui.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firestore-signaling.js"></script>
+    <script src="js/network-classes.js"></script>
+    <script src="js/remote-objects.js"></script>
+
+    <script>
+      const { Project, Scene3D, PhysicsLoader, THREE } = ENABLE3D
+
+      class MainScene extends Scene3D {
+        car
+        keys = {
+          w: false,
+          a: false,
+          s: false,
+          d: false,
+          space: false
+        }
+        vehicleSteering = 0
+        light
+
+        async loadGltf(path) {
+          const obj = await this.load.gltf(path)
+          const scene = obj.scenes[0]
+          scene.traverse(child => {
+            if (child.material) {
+              child.material.metalness = 0;
+            }
+          })
+          this.add.existing(scene)
+          return scene
+        }
+
+        async create() {
+          const { lights, orbitControls } = await this.warpSpeed('-ground', '-sky', '-light')
+          this.orbitControls = orbitControls
+          this.camera.fov = 70
+          this.camera.updateProjectionMatrix()
+          // Add audio listener to camera
+          this.listener = new THREE.AudioListener()
+
+          // Preload car model once
+          console.log("Preloading car model...");
+          const carGltf = await this.load.gltf('/assets/glb/red-mustang-bigwheel.glb');
+          const carModel = carGltf.scenes[0];
+          console.log("Car model preloaded successfully");
+
+          // Initialize remote object manager with preloaded model
+          this.remoteManager = new RemoteObjectManager(this)
+          this.remoteManager.carModel = carModel.clone();
+
+          // Add skybox
+          const skyGeometry = new THREE.SphereGeometry(1000, 32, 32)
+          // Flip the geometry inside out
+          skyGeometry.scale(-1, 1, 1)
+          
+          const skyTexture = new THREE.TextureLoader().load('/assets/img/sky.png')
+          const skyMaterial = new THREE.MeshBasicMaterial({
+            map: skyTexture
+          })
+          
+          const sky = new THREE.Mesh(skyGeometry, skyMaterial)
+          this.scene.add(sky)
+
+          // Add bright ambient light
+          const ambientLight = new THREE.AmbientLight(0xffffff, 2.0)
+          this.scene.add(ambientLight)
+
+          this.camera.position.set(3, 10, -20)
+          this.camera.lookAt(0, 0, 0)
+
+          // Load track
+          var track = await this.loadGltf('/assets/glb/rcc-oval.glb')
+          const TRACK_SCALE = 1.6
+          track.scale.set(TRACK_SCALE, TRACK_SCALE, TRACK_SCALE)
+          this.physics.add.existing(track, { collisionFlags: 1, mass: 0, shape: 'concave' })
+          this.track = track
+          this.startTransform = new THREE.Object3D()
+          this.track.traverse(child => {
+            if (child.name === 'StartPos1') {
+              const worldPosition = child.position.clone().multiplyScalar(TRACK_SCALE)
+              console.log('Found StartPos1 (world pos):', worldPosition)
+              this.startTransform.position.copy(worldPosition)
+              this.startTransform.quaternion.copy(child.quaternion)
+              console.log('startTransform (world pos):', this.startTransform.position)
+            }
+          })
+
+          this.car = await Vehicle.setupCarMustang(this, this.startTransform, carModel.clone())
+
+          console.log('car', this.car.chassis.position)
+
+          this.followCam = new THREE.Object3D()
+          this.followCam.position.set(0, 2, -3)
+
+          this.car.chassis.add(this.followCam)
+
+          if (!this.car) return
+
+          this.setupKeyboardControls()
+
+          await this.setupNetwork()
+          this.carsender = new NetworkSender('car', () => {
+            return this.car.serialize()
+          })
+          this.networkManager.addSender(this.carsender)
+        }
+
+        log(a, b) {
+          console.log(a, b)
+        }
+
+        async setupNetwork() {
+          // Create network manager
+          this.networkManager = new NetworkManager(
+            this.log,
+            this.log,
+            this.log
+          );
+
+          // Using arrow function to preserve 'this' context
+          this.networkManager.on('state-update', (states) => {
+            const myPeerId = this.networkManager.signalingManager.peerId;
+            this.remoteManager.handleStateUpdate(states, myPeerId);
+          });
+
+          // Start connection process
+          await this.networkManager.signalingManager.findOrBecomeServer();
+        }
+
+        setupKeyboardControls() {
+          const keyEvent = (e, down) => {
+            switch (e.code) {
+              case 'KeyW':
+              case 'ArrowUp':
+                this.keys.w = down
+                break
+              case 'KeyA':
+              case 'ArrowLeft': 
+                this.keys.a = down
+                break
+              case 'KeyS':
+              case 'ArrowDown':
+                this.keys.s = down
+                break
+              case 'KeyD':
+              case 'ArrowRight':
+                this.keys.d = down
+                break
+              case 'Space':
+                this.keys.space = down
+                break
+            }
+          }
+          document.addEventListener('keydown', e => keyEvent(e, true))
+          document.addEventListener('keyup', e => keyEvent(e, false))
+        }
+
+        update() {
+          this.car.update(this.keys)
+          this.car.updateTireMarks()
+          this.updateCamera()
+          this.remoteManager.update()
+        }
+
+        updateCamera() {
+          this.camera.position.lerp(this.followCam.getWorldPosition(new THREE.Vector3()), 0.1)
+          if (!params.updateCamera) {
+            return
+          }
+          var velocity = this.car.chassis.body.velocity
+          var velocityScaled = new THREE.Vector3(velocity.x, velocity.y, velocity.z).multiplyScalar(params.velocityFactor)
+          var lookAtPos = this.car.chassis.getWorldPosition(new THREE.Vector3()).add(velocityScaled)
+
+          this.camera.lookAt(lookAtPos)
+        }
+      }
+
+      PhysicsLoader('/lib/ammo/kripken', () => new Project({ scenes: [MainScene], antialias: true }))
+    </script>
+  </body>
+</html>
