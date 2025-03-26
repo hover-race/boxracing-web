@@ -1,4 +1,19 @@
 const gui = new dat.GUI({ width: 400, closed: true })
+
+// Input controls folder at the top
+const inputControls = {
+  steering: 0,    // -1 to 1
+  throttle: 0,    // 0 to 1
+  brake: 0,       // 0 to 1
+  handbrake: 0    // 0 to 1
+}
+const inputFolder = gui.addFolder('Inputs')
+inputFolder.add(inputControls, 'steering', -1, 1).step(0.01).listen()
+inputFolder.add(inputControls, 'throttle', 0, 1).step(0.01).listen()
+inputFolder.add(inputControls, 'brake', 0, 1).step(0.01).listen()
+inputFolder.add(inputControls, 'handbrake', 0, 1).step(0.01).listen()
+inputFolder.open()
+
 const params = {
   velocityFactor: 0.1,
   updateCamera: true,
@@ -7,6 +22,7 @@ const params = {
   asdf: 8000,
   engineVolume: 0.5,
   enginePitch: 1,
+  analogControls: true,
 }
 gui.add(params, 'velocityFactor', 0, 0.5).step(0.01)
 gui.add(params, 'updateCamera')
