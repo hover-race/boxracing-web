@@ -1,4 +1,4 @@
-const gui = new dat.GUI({ width: 400, closed: true })
+const gui = new dat.GUI({ width: 400, closed: false })
 
 // Input controls folder at the top
 const inputControls = {
