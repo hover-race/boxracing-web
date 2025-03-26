@@ -15,6 +15,7 @@ inputFolder.add(inputControls, 'handbrake', 0, 1).step(0.01).listen()
 inputFolder.open()
 
 const params = {
+  offlinePlay: true,  // Add offline play option
   velocityFactor: 0.1,
   updateCamera: true,
   pushForce: 0,
@@ -24,6 +25,9 @@ const params = {
   enginePitch: 1,
   analogControls: true,
 }
+
+// Add offline play toggle at the top
+gui.add(params, 'offlinePlay').name('Offline Play')
 gui.add(params, 'velocityFactor', 0, 0.5).step(0.01)
 gui.add(params, 'updateCamera')
 gui.add(params, 'pushForce', -10, 10)

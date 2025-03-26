@@ -126,10 +126,13 @@
           this.setupKeyboardControls()
 
           await this.setupNetwork()
-          this.carsender = new NetworkSender('car', () => {
-            return this.car.serialize()
-          })
-          this.networkManager.addSender(this.carsender)
+          
+          if (!params.offlinePlay && this.networkManager) {
+            this.carsender = new NetworkSender('car', () => {
+              return this.car.serialize()
+            })
+            this.networkManager.addSender(this.carsender)
+          }
         }
 
         log(a, b) {
@@ -137,6 +140,11 @@
         }
 
         async setupNetwork() {
+          if (params.offlinePlay) {
+            console.log("Offline play enabled - skipping network setup");
+            return;
+          }
+
           // Create network manager
           this.networkManager = new NetworkManager(
             this.log,
@@ -233,7 +241,9 @@
           this.car.update(this.keys)
           this.car.updateTireMarks()
           this.updateCamera()
-          this.remoteManager.update()
+          if (!params.offlinePlay && this.remoteManager) {
+            this.remoteManager.update()
+          }
         }
 
         updateCamera() {
