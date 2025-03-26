@@ -98,8 +98,8 @@ class Vehicle {
     this.chassis.body.ammo.applyCentralForce(forward.op_mul(params.pushForce * 500))
   }
 
-  update(keys) {
-    this.updateControls(keys)
+  update(inputs) {
+    this.updateControls(inputs)
     // this.applyPushForce()
     let tm, p, q, i
     const n = this.vehicle.getNumWheels()
@@ -129,8 +129,8 @@ class Vehicle {
     // Update wheel physics
     const dt = 1/60;  // Assuming 60fps, ideally get this from the physics world
 
-    this.wheels[this.BACK_LEFT].update(dt, this.engineForce, this.brakingForce, this.inputs)
-    this.wheels[this.BACK_RIGHT].update(dt, this.engineForce, this.brakingForce, this.inputs)
+    this.wheels[this.BACK_LEFT].update(dt, this.engineForce, this.brakingForce, inputs)
+    this.wheels[this.BACK_RIGHT].update(dt, this.engineForce, this.brakingForce, inputs)
     this.wheels[this.BACK_RIGHT].gui()
 
 
@@ -242,48 +242,33 @@ class Vehicle {
     this.scene.add(wheelMesh)
   }
 
-  updateControls(keys) {
-    // Normalize inputs to -1 to 1 range
-    this.inputs = {
-      brake: (keys.space || (this.getSpeed() > 1 && keys.s)) ? 1 : 0,
-      throttle: keys.w ? 1 : (keys.s ? 0 : 0), // when s is pressed, should this be -1?
-      steering: keys.a ? 1 : (keys.d ? -1 : 0)
-    }
-    // front/back
-    if (keys.w) this.engineForce = this.maxEngineForce
-    else if (keys.s) this.engineForce = -2 * this.maxEngineForce
-    else this.engineForce = 0
-
-    // left/right
-    if (keys.a) {
-      if (this.vehicleSteering < this.steeringClamp) 
-        this.vehicleSteering += this.steeringIncrement
-    } else if (keys.d) {
-      if (this.vehicleSteering > -this.steeringClamp) 
-        this.vehicleSteering -= this.steeringIncrement
+  updateControls(inputs) {
+    // Apply forces based on input controls
+    this.engineForce = this.maxEngineForce * (inputs.throttle - inputs.brake);
+    
+    // Smooth steering
+    const targetSteering = -this.steeringClamp * inputs.steering;
+    const steeringDiff = targetSteering - this.vehicleSteering;
+    if (Math.abs(steeringDiff) > this.steeringIncrement) {
+      this.vehicleSteering += Math.sign(steeringDiff) * this.steeringIncrement;
     } else {
-      if (this.vehicleSteering > 0) 
-        this.vehicleSteering -= this.steeringIncrement / 2
-      if (this.vehicleSteering < 0) 
-        this.vehicleSteering += this.steeringIncrement / 2
-      if (Math.abs(this.vehicleSteering) <= this.steeringIncrement) 
-        this.vehicleSteering = 0
+      this.vehicleSteering = targetSteering;
     }
 
-    // brake
-    this.brakingForce = keys.space ? this.maxBrakingForce : 0
+    // Apply handbrake
+    this.brakingForce = inputs.handbrake * this.maxBrakingForce;
 
-    // Apply forces
-    this.vehicle.applyEngineForce(this.engineForce, this.BACK_LEFT)
-    this.vehicle.applyEngineForce(this.engineForce, this.BACK_RIGHT)
+    // Apply forces to wheels
+    this.vehicle.applyEngineForce(this.engineForce, this.BACK_LEFT);
+    this.vehicle.applyEngineForce(this.engineForce, this.BACK_RIGHT);
 
-    this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_LEFT)
-    this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_RIGHT)
+    this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_LEFT);
+    this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_RIGHT);
 
-    this.vehicle.setBrake(this.brakingForce, this.FRONT_LEFT)
-    this.vehicle.setBrake(this.brakingForce, this.FRONT_RIGHT)
-    this.vehicle.setBrake(this.brakingForce, this.BACK_LEFT)
-    this.vehicle.setBrake(this.brakingForce, this.BACK_RIGHT)
+    this.vehicle.setBrake(this.brakingForce, this.FRONT_LEFT);
+    this.vehicle.setBrake(this.brakingForce, this.FRONT_RIGHT);
+    this.vehicle.setBrake(this.brakingForce, this.BACK_LEFT);
+    this.vehicle.setBrake(this.brakingForce, this.BACK_RIGHT);
   }
 
   getSpeed() {

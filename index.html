@@ -167,23 +167,23 @@
             switch (e.code) {
               case 'KeyW':
               case 'ArrowUp':
-                this.keys.w = down
-                break
+                inputControls.throttle = down ? 1 : 0;
+                break;
               case 'KeyA':
               case 'ArrowLeft': 
-                this.keys.a = down
-                break
+                inputControls.steering = down ? -1 : 0;
+                break;
               case 'KeyS':
               case 'ArrowDown':
-                this.keys.s = down
-                break
+                inputControls.brake = down ? 1 : 0;
+                break;
               case 'KeyD':
               case 'ArrowRight':
-                this.keys.d = down
-                break
+                inputControls.steering = down ? 1 : 0;
+                break;
               case 'Space':
-                this.keys.space = down
-                break
+                inputControls.handbrake = down ? 1 : 0;
+                break;
             }
           }
           document.addEventListener('keydown', e => keyEvent(e, true))
@@ -203,46 +203,31 @@
             const angle = data.angle.radian;
             const force = Math.min(data.force, 1.0);
             
-            // Reset all keys
-            this.keys.w = false;
-            this.keys.s = false;
-            this.keys.a = false;
-            this.keys.d = false;
+            // Calculate analog inputs
+            const forwardAmount = -Math.cos(angle) * force;
+            const steeringAmount = -Math.sin(angle) * force;
 
-            // Forward/Backward based on Y axis (cosine)
-            if (Math.abs(Math.sin(angle)) > 0.5) {
-              if (Math.sin(angle) < 0) {  // Up
-                this.keys.s = true;
-              } else {  // Down
-                this.keys.w = true;
-              }
-            }
-
-            // Left/Right based on X axis (sine)
-            if (Math.abs(Math.cos(angle)) > 0.5) {
-              if (Math.cos(angle) > 0) {  // Right
-                this.keys.d = true;
-              } else {  // Left
-                this.keys.a = true;
-              }
-            }
+            // Update input controls
+            inputControls.steering = steeringAmount;
+            inputControls.throttle = Math.max(0, forwardAmount);
+            inputControls.brake = Math.max(0, -forwardAmount);
           });
 
           // Handle joystick release
           this.joystick.on('end', () => {
-            this.keys.w = false;
-            this.keys.s = false;
-            this.keys.a = false;
-            this.keys.d = false;
+            // Reset input controls
+            inputControls.steering = 0;
+            inputControls.throttle = 0;
+            inputControls.brake = 0;
           });
         }
 
         update() {
-          this.car.update(this.keys)
-          this.car.updateTireMarks()
-          this.updateCamera()
+          this.car.update(inputControls);
+          this.car.updateTireMarks();
+          this.updateCamera();
           if (!params.offlinePlay && this.remoteManager) {
-            this.remoteManager.update()
+            this.remoteManager.update();
           }
         }
 
