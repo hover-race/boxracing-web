@@ -195,7 +195,7 @@
             mode: 'static',
             position: { left: '50%', bottom: '60px' },
             color: 'white',
-            size: 120
+            size: 220
           });
 
           // Handle joystick events
@@ -204,8 +204,8 @@
             const force = Math.min(data.force, 1.0);
             
             // Calculate analog inputs
-            const forwardAmount = -Math.cos(angle) * force;
-            const steeringAmount = -Math.sin(angle) * force;
+            const forwardAmount = Math.sin(angle) * force;
+            const steeringAmount = -Math.sin(angle - Math.PI/2) * force;
 
             // Update input controls
             inputControls.steering = steeringAmount;
