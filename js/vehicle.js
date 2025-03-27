@@ -367,9 +367,17 @@ class Vehicle {
 
   serialize() {
     return {
-      position: this.chassis.position,
-      quaternion: this.chassis.quaternion,
-      // wheelRotations: this.wheels.map(wheel => wheel.wheelInfo.m_deltaRotation)
+      position: {
+        x: Number(this.chassis.position.x.toFixed(3)),
+        y: Number(this.chassis.position.y.toFixed(3)),
+        z: Number(this.chassis.position.z.toFixed(3))
+      },
+      quaternion: [
+        Number(this.chassis.quaternion.x.toFixed(3)),
+        Number(this.chassis.quaternion.y.toFixed(3)),
+        Number(this.chassis.quaternion.z.toFixed(3)),
+        Number(this.chassis.quaternion.w.toFixed(3))
+      ]
     }
   }
 
