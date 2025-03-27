@@ -2,16 +2,35 @@ dat.GUI.TEXT_OPEN = 'Options'
 dat.GUI.TEXT_CLOSED = 'Options'
 const gui = new dat.GUI({ width: 400, closed: true })
 
-// Load volume from localStorage or use default
+// Generate default player name with 3 random digits
+function generateDefaultPlayerName() {
+  const randomNum = Math.floor(Math.random() * 900) + 100; // generates number between 100-999
+  return `Player${randomNum}`;
+}
+
+// Load player name and volume from localStorage
+const savedPlayerName = localStorage.getItem('playerName') || generateDefaultPlayerName();
 const savedVolume = Number(localStorage.getItem('engineVolume'));
 const defaultVolume = 50;
 
-// Add volume control at the top level
+// Add player name at the very top
+const playerControl = {
+  name: savedPlayerName
+}
+
+// Add player name input at the top
+gui.add(playerControl, 'name')
+  .name('Player Name')
+  .onChange((value) => {
+    localStorage.setItem('playerName', value);
+  });
+
+// Add volume control
 const volumeControl = {
   volume: !isNaN(savedVolume) ? savedVolume : defaultVolume
 }
 
-// Add volume slider (0-100%) at the top
+// Add volume slider (0-100%)
 gui.add(volumeControl, 'volume', 0, 100).step(1)
   .name('Engine Volume %')
   .onChange((value) => {
@@ -19,7 +38,7 @@ gui.add(volumeControl, 'volume', 0, 100).step(1)
     localStorage.setItem('engineVolume', value);
   });
 
-// Input controls folder at the top
+// Input controls folder
 const inputControls = {
   steering: 0,    // -1 to 1
   throttle: 0,    // 0 to 1
@@ -41,6 +60,8 @@ const params = {
   sideForceMultiplier: 1,
   asdf: 8000,
   analogControls: true,
+  playerName: localStorage.getItem('playerName') || generateDefaultPlayerName(),
+  volume: parseFloat(localStorage.getItem('volume')) || 1.0
 }
 
 gui.add(params, 'offlinePlay').name('Offline Play')
@@ -49,6 +70,27 @@ gui.add(params, 'updateCamera')
 gui.add(params, 'pushForce', -10, 10)
 gui.add(params, 'sideForceMultiplier', -2000, 2000)
 gui.add(params, 'asdf', -4000, 4000).listen()
+
+// Add player name control
+const nameController = gui.add(params, 'playerName').name('Player Name')
+nameController.onChange((value) => {
+  localStorage.setItem('playerName', value)
+})
+
+// Add volume control
+const volumeController = gui.add(params, 'volume', 0, 1).name('Volume')
+volumeController.onChange((value) => {
+  localStorage.setItem('volume', value)
+})
+
+// Add camera controls
+const cameraFolder = gui.addFolder('Camera')
+cameraFolder.add(params, 'updateCamera').name('Update Camera')
+cameraFolder.add(params, 'velocityFactor', 0, 0.2).name('Look Ahead')
+
+// Add network controls
+const networkFolder = gui.addFolder('Network')
+networkFolder.add(params, 'offlinePlay').name('Offline Mode')
 
 const vehicleParams = {
   speed: 0, // Will be updated from code
