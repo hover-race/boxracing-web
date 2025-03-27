@@ -444,10 +444,20 @@ class Vehicle {
       canvas.height = 128 // Double height for better resolution
       
       // Get 2D context to draw text
-      const context = canvas.getContext('2d')
+      const context = canvas.getContext('2d', { antialias: false })
+      
+      // Disable image smoothing for pixel-perfect rendering
+      context.imageSmoothingEnabled = false
+      context.webkitImageSmoothingEnabled = false
+      context.mozImageSmoothingEnabled = false
+      context.msImageSmoothingEnabled = false
       
       // Create texture from canvas
       const texture = new THREE.CanvasTexture(canvas)
+      
+      // Use nearest neighbor filtering for the texture
+      texture.magFilter = THREE.NearestFilter
+      texture.minFilter = THREE.NearestFilter
       
       // Create material with the texture
       const material = new THREE.SpriteMaterial({
@@ -474,6 +484,12 @@ class Vehicle {
       const ctx = this.nameContext
       const canvas = this.nameCanvas
       
+      // Ensure image smoothing is disabled
+      ctx.imageSmoothingEnabled = false
+      ctx.webkitImageSmoothingEnabled = false
+      ctx.mozImageSmoothingEnabled = false
+      ctx.msImageSmoothingEnabled = false
+      
       // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       
@@ -481,20 +497,39 @@ class Vehicle {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'  // Darker background for better contrast
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
-      // Add border for better visibility
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
-      ctx.lineWidth = 4
-      ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8)
-      
-      // Draw text
-      ctx.font = 'bold 36px Arial, sans-serif'  // Bolder, larger font
+      // Draw text with wider character spacing
+      ctx.font = 'bold 56px Arial, sans-serif'
       ctx.fillStyle = 'white'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       
       // Convert to uppercase for better legibility
-      const displayName = (this.playerName || 'Player').toUpperCase()
-      ctx.fillText(displayName, canvas.width / 2, canvas.height / 2)
+      const displayName = (this.playerName || 'Player').toUpperCase();
+      
+      // Draw with wider letter spacing
+      const letterSpacing = 8; // Pixels between characters
+      const text = displayName;
+      let totalWidth = 0;
+      
+      // First measure total width with spacing
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const metrics = ctx.measureText(char);
+        totalWidth += metrics.width + (i < text.length - 1 ? letterSpacing : 0);
+      }
+      
+      // Now draw each character with spacing
+      let x = canvas.width / 2 - totalWidth / 2;
+      const y = canvas.height / 2;
+      
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const metrics = ctx.measureText(char);
+        const charWidth = metrics.width;
+        
+        ctx.fillText(char, x + charWidth / 2, y);
+        x += charWidth + letterSpacing;
+      }
       
       // Update texture
       this.nameTexture.needsUpdate = true
@@ -598,10 +633,20 @@ class RemoteCar {
       canvas.height = 128 // Double height for better resolution
       
       // Get 2D context to draw text
-      const context = canvas.getContext('2d')
+      const context = canvas.getContext('2d', { antialias: false })
+      
+      // Disable image smoothing for pixel-perfect rendering
+      context.imageSmoothingEnabled = false
+      context.webkitImageSmoothingEnabled = false
+      context.mozImageSmoothingEnabled = false
+      context.msImageSmoothingEnabled = false
       
       // Create texture from canvas
       const texture = new THREE.CanvasTexture(canvas)
+      
+      // Use nearest neighbor filtering for the texture
+      texture.magFilter = THREE.NearestFilter
+      texture.minFilter = THREE.NearestFilter
       
       // Create material with the texture
       const material = new THREE.SpriteMaterial({
@@ -628,6 +673,12 @@ class RemoteCar {
       const ctx = this.nameContext
       const canvas = this.nameCanvas
       
+      // Ensure image smoothing is disabled
+      ctx.imageSmoothingEnabled = false
+      ctx.webkitImageSmoothingEnabled = false
+      ctx.mozImageSmoothingEnabled = false
+      ctx.msImageSmoothingEnabled = false
+      
       // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       
@@ -635,20 +686,39 @@ class RemoteCar {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'  // Darker background for better contrast
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
-      // Add border for better visibility
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
-      ctx.lineWidth = 4
-      ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8)
-      
-      // Draw text
-      ctx.font = 'bold 36px Arial, sans-serif'  // Bolder, larger font
+      // Draw text with wider character spacing
+      ctx.font = 'bold 36px Arial, sans-serif'
       ctx.fillStyle = 'white'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       
       // Convert to uppercase for better legibility
-      const displayName = (this.playerName || 'Player').toUpperCase()
-      ctx.fillText(displayName, canvas.width / 2, canvas.height / 2)
+      const displayName = (this.playerName || 'Player').toUpperCase();
+      
+      // Draw with wider letter spacing
+      const letterSpacing = 8; // Pixels between characters
+      const text = displayName;
+      let totalWidth = 0;
+      
+      // First measure total width with spacing
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const metrics = ctx.measureText(char);
+        totalWidth += metrics.width + (i < text.length - 1 ? letterSpacing : 0);
+      }
+      
+      // Now draw each character with spacing
+      let x = canvas.width / 2 - totalWidth / 2;
+      const y = canvas.height / 2;
+      
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const metrics = ctx.measureText(char);
+        const charWidth = metrics.width;
+        
+        ctx.fillText(char, x + charWidth / 2, y);
+        x += charWidth + letterSpacing;
+      }
       
       // Update texture
       this.nameTexture.needsUpdate = true
