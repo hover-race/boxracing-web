@@ -293,8 +293,6 @@ class Vehicle {
     }
 
     scene3D.traverse(child => {
-      console.log(child.name)
-
       if (child.isMesh) {
         if (child.material) {
           child.material.metalness = 0;
