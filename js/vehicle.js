@@ -182,14 +182,11 @@ class Vehicle {
   updateSound() {
     if (this.chassis.engineSound) {
       const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
-      this.chassis.engineSound.setVolume(Math.min(1, speed / 100))
-      this.chassis.engineSound.volume = params.engineVolume
+      this.chassis.engineSound.setVolume(Math.min(1, speed / 100) * (vehicleParams.volume / 100))
       const minPitch = 0.5
       const maxPitch = 2.0
       const pitch = minPitch + (maxPitch - minPitch) * (speed / 100)
       this.chassis.engineSound.setPlaybackRate(Math.min(maxPitch, Math.max(minPitch, pitch)))
-      // params.engineVolume = this.chassis.engineSound.volume
-      // params.enginePitch = pitch
     }
   }
 
@@ -335,10 +332,16 @@ class Vehicle {
     // Add engine sound
     const engineSound = new THREE.Audio(scene.listener) // Get the audio listener from camera
     const audioLoader = new THREE.AudioLoader()
+    
+    // Load saved volume or use default
+    const savedVolume = Number(localStorage.getItem('engineVolume'));
+    const defaultVolume = 50;
+    const initialVolume = !isNaN(savedVolume) ? savedVolume : defaultVolume;
+    
     audioLoader.load('assets/winston_high.wav', function(buffer) {
       engineSound.setBuffer(buffer)
       engineSound.setLoop(true)
-      engineSound.setVolume(0.5)
+      engineSound.setVolume(initialVolume / 100)
       chassis.engineSound = engineSound // Attach to chassis for easy access
     })
 
