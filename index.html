@@ -12,10 +12,46 @@
     <script src="lib/enable3d.framework.0.25.4.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.2/nipplejs.min.js"></script>
+    <style>
+      #connection-status {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 14px;
+        z-index: 1000;
+        transition: all 0.3s ease;
+      }
+      .status-connecting {
+        background: #fcf8e3;
+        color: #8a6d3b;
+        animation: pulse 2s infinite;
+      }
+      .status-connected {
+        background: #dff0d8;
+        color: #3c763d;
+      }
+      .status-disconnected {
+        background: #f2dede;
+        color: #a94442;
+      }
+      .status-offline {
+        background: #d9edf7;
+        color: #31708f;
+      }
+      @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+      }
+    </style>
   </head>
 
   <body>
     <!-- <div id="info-text">Car using Raycast Vehicle<br />WASD and SPACE</div> -->
+    <div id="connection-status" class="status-connecting">Connecting...</div>
     <div id="speedometer" style="position: fixed; bottom: 20px; left: 20px; color: white; font-family: monospace; font-size: 34px;">0 mph</div>
     <div id="joystick-zone" style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); width: 120px; height: 120px;"></div>
     <script src="js/camera.js"></script>
@@ -142,12 +178,16 @@
         async setupNetwork() {
           if (params.offlinePlay) {
             console.log("Offline play enabled - skipping network setup");
+            this.updateConnectionStatus("Offline Mode", "offline");
             return;
           }
 
           // Create network manager
           this.networkManager = new NetworkManager(
-            this.log,
+            (message, state) => {
+              this.updateConnectionStatus(message, state);
+              this.log(message);
+            },
             this.log,
             this.log
           );
@@ -160,6 +200,12 @@
 
           // Start connection process
           await this.networkManager.signalingManager.findOrBecomeServer();
+        }
+
+        updateConnectionStatus(message, state = 'connected') {
+          const statusDiv = document.getElementById('connection-status');
+          statusDiv.textContent = message;
+          statusDiv.className = `status-${state}`;
         }
 
         setupKeyboardControls() {
