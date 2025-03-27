@@ -434,6 +434,72 @@ class Vehicle {
       }
     }
   }
+
+  updateNameBillboard() {
+    // Create or update the player name billboard
+    if (!this.nameBillboard && this.chassis) {
+      // Create canvas for the text
+      const canvas = document.createElement('canvas')
+      canvas.width = 512  // Double width for better resolution
+      canvas.height = 128 // Double height for better resolution
+      
+      // Get 2D context to draw text
+      const context = canvas.getContext('2d')
+      
+      // Create texture from canvas
+      const texture = new THREE.CanvasTexture(canvas)
+      
+      // Create material with the texture
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true
+      })
+      
+      // Create sprite with the material
+      this.nameBillboard = new THREE.Sprite(material)
+      this.nameBillboard.scale.set(3, 0.75, 1)  // Larger scale
+      this.nameBillboard.position.set(0, 3, 0)  // Position higher above car
+      
+      // Add to chassis
+      this.chassis.add(this.nameBillboard)
+      
+      // Store for later updates
+      this.nameCanvas = canvas
+      this.nameContext = context
+      this.nameTexture = texture
+    }
+    
+    // Update the billboard text if it exists
+    if (this.nameContext && this.nameCanvas && this.nameTexture) {
+      const ctx = this.nameContext
+      const canvas = this.nameCanvas
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      
+      // Draw background
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'  // Darker background for better contrast
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // Add border for better visibility
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
+      ctx.lineWidth = 4
+      ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8)
+      
+      // Draw text
+      ctx.font = 'bold 36px Arial, sans-serif'  // Bolder, larger font
+      ctx.fillStyle = 'white'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      
+      // Convert to uppercase for better legibility
+      const displayName = (this.playerName || 'Player').toUpperCase()
+      ctx.fillText(displayName, canvas.width / 2, canvas.height / 2)
+      
+      // Update texture
+      this.nameTexture.needsUpdate = true
+    }
+  }
 }
 
 
@@ -513,6 +579,7 @@ class RemoteCar {
 
     if (data.playerName) {
       this.playerName = data.playerName
+      this.updateNameBillboard()
     }
 
     this.lastUpdate = Date.now()
@@ -520,5 +587,71 @@ class RemoteCar {
 
   destroy() {
     this.scene.scene.remove(this.chassis)
+  }
+
+  updateNameBillboard() {
+    // Create or update the player name billboard
+    if (!this.nameBillboard && this.chassis) {
+      // Create canvas for the text
+      const canvas = document.createElement('canvas')
+      canvas.width = 512  // Double width for better resolution
+      canvas.height = 128 // Double height for better resolution
+      
+      // Get 2D context to draw text
+      const context = canvas.getContext('2d')
+      
+      // Create texture from canvas
+      const texture = new THREE.CanvasTexture(canvas)
+      
+      // Create material with the texture
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true
+      })
+      
+      // Create sprite with the material
+      this.nameBillboard = new THREE.Sprite(material)
+      this.nameBillboard.scale.set(3, 0.75, 1)  // Larger scale
+      this.nameBillboard.position.set(0, 3, 0)  // Position higher above car
+      
+      // Add to chassis
+      this.chassis.add(this.nameBillboard)
+      
+      // Store for later updates
+      this.nameCanvas = canvas
+      this.nameContext = context
+      this.nameTexture = texture
+    }
+    
+    // Update the billboard text if it exists
+    if (this.nameContext && this.nameCanvas && this.nameTexture) {
+      const ctx = this.nameContext
+      const canvas = this.nameCanvas
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      
+      // Draw background
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'  // Darker background for better contrast
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // Add border for better visibility
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
+      ctx.lineWidth = 4
+      ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8)
+      
+      // Draw text
+      ctx.font = 'bold 36px Arial, sans-serif'  // Bolder, larger font
+      ctx.fillStyle = 'white'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      
+      // Convert to uppercase for better legibility
+      const displayName = (this.playerName || 'Player').toUpperCase()
+      ctx.fillText(displayName, canvas.width / 2, canvas.height / 2)
+      
+      // Update texture
+      this.nameTexture.needsUpdate = true
+    }
   }
 }
