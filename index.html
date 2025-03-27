@@ -233,14 +233,8 @@
 
           // Update URL with server's gameId when connected
           if (state === 'connected' && this.networkManager?.signalingManager) {
-            const serverId = this.networkManager.signalingManager.serverId;
-            const peerId = this.networkManager.signalingManager.peerId;
-            
-            // Only use IDs that start with 'game_' (server IDs)
-            const gameId = serverId?.startsWith('game_') ? serverId : 
-                          peerId?.startsWith('game_') ? peerId : null;
-
-            if (gameId) {
+            const gameId = this.networkManager.signalingManager.getServerId();
+            if (gameId?.startsWith('game_')) {
               const url = new URL(window.location);
               url.searchParams.set('gameId', gameId);
               window.history.replaceState({}, '', url);
@@ -255,7 +249,7 @@
           // Log the state and IDs for debugging
           console.log('Connection State:', state, 
             'PeerId:', this.networkManager?.signalingManager?.peerId,
-            'ServerId:', this.networkManager?.signalingManager?.serverId);
+            'ServerId:', this.networkManager?.signalingManager?.getServerId());
         }
 
         setupKeyboardControls() {
