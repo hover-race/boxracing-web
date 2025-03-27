@@ -280,7 +280,10 @@ class NetworkManager {
 
             peerConnection.onconnectionstatechange = () => {
                 if (peerConnection.connectionState === 'connected') {
-                    this.onStatusUpdate(`Connected to ${peerId}`, 'connected');
+                    // Only update connection status for clients, not for the server
+                    if (!this.signalingManager.isHosting) {
+                        this.onStatusUpdate(`Connected to ${this.signalingManager.getServerId()}`, 'connected');
+                    }
                 } else if (peerConnection.connectionState === 'disconnected' || 
                     peerConnection.connectionState === 'failed' ||
                     peerConnection.connectionState === 'closed') {
@@ -337,7 +340,10 @@ class NetworkManager {
 
         dataChannel.onopen = () => {
             this.onLogEvent(`Data channel opened with peer ${peerId}`);
-            this.onStatusUpdate(`Connected to ${peerId}`, 'connected');
+            // Only update connection status for clients, not for the server
+            if (!this.signalingManager.isHosting) {
+                this.onStatusUpdate(`Connected to ${this.signalingManager.getServerId()}`, 'connected');
+            }
             this.onPeersChanged();
         };
 

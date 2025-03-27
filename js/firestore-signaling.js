@@ -146,6 +146,8 @@ class SignalingManager {
 
         this.isHost = true;
         this.onLogEvent('Became server ' + this.myPeerId);
+        // Explicitly update status to connected after becoming server
+        this.onStatusUpdate(`Server: ${this.myPeerId}`, 'connected');
         
         this.setupFirestoreListeners();
     }

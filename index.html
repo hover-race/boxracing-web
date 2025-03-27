@@ -238,19 +238,19 @@
           statusDiv.textContent = message;
           statusDiv.className = `status-${state}`;
 
-          // Update URL with server's gameId when connected
-          if (state === 'connected' && this.networkManager?.signalingManager) {
+          // Update URL with server's gameId when we have a valid server ID
+          if (this.networkManager?.signalingManager) {
             const gameId = this.networkManager.signalingManager.getServerId();
+            const url = new URL(window.location);
+            
             if (gameId?.startsWith('game_')) {
-              const url = new URL(window.location);
               url.searchParams.set('gameId', gameId);
               window.history.replaceState({}, '', url);
+            } else if (state === 'disconnected' || state === 'offline') {
+              // Remove gameId from URL when disconnected or offline
+              url.searchParams.delete('gameId');
+              window.history.replaceState({}, '', url);
             }
-          } else if (state === 'disconnected' || state === 'offline') {
-            // Remove gameId from URL when disconnected or offline
-            const url = new URL(window.location);
-            url.searchParams.delete('gameId');
-            window.history.replaceState({}, '', url);
           }
           
           // Log the state and IDs for debugging
