@@ -20,7 +20,3 @@ function linearInterpolation(curve, slipRatio) {
   const t = (slipRatio - x1) / (x2 - x1)
   return y1 + t * (y2 - y1)
 }
-
-for (let i = -0.1; i < 1.4; i += 0.05) {
-  console.log(i, getForwardForce(i))
-}
