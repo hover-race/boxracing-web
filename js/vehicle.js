@@ -378,7 +378,8 @@ class Vehicle {
         Number(this.chassis.quaternion.y.toFixed(3)),
         Number(this.chassis.quaternion.z.toFixed(3)),
         Number(this.chassis.quaternion.w.toFixed(3))
-      ]
+      ],
+      playerName: playerControl.name
     }
   }
 
