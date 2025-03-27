@@ -1,3 +1,5 @@
+dat.GUI.TEXT_OPEN = 'Options'
+dat.GUI.TEXT_CLOSED = 'Options'
 const gui = new dat.GUI({ width: 400, closed: true })
 
 // Load volume from localStorage or use default
