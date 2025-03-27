@@ -213,10 +213,17 @@
           if (gameId) {
             try {
               this.updateConnectionStatus(`Connecting to ${gameId}...`, "connecting");
-              await this.networkManager.signalingManager.connectToServer(gameId);
+              const serverRef = await this.networkManager.signalingManager.db.collection('servers').doc(gameId).get();
+              if (serverRef.exists) {
+                await this.networkManager.signalingManager.joinServer(gameId, serverRef.data());
+              } else {
+                throw new Error('Server not found');
+              }
             } catch (error) {
               console.error('Failed to connect to server:', error);
               this.updateConnectionStatus(`Failed to connect to ${gameId}`, "disconnected");
+              // If connection fails, try to find or become a server
+              await this.networkManager.signalingManager.findOrBecomeServer();
             }
           } else {
             // If no gameId, try to find or become server as before

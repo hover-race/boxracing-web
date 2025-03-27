@@ -278,6 +278,26 @@ class NetworkManager {
             const peerConnection = new RTCPeerConnection(this.rtcConfig);
             this.rtcPeerConnections.set(peerId, peerConnection);
 
+            peerConnection.onconnectionstatechange = () => {
+                if (peerConnection.connectionState === 'connected') {
+                    this.onStatusUpdate(`Connected to ${peerId}`, 'connected');
+                } else if (peerConnection.connectionState === 'disconnected' || 
+                    peerConnection.connectionState === 'failed' ||
+                    peerConnection.connectionState === 'closed') {
+                    this.onLogEvent(`WebRTC connection ${peerConnection.connectionState} for peer ${peerId}`);
+                    this.handleDisconnect(peerId);
+                }
+            };
+
+            peerConnection.oniceconnectionstatechange = () => {
+                if (peerConnection.iceConnectionState === 'disconnected' ||
+                    peerConnection.iceConnectionState === 'failed' ||
+                    peerConnection.iceConnectionState === 'closed') {
+                    this.onLogEvent(`ICE connection ${peerConnection.iceConnectionState} for peer ${peerId}`);
+                    this.handleDisconnect(peerId);
+                }
+            };
+
             peerConnection.ondatachannel = (event) => {
                 this.setupDataChannel(event.channel, peerId);
             };
@@ -317,6 +337,7 @@ class NetworkManager {
 
         dataChannel.onopen = () => {
             this.onLogEvent(`Data channel opened with peer ${peerId}`);
+            this.onStatusUpdate(`Connected to ${peerId}`, 'connected');
             this.onPeersChanged();
         };
 
