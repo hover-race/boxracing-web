@@ -189,6 +189,10 @@
             return;
           }
 
+          // Check for gameId in URL
+          const url = new URL(window.location);
+          const gameId = url.searchParams.get('gameId');
+
           // Create network manager
           this.networkManager = new NetworkManager(
             (message, state) => {
@@ -205,8 +209,19 @@
             this.remoteManager.handleStateUpdate(states, myPeerId);
           });
 
-          // Start connection process
-          await this.networkManager.signalingManager.findOrBecomeServer();
+          // If gameId exists in URL, try to connect to that server
+          if (gameId) {
+            try {
+              this.updateConnectionStatus(`Connecting to ${gameId}...`, "connecting");
+              await this.networkManager.signalingManager.connectToServer(gameId);
+            } catch (error) {
+              console.error('Failed to connect to server:', error);
+              this.updateConnectionStatus(`Failed to connect to ${gameId}`, "disconnected");
+            }
+          } else {
+            // If no gameId, try to find or become server as before
+            await this.networkManager.signalingManager.findOrBecomeServer();
+          }
         }
 
         updateConnectionStatus(message, state = 'connected') {
@@ -215,9 +230,32 @@
           
           statusDiv.textContent = message;
           statusDiv.className = `status-${state}`;
+
+          // Update URL with server's gameId when connected
+          if (state === 'connected' && this.networkManager?.signalingManager) {
+            const serverId = this.networkManager.signalingManager.serverId;
+            const peerId = this.networkManager.signalingManager.peerId;
+            
+            // Only use IDs that start with 'game_' (server IDs)
+            const gameId = serverId?.startsWith('game_') ? serverId : 
+                          peerId?.startsWith('game_') ? peerId : null;
+
+            if (gameId) {
+              const url = new URL(window.location);
+              url.searchParams.set('gameId', gameId);
+              window.history.replaceState({}, '', url);
+            }
+          } else if (state === 'disconnected' || state === 'offline') {
+            // Remove gameId from URL when disconnected or offline
+            const url = new URL(window.location);
+            url.searchParams.delete('gameId');
+            window.history.replaceState({}, '', url);
+          }
           
-          // Log the state for debugging
-          console.log('Connection State:', state);
+          // Log the state and IDs for debugging
+          console.log('Connection State:', state, 
+            'PeerId:', this.networkManager?.signalingManager?.peerId,
+            'ServerId:', this.networkManager?.signalingManager?.serverId);
         }
 
         setupKeyboardControls() {

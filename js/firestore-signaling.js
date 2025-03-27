@@ -150,6 +150,14 @@ class SignalingManager {
         this.setupFirestoreListeners();
     }
 
+    getServerId() {
+        if (this.isHost) {
+            return this.myPeerId;
+        } else {
+            return this.hostId;
+        }
+    }
+
     async joinServer(serverHostId, hostData) {
         // Change ID to client_ format when joining
         this.myPeerId = this.generateId('client_');
