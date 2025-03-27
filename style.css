@@ -23,7 +23,6 @@ canvas {
     font-family: monospace;
     font-size: 16px;
     z-index: 1;
-    text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
 }
 
 #speedometer {
@@ -34,7 +33,6 @@ canvas {
     font-family: monospace;
     font-size: 34px;
     z-index: 1;
-    text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
 }
 
 .dg.ac {
@@ -49,7 +47,6 @@ canvas {
     display: flex;
     gap: 10px;
     align-items: center;
-    text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
 }
 
 #connection-status {
@@ -71,8 +68,6 @@ canvas {
     border: none;
     cursor: pointer;
     transition: all 0.3s ease;
-    text-shadow: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     min-width: 120px;
     min-height: 36px;
     display: block !important;
@@ -81,12 +76,10 @@ canvas {
 #create-server-btn:hover {
     background: #388E3C;
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
 #create-server-btn:active {
     transform: scale(0.95) translateY(0);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
 .status-connecting {
