@@ -517,4 +517,8 @@ class RemoteCar {
 
     this.lastUpdate = Date.now()
   }
+
+  destroy() {
+    this.scene.scene.remove(this.chassis)
+  }
 }

@@ -75,9 +75,7 @@ class RemoteObjectManager {
   clearAll() {
     // Remove all remote cars from the scene and clear the map
     for (const [key, remoteCar] of this.remoteCars.entries()) {
-      if (remoteCar.chassis) {
-        this.scene.remove(remoteCar.chassis);
-      }
+      remoteCar.destroy()
     }
     this.remoteCars.clear();
     console.log('Cleared all remote cars');
