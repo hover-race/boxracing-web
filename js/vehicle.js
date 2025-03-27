@@ -441,10 +441,13 @@ class RemoteCar {
   constructor(scene, model) {
     this.scene = scene
 
+    this.playerName = ''
+
     this.wheelMeshes = []
     this.lastUpdate = 0
-    this.interpolationBuffer = []
-    
+
+
+
     if (model) {
       // Use pre-loaded model
       this.setupModel(model)
@@ -495,10 +498,6 @@ class RemoteCar {
       this.chassis.position.copy(data.position)
       // Copy doesn't work
       this.chassis.quaternion.fromArray(data.quaternion)
-
-      // vehicleParams.forceDirX = data.position.x
-      // vehicleParams.forceDirY = data.position.y
-      // vehicleParams.forceDirZ = data.position.z
     } else {
       console.warn('chassis or data.position or data.quaternion not found')
     }
@@ -511,5 +510,11 @@ class RemoteCar {
         }
       })
     }
+
+    if (data.playerName) {
+      this.playerName = data.playerName
+    }
+
+    this.lastUpdate = Date.now()
   }
 }
