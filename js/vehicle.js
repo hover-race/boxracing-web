@@ -512,8 +512,13 @@ class RemoteCar {
     }
 
     if (data.playerName) {
-      this.playerName = data.playerName
-      this.updateNameBillboard()
+      // Truncate player name if longer than 12 characters
+      if (data.playerName.length > 12) {
+        this.playerName = data.playerName.substring(0, 12) + '.';
+      } else {
+        this.playerName = data.playerName;
+      }
+      this.updateNameBillboard();
     }
 
     this.lastUpdate = Date.now()
@@ -528,7 +533,7 @@ class RemoteCar {
     if (!this.nameBillboard && this.chassis) {
       // Create canvas for the text
       const canvas = document.createElement('canvas')
-      canvas.width = 512
+      canvas.width = 612
       canvas.height = 128
       
       // Get 2D context to draw text

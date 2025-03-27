@@ -9,7 +9,10 @@ function generateDefaultPlayerName() {
 }
 
 // Load player name and volume from localStorage
-const savedPlayerName = localStorage.getItem('playerName') || generateDefaultPlayerName();
+const savedPlayerName = (() => {
+  const name = localStorage.getItem('playerName') || generateDefaultPlayerName();
+  return name.length > 12 ? name.substring(0, 12) + '.' : name;
+})();
 const savedVolume = Number(localStorage.getItem('engineVolume'));
 const defaultVolume = 50;
 
@@ -22,6 +25,14 @@ const playerControl = {
 gui.add(playerControl, 'name')
   .name('Player Name')
   .onChange((value) => {
+    // Truncate to 12 characters and add period if longer
+    if (value.length > 12) {
+      value = value.substring(0, 12) + '.';
+      // Update the input field to show truncated value
+      playerControl.name = value;
+    }
+    
+    params.playerName = value;
     localStorage.setItem('playerName', value);
   });
 
@@ -60,7 +71,11 @@ const params = {
   sideForceMultiplier: 1,
   asdf: 8000,
   analogControls: true,
-  playerName: localStorage.getItem('playerName') || generateDefaultPlayerName(),
+  // Initialize player name with 12-char limit
+  playerName: (() => {
+    const name = localStorage.getItem('playerName') || generateDefaultPlayerName();
+    return name.length > 12 ? name.substring(0, 12) + '.' : name;
+  })(),
   volume: parseFloat(localStorage.getItem('volume')) || 1.0
 }
 
@@ -70,12 +85,6 @@ gui.add(params, 'updateCamera')
 gui.add(params, 'pushForce', -10, 10)
 gui.add(params, 'sideForceMultiplier', -2000, 2000)
 gui.add(params, 'asdf', -4000, 4000).listen()
-
-// Add player name control
-const nameController = gui.add(params, 'playerName').name('Player Name')
-nameController.onChange((value) => {
-  localStorage.setItem('playerName', value)
-})
 
 // Add volume control
 const volumeController = gui.add(params, 'volume', 0, 1).name('Volume')
