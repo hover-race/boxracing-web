@@ -144,6 +144,10 @@
             if (this.networkManager) {
               this.networkManager.cleanup();
             }
+            // Clear remote cars when creating new server
+            if (this.remoteManager) {
+              this.remoteManager.clearAll();
+            }
             this.updateConnectionStatus("Creating new server...", "connecting");
             
             // Create new network manager
@@ -237,6 +241,13 @@
           
           statusDiv.textContent = message;
           statusDiv.className = `status-${state}`;
+
+          // Clear remote cars when disconnected or offline
+          if (state === 'disconnected' || state === 'offline') {
+            if (this.remoteManager) {
+              this.remoteManager.clearAll();
+            }
+          }
 
           // Update URL with server's gameId when we have a valid server ID
           if (this.networkManager?.signalingManager) {
