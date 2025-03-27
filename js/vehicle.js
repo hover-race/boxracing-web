@@ -434,107 +434,6 @@ class Vehicle {
       }
     }
   }
-
-  updateNameBillboard() {
-    // Create or update the player name billboard
-    if (!this.nameBillboard && this.chassis) {
-      // Create canvas for the text
-      const canvas = document.createElement('canvas')
-      canvas.width = 512  // Double width for better resolution
-      canvas.height = 128 // Double height for better resolution
-      
-      // Get 2D context to draw text
-      const context = canvas.getContext('2d', { antialias: false })
-      
-      // Disable image smoothing for pixel-perfect rendering
-      context.imageSmoothingEnabled = false
-      context.webkitImageSmoothingEnabled = false
-      context.mozImageSmoothingEnabled = false
-      context.msImageSmoothingEnabled = false
-      
-      // Create texture from canvas
-      const texture = new THREE.CanvasTexture(canvas)
-      
-      // Use nearest neighbor filtering for the texture
-      texture.magFilter = THREE.NearestFilter
-      texture.minFilter = THREE.NearestFilter
-      
-      // Create material with the texture
-      const material = new THREE.SpriteMaterial({
-        map: texture,
-        transparent: true
-      })
-      
-      // Create sprite with the material
-      this.nameBillboard = new THREE.Sprite(material)
-      this.nameBillboard.scale.set(3, 0.75, 1)  // Larger scale
-      this.nameBillboard.position.set(0, 3, 0)  // Position higher above car
-      
-      // Add to chassis
-      this.chassis.add(this.nameBillboard)
-      
-      // Store for later updates
-      this.nameCanvas = canvas
-      this.nameContext = context
-      this.nameTexture = texture
-    }
-    
-    // Update the billboard text if it exists
-    if (this.nameContext && this.nameCanvas && this.nameTexture) {
-      const ctx = this.nameContext
-      const canvas = this.nameCanvas
-      
-      // Ensure image smoothing is disabled
-      ctx.imageSmoothingEnabled = false
-      ctx.webkitImageSmoothingEnabled = false
-      ctx.mozImageSmoothingEnabled = false
-      ctx.msImageSmoothingEnabled = false
-      
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      
-      // Draw background
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'  // Darker background for better contrast
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      
-      // Draw text with wider character spacing
-      ctx.font = 'bold 56px Arial, sans-serif'
-      ctx.fillStyle = 'white'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      
-      // Convert to uppercase for better legibility
-      const displayName = (this.playerName || 'Player').toUpperCase();
-      
-      // Draw with wider letter spacing
-      const letterSpacing = 8; // Pixels between characters
-      const text = displayName;
-      let totalWidth = 0;
-      
-      // First measure total width with spacing
-      for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        const metrics = ctx.measureText(char);
-        totalWidth += metrics.width + (i < text.length - 1 ? letterSpacing : 0);
-      }
-      
-      // Now draw each character with spacing
-      let x = canvas.width / 2 - totalWidth / 2;
-      const y = canvas.height / 2;
-      
-      for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        const metrics = ctx.measureText(char);
-        const charWidth = metrics.width;
-        
-        ctx.fillText(char, x + charWidth / 2, y);
-        x += charWidth + letterSpacing;
-      }
-      
-      // Update texture
-      this.nameTexture.needsUpdate = true
-    }
-  }
 }
 
 
@@ -629,8 +528,8 @@ class RemoteCar {
     if (!this.nameBillboard && this.chassis) {
       // Create canvas for the text
       const canvas = document.createElement('canvas')
-      canvas.width = 512  // Double width for better resolution
-      canvas.height = 128 // Double height for better resolution
+      canvas.width = 512
+      canvas.height = 128
       
       // Get 2D context to draw text
       const context = canvas.getContext('2d', { antialias: false })
@@ -687,7 +586,7 @@ class RemoteCar {
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
       // Draw text with wider character spacing
-      ctx.font = 'bold 36px Arial, sans-serif'
+      ctx.font = 'bold 72px Arial, sans-serif'
       ctx.fillStyle = 'white'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
