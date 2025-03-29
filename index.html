@@ -114,6 +114,9 @@
               this.startTransform.quaternion.copy(child.quaternion)
               console.log('startTransform (world pos):', this.startTransform.position)
             }
+            if (child.name === 'FinishLineVolume') {
+              this.setupFinishLine(child)
+            }
           })
 
           this.car = await Vehicle.setupCarMustang(this, this.startTransform, carModel.clone())
@@ -182,6 +185,15 @@
           });
         }
 
+        setupFinishLine(cube) {
+          const finishLineTrigger = new THREE.Mesh(
+            new THREE.BoxGeometry(cube.scale.x, cube.scale.y, cube.scale.z),
+            new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+          )
+          finishLineTrigger.position.copy(cube.position)
+          finishLineTrigger.quaternion.copy(cube.quaternion)  
+          this.scene.add(finishLineTrigger)
+        }
         log(a, b) {
           console.log(a, b)
         }
