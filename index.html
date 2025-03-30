@@ -83,8 +83,13 @@
 
           // Preload car model once
           console.log("Preloading car model...");
-          const carGltf = await this.load.gltf('assets/glb/red-mustang-bigwheel.glb');
+          // var x = await this.load.gltf('assets/glb/red-mustang-bigwheel.glb');
+          // var scene1 = x.scenes[0];
+          const carGltf = await this.load.gltf('assets/glb/red-mustang-bigwheel2.glb');
           const carModel = carGltf.scenes[0];
+
+          carModel.children.forEach(child => {
+            console.log(3333, child.name, child.position)})
           console.log("Car model preloaded successfully");
 
           // Initialize remote object manager with preloaded model
@@ -113,14 +118,12 @@
 
           // Load track
           var track = await this.loadGltf('assets/glb/rcc-oval.glb')
-          const TRACK_SCALE = 1.6
-          track.scale.set(TRACK_SCALE, TRACK_SCALE, TRACK_SCALE)
           this.physics.add.existing(track, { collisionFlags: 1, mass: 0, shape: 'concave' })
           this.track = track
           this.startTransform = new THREE.Object3D()
           this.track.traverse(child => {
             if (child.name === 'StartPos1') {
-              const worldPosition = child.position.clone().multiplyScalar(TRACK_SCALE)
+              const worldPosition = child.position.clone()
               console.log('Found StartPos1 (world pos):', worldPosition)
               this.startTransform.position.copy(worldPosition)
               this.startTransform.quaternion.copy(child.quaternion)
