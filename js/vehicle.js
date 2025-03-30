@@ -38,8 +38,8 @@ class Vehicle {
     this.vehicle.setCoordinateSystem(0, 1, 2)
     physicsWorld.addAction(this.vehicle)
 
-    const wheelRadiusBack = 0.4
-    const wheelRadiusFront = 0.4
+    const wheelRadiusBack = 0.24
+    const wheelRadiusFront = 0.24
 
     this.addWheel(
       wheelMeshes.frontLeft,
@@ -401,14 +401,14 @@ class Vehicle {
       rotation.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), steeringAngle))
       
       // Create decal
-      const wheelWidth = 0.55
+      const wheelWidth = 0.45
 
-      const decalGeometry = new THREE.PlaneGeometry(wheelWidth, 1)
+      const decalGeometry = new THREE.PlaneGeometry(wheelWidth, 0.6)
       decalGeometry.rotateX(-Math.PI / 2) // Align with ground
 
       // Scale decal length based on velocity and width based on wheel
       const speed = Math.abs(this.vehicle.getCurrentSpeedKmHour())
-      const lengthScale = Math.min(1 + speed * 0.01, 3) // Scale up with speed, max 3x
+      const lengthScale = Math.min(1 + speed * 0.01, 10) // Scale up with speed
       decalGeometry.scale(wheelWidth, lengthScale, 1) // Scale x by wheel width
       
       const decal = new THREE.Mesh(decalGeometry, this.decalMaterial.clone()) 
