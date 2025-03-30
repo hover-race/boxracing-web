@@ -273,7 +273,7 @@ class Vehicle {
   }
 
 
-  static async setupCarMustang(scene, transform, preloadedModel = null) {
+  static async setupCarMustang(scene, transform, preloadedModel) {
     let wheels = {
       frontRight: null,
       frontLeft: null, 
@@ -284,13 +284,8 @@ class Vehicle {
     let tire
     let centerOfMass
 
-    let scene3D;
-    if (preloadedModel) {
-      scene3D = preloadedModel;
-    } else {
-      const gltf = await scene.load.gltf('assets/glb/red-mustang-bigwheel.glb')
-      scene3D = gltf.scenes[0]
-    }
+
+    let scene3D = preloadedModel;
 
     scene3D.traverse(child => {
       if (child.isMesh) {
@@ -440,22 +435,17 @@ class Vehicle {
 class RemoteCar {
   constructor(scene, model) {
     this.scene = scene
-
     this.playerName = ''
-
     this.wheelMeshes = []
     this.lastUpdate = 0
 
-
-
-    if (model) {
-      // Use pre-loaded model
-      this.setupModel(model)
-    } else {
-      // Fallback to loading the model if not provided
-      console.warn('RemoteCar: No model provided, loading model dynamically')
-      this.loadModel()
+    // Ensure model is provided
+    if (!model) {
+      throw new Error('Model is required for RemoteCar constructor');
     }
+    
+    // Use pre-loaded model
+    this.setupModel(model)
   }
 
   setupModel(model) {

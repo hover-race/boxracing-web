@@ -5,13 +5,6 @@ class RemoteObjectManager {
     this.carModel = null;
   }
 
-  async preloadCarModel() {
-    console.log("Preloading car model...");
-    const gltf = await this.scene.load.gltf('assets/glb/red-mustang-bigwheel.glb');
-    this.carModel = gltf.scenes[0];
-    console.log("Car model preloaded successfully");
-  }
-
   handleStateUpdate(states, myPeerId) {
     // Print state structure occasionally for debugging
     if (Math.random() < 0.01) {
