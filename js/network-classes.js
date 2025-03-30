@@ -345,6 +345,11 @@ class NetworkManager {
                 this.onStatusUpdate(`Connected to ${this.signalingManager.getServerId()}`, 'connected');
             }
             this.onPeersChanged();
+            
+            // If we are the host, update can_join status based on active connections
+            if (this.signalingManager.isHosting) {
+                this.signalingManager.updateCanJoinStatus(this.dataChannels.size);
+            }
         };
 
         dataChannel.onclose = () => {
@@ -395,6 +400,9 @@ class NetworkManager {
         
         if (this.signalingManager.isHosting) {
             this.broadcastStates();
+            
+            // Update can_join status when a peer disconnects
+            this.signalingManager.updateCanJoinStatus(this.dataChannels.size);
         } else {
             // Emit state update directly if not hosting
             this.emit('state-update', this.getStates());

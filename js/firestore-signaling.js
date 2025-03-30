@@ -93,6 +93,7 @@ class SignalingManager {
 
         try {
             const serversQuery = await this.db.collection('servers')
+                .where('can_join', '==', true)
                 .orderBy('updated_at', 'desc')
                 .limit(1)
                 .get();
@@ -108,7 +109,7 @@ class SignalingManager {
                 this.onStatusUpdate('Connecting to server...', 'connecting');
                 await this.joinServer(serverDoc.id, serverDoc.data());
             } else {
-                this.onStatusUpdate('No active servers found, becoming a server...', 'connecting');
+                this.onStatusUpdate('No available servers found, becoming a server...', 'connecting');
                 await this.becomeServer();
             }
         } catch (error) {
@@ -299,5 +300,27 @@ class SignalingManager {
 
     get isHosting() {
         return this.isHost;
+    }
+
+    /**
+     * Updates the can_join property in Firestore based on active RTC connections
+     * @param {number} activeConnectionsCount - Number of active RTC connections
+     */
+    async updateCanJoinStatus(activeConnectionsCount) {
+        if (!this.isHost) return;
+        
+        const MAX_PLAYERS = 8;
+        const canJoin = activeConnectionsCount < MAX_PLAYERS;
+        
+        try {
+            const hostRef = this.db.collection('servers').doc(this.myPeerId);
+            await hostRef.update({
+                can_join: canJoin
+            });
+            
+            this.onLogEvent(`Updated server can_join: ${canJoin} (${activeConnectionsCount}/${MAX_PLAYERS} players)`);
+        } catch (error) {
+            console.error('Error updating server can_join status:', error);
+        }
     }
 } 
