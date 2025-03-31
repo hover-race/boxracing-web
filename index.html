@@ -7,6 +7,18 @@
       content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <!-- Twitter Card Metadata -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Box Racing" />
+    <meta name="twitter:description" content="A multiplayer 3D racing game" />
+    <meta name="twitter:image" content="./assets/img/demo.png" />
+    <!-- Open Graph Metadata (for Facebook, LinkedIn, etc.) -->
+    <meta property="og:title" content="Box Racing" />
+    <meta property="og:description" content="A multiplayer 3D racing game" />
+    <meta property="og:image" content="./assets/img/demo.png" />
+    <meta property="og:type" content="website" />
+    <!-- Emoji Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚘</text></svg>">
     <link rel="stylesheet" href="style.css">
     <title>Box Racing</title>
     <script src="lib/enable3d.framework.0.25.4.min.js"></script>
@@ -71,8 +83,13 @@
 
           // Preload car model once
           console.log("Preloading car model...");
-          const carGltf = await this.load.gltf('assets/glb/red-mustang-bigwheel.glb');
+          // var x = await this.load.gltf('assets/glb/red-mustang-bigwheel.glb');
+          // var scene1 = x.scenes[0];
+          const carGltf = await this.load.gltf('assets/glb/red-mustang-bigwheel2.glb');
           const carModel = carGltf.scenes[0];
+
+          carModel.children.forEach(child => {
+            console.log(3333, child.name, child.position)})
           console.log("Car model preloaded successfully");
 
           // Initialize remote object manager with preloaded model
@@ -101,14 +118,12 @@
 
           // Load track
           var track = await this.loadGltf('assets/glb/rcc-oval.glb')
-          const TRACK_SCALE = 1.6
-          track.scale.set(TRACK_SCALE, TRACK_SCALE, TRACK_SCALE)
           this.physics.add.existing(track, { collisionFlags: 1, mass: 0, shape: 'concave' })
           this.track = track
           this.startTransform = new THREE.Object3D()
           this.track.traverse(child => {
             if (child.name === 'StartPos1') {
-              const worldPosition = child.position.clone().multiplyScalar(TRACK_SCALE)
+              const worldPosition = child.position.clone()
               console.log('Found StartPos1 (world pos):', worldPosition)
               this.startTransform.position.copy(worldPosition)
               this.startTransform.quaternion.copy(child.quaternion)
@@ -124,7 +139,7 @@
           console.log('car', this.car.chassis.position)
 
           this.followCam = new THREE.Object3D()
-          this.followCam.position.set(0, 2, -3)
+          this.followCam.position.set(0, 1.3, -2)
 
           this.car.chassis.add(this.followCam)
 
