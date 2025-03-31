@@ -379,6 +379,11 @@
 
           this.camera.lookAt(lookAtPos)
         }
+
+        cleanup() {
+          // Clean up checkpoint manager
+          this.checkpointManager.cleanup();
+        }
       }
 
       PhysicsLoader('lib/ammo/kripken', () => new Project({ scenes: [MainScene], antialias: true }))
