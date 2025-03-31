@@ -201,8 +201,9 @@
         }
 
         setupFinishLine(cube) {
+          console.log('setupFinishLine', cube.position)
           const finishLineTrigger = new THREE.Mesh(
-            new THREE.BoxGeometry(cube.scale.x, cube.scale.y, cube.scale.z),
+            new THREE.BoxGeometry(cube.scale.x * 2, cube.scale.y * 2, cube.scale.z * 2),
             new THREE.MeshBasicMaterial({ color: 0x00ff00 })
           )
           finishLineTrigger.position.copy(cube.position)
