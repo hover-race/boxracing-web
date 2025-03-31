@@ -1,5 +1,7 @@
 class CheckpointManager {
   constructor(scene) {
+    this.DEBUG_MESHES = false;
+
     this.scene = scene;
     this.checkpoints = [];
     this.finishLine = null;
@@ -295,21 +297,23 @@ class CheckpointManager {
   setupFinishLine(cube) {
     console.log('Setting up finish line trigger at', cube.position);
     
-    // Create a visible mesh for debugging purposes
-    const geometry = new THREE.BoxGeometry(
-      cube.scale.x * 2,
-      cube.scale.y * 2,
-      cube.scale.z * 2
-    );
-    const material = new THREE.MeshBasicMaterial({
-      color: 0x00ff00,
-      transparent: true,
-      opacity: 0.5
-    });
-    const visibleMesh = new THREE.Mesh(geometry, material);
-    visibleMesh.position.copy(cube.position);
-    visibleMesh.quaternion.copy(cube.quaternion);
-    this.scene.scene.add(visibleMesh);
+    if (this.DEBUG_MESHES) {
+      // Create a visible mesh for debugging purposes
+      const geometry = new THREE.BoxGeometry(
+        cube.scale.x * 2,
+        cube.scale.y * 2,
+        cube.scale.z * 2
+      );
+      const material = new THREE.MeshBasicMaterial({
+        color: 0x00ff00,
+        transparent: true,
+        opacity: 0.5
+      });
+      const visibleMesh = new THREE.Mesh(geometry, material);
+      visibleMesh.position.copy(cube.position);
+      visibleMesh.quaternion.copy(cube.quaternion);
+      this.scene.scene.add(visibleMesh);
+  }
     
     // Create a ghost object with physics for collision detection
     const ghostObject = new THREE.Object3D();
@@ -348,12 +352,14 @@ class CheckpointManager {
             console.log('Finish line crossed but not in sequence - must cross checkpoint first');
           }
           
-          // Flash the finish line mesh for visual feedback
-          const originalOpacity = material.opacity;
-          material.opacity = 0.9;
-          setTimeout(() => {
-            material.opacity = originalOpacity;
-          }, 300);
+          if (this.DEBUG_MESHES) {
+            // Flash the finish line mesh for visual feedback
+            const originalOpacity = material.opacity;
+            material.opacity = 0.9;
+            setTimeout(() => {
+              material.opacity = originalOpacity;
+            }, 300);
+          }
         }
       }
     });
@@ -361,8 +367,6 @@ class CheckpointManager {
     // Store the finish line references
     this.finishLine = {
       ghost: ghostObject,
-      mesh: visibleMesh,
-      material: material
     };
   }
 
@@ -374,21 +378,23 @@ class CheckpointManager {
   setupCheckpoint(cube, checkpointIndex = 1) {
     console.log('Setting up checkpoint trigger at', cube.position);
     
-    // Create a visible mesh for debugging purposes
-    const geometry = new THREE.BoxGeometry(
-      cube.scale.x * 2,
-      cube.scale.y * 2,
-      cube.scale.z * 2
-    );
-    const material = new THREE.MeshBasicMaterial({
-      color: 0x0000ff,  // Blue color to distinguish from finish line
-      transparent: true,
-      opacity: 0.5
-    });
-    const visibleMesh = new THREE.Mesh(geometry, material);
-    visibleMesh.position.copy(cube.position);
-    visibleMesh.quaternion.copy(cube.quaternion);
-    this.scene.scene.add(visibleMesh);
+    if (this.DEBUG_MESHES) {
+      // Create a visible mesh for debugging purposes
+      const geometry = new THREE.BoxGeometry(
+        cube.scale.x * 2,
+        cube.scale.y * 2,
+        cube.scale.z * 2
+      );
+      const material = new THREE.MeshBasicMaterial({
+        color: 0x0000ff,  // Blue color to distinguish from finish line
+        transparent: true,
+        opacity: 0.5
+      });
+      const visibleMesh = new THREE.Mesh(geometry, material);
+      visibleMesh.position.copy(cube.position);
+      visibleMesh.quaternion.copy(cube.quaternion);
+      this.scene.scene.add(visibleMesh);
+    }
     
     // Create a ghost object with physics for collision detection
     const ghostObject = new THREE.Object3D();
@@ -421,11 +427,13 @@ class CheckpointManager {
             self.showCheckpointMessage();
             
             // Flash the checkpoint mesh for visual feedback
-            const originalOpacity = material.opacity;
-            material.opacity = 0.9;
-            setTimeout(() => {
-              material.opacity = originalOpacity;
-            }, 300);
+            if (this.DEBUG_MESHES) {
+              const originalOpacity = material.opacity;
+              material.opacity = 0.9;
+              setTimeout(() => {
+                material.opacity = originalOpacity;
+              }, 300);
+            }
           } else {
             console.log('Checkpoint crossed but not in sequence - must cross finish line first');
           }
@@ -437,8 +445,6 @@ class CheckpointManager {
     this.checkpoints.push({
       index: checkpointIndex,
       ghost: ghostObject,
-      mesh: visibleMesh,
-      material: material
     });
   }
 
