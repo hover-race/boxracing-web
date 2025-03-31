@@ -76,7 +76,12 @@ const params = {
     const name = localStorage.getItem('playerName') || generateDefaultPlayerName();
     return name.length > 12 ? name.substring(0, 12) + '.' : name;
   })(),
-  volume: parseFloat(localStorage.getItem('volume')) || 1.0
+  volume: parseFloat(localStorage.getItem('volume')) || 1.0,
+  explosionEnabled: true,
+  explosionForceThreshold: 50,
+  respawnDelay: 1000,
+  particleCount: 100,
+  portalEnabled: true
 }
 
 gui.add(params, 'offlinePlay').name('Offline Play')
@@ -100,6 +105,61 @@ cameraFolder.add(params, 'velocityFactor', 0, 0.2).name('Look Ahead')
 // Add network controls
 const networkFolder = gui.addFolder('Network')
 networkFolder.add(params, 'offlinePlay').name('Offline Mode')
+
+// Add explosion controls
+const explosionFolder = gui.addFolder('Explosion Settings')
+explosionFolder.add(params, 'explosionEnabled').name('Enable Explosions')
+explosionFolder.add(params, 'explosionForceThreshold', 5, 100).step(1).name('Impact Threshold')
+explosionFolder.add(params, 'respawnDelay', 1000, 5000).step(100).name('Respawn Delay (ms)')
+explosionFolder.add(params, 'particleCount', 10, 200).step(5).name('Particle Count')
+explosionFolder.open()
+
+// Add portal options
+const portalFolder = gui.addFolder('Portal Settings')
+portalFolder.add(params, 'portalEnabled').name('Enable VibeJam Portal').onChange((value) => {
+  // This will be checked by the Portal class to determine if it should be visible
+  if (window.mainScene && window.mainScene.portal) {
+    window.mainScene.portal.setVisible(value);
+  }
+})
+
+// Add portal customization options
+const portalCustomization = {
+  scale: 1.0,
+  rotationSpeed: 0.01,
+  floatAmplitude: 0.2,
+  floatSpeed: 0.01
+}
+
+// Add scale slider
+portalFolder.add(portalCustomization, 'scale', 0.5, 3.0).step(0.1).name('Portal Scale').onChange((value) => {
+  if (window.mainScene && window.mainScene.portal) {
+    window.mainScene.portal.setScale(value, value, value);
+  }
+});
+
+// Add rotation speed slider
+portalFolder.add(portalCustomization, 'rotationSpeed', 0.001, 0.05).step(0.001).name('Rotation Speed').onChange((value) => {
+  if (window.mainScene && window.mainScene.portal) {
+    window.mainScene.portal.rotationSpeed = value;
+  }
+});
+
+// Add float amplitude slider
+portalFolder.add(portalCustomization, 'floatAmplitude', 0, 1).step(0.05).name('Float Amount').onChange((value) => {
+  if (window.mainScene && window.mainScene.portal) {
+    window.mainScene.portal.floatAmplitude = value;
+  }
+});
+
+// Add float speed slider
+portalFolder.add(portalCustomization, 'floatSpeed', 0.001, 0.05).step(0.001).name('Float Speed').onChange((value) => {
+  if (window.mainScene && window.mainScene.portal) {
+    window.mainScene.portal.floatSpeed = value;
+  }
+});
+
+portalFolder.open()
 
 const vehicleParams = {
   speed: 0, // Will be updated from code

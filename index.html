@@ -40,6 +40,8 @@
     <script src="js/curves.js"></script>
     <script src="js/gui.js"></script>
     <script src="js/checkpointManager.js"></script>
+    <script src="js/explosions.js"></script>
+    <script src="js/portal.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="js/firestore-signaling.js"></script>
@@ -62,6 +64,7 @@
         light
         joystick = null
         checkpointManager = null
+        portal = null
 
         async loadGltf(path) {
           const obj = await this.load.gltf(path)
@@ -140,15 +143,34 @@
             if (child.name === 'Checkpoint1') {
               this.checkpointManager.setupCheckpoint(child)
             }
+            // Look for a node named Portal to use for positioning the portal
+            if (child.name === 'Portal' || child.name.toLowerCase().includes('portal')) {
+              console.log('Found Portal node in track:', child.name, child.position);
+              this.portalTransform = new THREE.Object3D();
+              this.portalTransform.position.copy(child.position);
+              this.portalTransform.quaternion.copy(child.quaternion);
+            }
           })
 
           this.car = await Vehicle.setupCarMustang(this, this.startTransform, carModel.clone())
           
           // Initialize checkpoint manager with the car
           this.checkpointManager.init(this.car)
-
-          console.log('car', this.car.chassis.position)
-
+          
+          // Create and position the VibeJam portal
+          if (this.portalTransform) {
+            // Create portal with the transform from the track
+            this.portal = new Portal(this, this.portalTransform);
+            console.log('VibeJam portal created using transform from track');
+          } else {
+            // Create portal with default position
+            this.portal = new Portal(this);
+            // Position at default location
+            const defaultPosition = { x: 15, y: 1.5, z: 10 };
+            this.portal.setPosition(defaultPosition.x, defaultPosition.y, defaultPosition.z);
+            console.log('VibeJam portal created at default position:', defaultPosition);
+          }
+          
           this.followCam = new THREE.Object3D()
           this.followCam.position.set(0, 1.3, -2)
 
@@ -382,11 +404,22 @@
 
         cleanup() {
           // Clean up checkpoint manager
-          this.checkpointManager.cleanup();
+          if (this.checkpointManager) {
+            this.checkpointManager.cleanup();
+          }
+          
+          // Clean up portal
+          if (this.portal) {
+            this.portal.cleanup();
+          }
         }
       }
 
-      PhysicsLoader('lib/ammo/kripken', () => new Project({ scenes: [MainScene], antialias: true }))
+      PhysicsLoader('lib/ammo/kripken', () => {
+        const project = new Project({ scenes: [MainScene], antialias: true });
+        // Store reference to main scene for global access
+        window.mainScene = project.scene;
+      })
     </script>
   </body>
 </html>
