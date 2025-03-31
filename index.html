@@ -201,14 +201,59 @@
         }
 
         setupFinishLine(cube) {
-          console.log('setupFinishLine', cube.position)
-          const finishLineTrigger = new THREE.Mesh(
-            new THREE.BoxGeometry(cube.scale.x * 2, cube.scale.y * 2, cube.scale.z * 2),
-            new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+          console.log('Setting up finish line trigger at', cube.position)
+          
+          // Create a visible mesh for debugging purposes
+          const geometry = new THREE.BoxGeometry(
+            cube.scale.x * 2,
+            cube.scale.y * 2,
+            cube.scale.z * 2
           )
-          finishLineTrigger.position.copy(cube.position)
-          finishLineTrigger.quaternion.copy(cube.quaternion)  
-          this.scene.add(finishLineTrigger)
+          const material = new THREE.MeshBasicMaterial({
+            color: 0x00ff00,
+            transparent: true,
+            opacity: 0.5
+          })
+          const visibleMesh = new THREE.Mesh(geometry, material)
+          visibleMesh.position.copy(cube.position)
+          visibleMesh.quaternion.copy(cube.quaternion)
+          this.scene.add(visibleMesh)
+          
+          // Create a ghost object with physics for collision detection
+          const ghostObject = new THREE.Object3D()
+          ghostObject.position.copy(cube.position)
+          ghostObject.quaternion.copy(cube.quaternion)
+          this.scene.add(ghostObject)
+          
+          // Add physics to the ghost object (as a trigger volume)
+          this.physics.add.existing(ghostObject, {
+            shape: 'box',
+            width: cube.scale.x * 2,
+            height: cube.scale.y * 2,
+            depth: cube.scale.z * 2,
+            mass: 0,  // Static object
+            collisionFlags: 4  // CF_NO_CONTACT_RESPONSE - ghost object
+          })
+          
+          // Set up collision detection
+          const finishLineBody = ghostObject.body
+          finishLineBody.on.collision((otherObject, event) => {
+            if (otherObject === this.car.chassis.body) {
+              if (event === 'start') {
+                console.log('TRIGGER: Car crossed the finish line!')
+                // Flash the finish line mesh for visual feedback
+                const originalOpacity = material.opacity
+                material.opacity = 0.9
+                setTimeout(() => {
+                  material.opacity = originalOpacity
+                }, 300)
+              }
+            }
+          })
+          
+          // Store the finish line ghost object for later reference
+          this.finishLineGhost = ghostObject
+          this.finishLineMesh = visibleMesh
         }
         log(a, b) {
           console.log(a, b)
