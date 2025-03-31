@@ -164,11 +164,10 @@
             console.log('VibeJam portal created using transform from track');
           } else {
             // Create portal with default position
-            this.portal = new Portal(this);
-            // Position at default location
-            const defaultPosition = { x: 15, y: 1.5, z: 10 };
-            this.portal.setPosition(defaultPosition.x, defaultPosition.y, defaultPosition.z);
-            console.log('VibeJam portal created at default position:', defaultPosition);
+            const defaultTransform = new THREE.Object3D();
+            defaultTransform.position.set(15, 1.5, 10);
+            this.portal = new Portal(this, defaultTransform);
+            console.log('VibeJam portal created at default position:', defaultTransform.position);
           }
           
           this.followCam = new THREE.Object3D()
@@ -415,11 +414,7 @@
         }
       }
 
-      PhysicsLoader('lib/ammo/kripken', () => {
-        const project = new Project({ scenes: [MainScene], antialias: true });
-        // Store reference to main scene for global access
-        window.mainScene = project.scene;
-      })
+      PhysicsLoader('lib/ammo/kripken', () => new Project({ scenes: [MainScene], antialias: true }))
     </script>
   </body>
 </html>

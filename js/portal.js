@@ -27,25 +27,64 @@ class Portal {
     
     // Apply transform if provided
     if (this.transform) {
-      // Set position
-      this.setPosition(
-        this.transform.position.x,
-        this.transform.position.y,
-        this.transform.position.z
-      );
-      
-      // Set rotation from quaternion
-      const euler = new THREE.Euler().setFromQuaternion(this.transform.quaternion);
-      this.setRotation(euler.x, euler.y, euler.z);
-      
-      // Set scale if available
-      if (this.transform.scale) {
-        this.setScale(
-          this.transform.scale.x,
-          this.transform.scale.y,
-          this.transform.scale.z
-        );
+      // Apply position, rotation and scale from transform
+      if (this.portalMesh) {
+        this.portalMesh.position.copy(this.transform.position);
+        this.portalMesh.quaternion.copy(this.transform.quaternion);
+        if (this.transform.scale) {
+          this.portalMesh.scale.copy(this.transform.scale);
+        }
       }
+      
+      if (this.innerPortalMesh) {
+        this.innerPortalMesh.position.copy(this.transform.position);
+        this.innerPortalMesh.quaternion.copy(this.transform.quaternion);
+        if (this.transform.scale) {
+          this.innerPortalMesh.scale.copy(this.transform.scale);
+        }
+      }
+      
+      if (this.portalLight) {
+        this.portalLight.position.copy(this.transform.position);
+        // Adjust the light position slightly above
+        this.portalLight.position.y += 0.5;
+      }
+      
+      if (this.triggerObject) {
+        this.triggerObject.position.copy(this.transform.position);
+        
+        // Update physics body transform if needed
+        if (this.triggerObject.body) {
+          const transform = this.triggerObject.body.ammo.getWorldTransform();
+          
+          // Position
+          const origin = transform.getOrigin();
+          origin.setValue(this.transform.position.x, this.transform.position.y, this.transform.position.z);
+          
+          // Rotation
+          const quat = new Ammo.btQuaternion(0, 0, 0, 1);
+          quat.setValue(
+            this.transform.quaternion.x,
+            this.transform.quaternion.y,
+            this.transform.quaternion.z,
+            this.transform.quaternion.w
+          );
+          transform.setRotation(quat);
+          
+          // Activate the body to ensure the change takes effect
+          this.triggerObject.body.ammo.activate();
+        }
+      }
+      
+      // Update particle positions
+      this.particles.forEach(particle => {
+        const originalPos = particle.userData.originalPos;
+        particle.position.set(
+          originalPos.x + this.transform.position.x,
+          originalPos.y + this.transform.position.y,
+          originalPos.z + this.transform.position.z
+        );
+      });
       
       console.log('Portal positioned using provided transform');
     }
@@ -304,86 +343,6 @@ class Portal {
     });
     
     this.triggerObject = triggerObject;
-  }
-  
-  /**
-   * Position the portal at the specified coordinates
-   * @param {number} x - X position
-   * @param {number} y - Y position
-   * @param {number} z - Z position
-   */
-  setPosition(x, y, z) {
-    this.portalMesh.position.set(x, y, z);
-    this.innerPortalMesh.position.set(x, y, z);
-    this.portalLight.position.set(x, y + 0.5, z);
-    this.triggerObject.position.set(x, y, z);
-    
-    // Update particles positions relative to new portal position
-    this.particles.forEach(particle => {
-      const originalPos = particle.userData.originalPos;
-      particle.position.set(
-        originalPos.x + x,
-        originalPos.y + y,
-        originalPos.z + z
-      );
-      
-      // Update the original position to be relative to the new center
-      particle.userData.originalPos = new THREE.Vector3(
-        originalPos.x,
-        originalPos.y,
-        originalPos.z
-      );
-    });
-  }
-  
-  /**
-   * Set the rotation of the portal
-   * @param {number} x - X rotation in radians
-   * @param {number} y - Y rotation in radians
-   * @param {number} z - Z rotation in radians
-   */
-  setRotation(x, y, z) {
-    // Save the original x rotation (we want to keep the portal horizontal)
-    const originalXRotation = this.portalMesh.rotation.x;
-    const originalInnerXRotation = this.innerPortalMesh.rotation.x;
-    
-    // Apply new rotation
-    this.portalMesh.rotation.set(x, y, z);
-    this.innerPortalMesh.rotation.set(x, y, z);
-    
-    // Restore horizontal orientation (x rotation)
-    this.portalMesh.rotation.x = originalXRotation;
-    this.innerPortalMesh.rotation.x = originalInnerXRotation;
-    
-    // Update the trigger object rotation as well
-    if (this.triggerObject && this.triggerObject.body) {
-      // For physics objects, we need to update the Ammo.js transform
-      const transform = this.triggerObject.body.ammo.getWorldTransform();
-      
-      // Create Ammo quaternion from Euler angles
-      const quat = new Ammo.btQuaternion(0, 0, 0, 1);
-      const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z));
-      quat.setValue(rotation.x, rotation.y, rotation.z, rotation.w);
-      
-      // Set the rotation
-      transform.setRotation(quat);
-      
-      // Activate the body to ensure the change takes effect
-      this.triggerObject.body.ammo.activate();
-    }
-    
-    console.log('Portal rotation set to:', { x, y, z });
-  }
-  
-  /**
-   * Set the scale of the portal
-   * @param {number} x - X scale
-   * @param {number} y - Y scale
-   * @param {number} z - Z scale
-   */
-  setScale(x, y, z) {
-    this.portalMesh.scale.set(x, y, z);
-    this.innerPortalMesh.scale.set(x, y, z);
   }
   
   /**
