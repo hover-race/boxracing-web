@@ -433,14 +433,11 @@ class Portal {
     // Show message
     this.showPortalMessage();
     
-    // After a delay, open VibeJam in a new tab
+    // After a delay, navigate to portal destination in the current window
     setTimeout(() => {
-      window.open('https://portal.pieter.com/', '_blank');
+      // Navigate to VibeJam in the current window
+      window.location.href = 'https://portal.pieter.com/';
       
-      // Reactivate portal after a cooldown
-      setTimeout(() => {
-        this.isActive = true;
-      }, 5000);
     }, 2000);
   }
   
