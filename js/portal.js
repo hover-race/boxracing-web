@@ -5,7 +5,7 @@ class Portal {
   /**
    * Create a new portal
    * @param {Scene3D} scene - The game scene
-   * @param {THREE.Object3D} [transform] - Optional transform to position the portal
+   * @param {THREE.Object3D} transform - Transform to position the portal
    */
   constructor(scene, transform) {
     this.scene = scene;
@@ -25,69 +25,32 @@ class Portal {
     // Create the portal object
     this.createPortal();
     
-    // Apply transform if provided
-    if (this.transform) {
-      // Apply position, rotation and scale from transform
-      if (this.portalMesh) {
-        this.portalMesh.position.copy(this.transform.position);
-        this.portalMesh.quaternion.copy(this.transform.quaternion);
-        if (this.transform.scale) {
-          this.portalMesh.scale.copy(this.transform.scale);
-        }
-      }
-      
-      if (this.innerPortalMesh) {
-        this.innerPortalMesh.position.copy(this.transform.position);
-        this.innerPortalMesh.quaternion.copy(this.transform.quaternion);
-        if (this.transform.scale) {
-          this.innerPortalMesh.scale.copy(this.transform.scale);
-        }
-      }
-      
-      if (this.portalLight) {
-        this.portalLight.position.copy(this.transform.position);
-        // Adjust the light position slightly above
-        this.portalLight.position.y += 0.5;
-      }
-      
-      if (this.triggerObject) {
-        this.triggerObject.position.copy(this.transform.position);
-        
-        // Update physics body transform if needed
-        if (this.triggerObject.body) {
-          const transform = this.triggerObject.body.ammo.getWorldTransform();
-          
-          // Position
-          const origin = transform.getOrigin();
-          origin.setValue(this.transform.position.x, this.transform.position.y, this.transform.position.z);
-          
-          // Rotation
-          const quat = new Ammo.btQuaternion(0, 0, 0, 1);
-          quat.setValue(
-            this.transform.quaternion.x,
-            this.transform.quaternion.y,
-            this.transform.quaternion.z,
-            this.transform.quaternion.w
-          );
-          transform.setRotation(quat);
-          
-          // Activate the body to ensure the change takes effect
-          this.triggerObject.body.ammo.activate();
-        }
-      }
-      
-      // Update particle positions
-      this.particles.forEach(particle => {
-        const originalPos = particle.userData.originalPos;
-        particle.position.set(
-          originalPos.x + this.transform.position.x,
-          originalPos.y + this.transform.position.y,
-          originalPos.z + this.transform.position.z
-        );
-      });
-      
-      console.log('Portal positioned using provided transform');
-    }
+    // Apply the transform directly to the meshes and particles
+    // Position and rotate the portal meshes
+    this.portalMesh.position.copy(this.transform.position);
+    this.portalMesh.quaternion.copy(this.transform.quaternion);
+    this.portalMesh.scale.copy(this.transform.scale);
+    
+    this.innerPortalMesh.position.copy(this.transform.position);
+    this.innerPortalMesh.quaternion.copy(this.transform.quaternion);
+    this.innerPortalMesh.scale.copy(this.transform.scale);
+    
+    // Position the light
+    this.portalLight.position.copy(this.transform.position);
+    // Adjust the light position slightly above
+    this.portalLight.position.y += 0.5;
+    
+    // Update particle positions
+    this.particles.forEach(particle => {
+      const originalPos = particle.userData.originalPos;
+      particle.position.set(
+        originalPos.x + this.transform.position.x,
+        originalPos.y + this.transform.position.y,
+        originalPos.z + this.transform.position.z
+      );
+    });
+    
+    console.log('Portal created at position:', this.transform.position);
   }
   
   /**
@@ -317,14 +280,24 @@ class Portal {
   addPortalTrigger() {
     // Create an invisible trigger volume for the portal
     const triggerObject = new THREE.Object3D();
-    triggerObject.position.copy(this.portalMesh.position);
+    
+    // Position and rotate the trigger using the transform
+    triggerObject.position.copy(this.transform.position);
+    triggerObject.quaternion.copy(this.transform.quaternion);
+    
     this.scene.scene.add(triggerObject);
     
-    // Add physics to the trigger object
+    // Use the transform scale to calculate the trigger radius
+    // Average the x and z scale for the sphere radius
+    const scaleAvg = (this.transform.scale.x + this.transform.scale.z) / 2;
+    const triggerRadius = 3.0 * scaleAvg;
+    
+    console.log('Creating portal trigger sphere with radius:', triggerRadius);
+    
+    // Add physics to the trigger object as a sphere
     this.scene.physics.add.existing(triggerObject, {
-      shape: 'cylinder',
-      radius: 2.5,
-      height: 2,
+      shape: 'sphere',
+      radius: triggerRadius,
       mass: 0,  // Static object
       collisionFlags: 4  // CF_NO_CONTACT_RESPONSE - ghost object
     });
@@ -462,7 +435,7 @@ class Portal {
     
     // After a delay, open VibeJam in a new tab
     setTimeout(() => {
-      window.open('https://vibejam.io', '_blank');
+      window.open('https://portal.pieter.com/', '_blank');
       
       // Reactivate portal after a cooldown
       setTimeout(() => {

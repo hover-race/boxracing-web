@@ -167,6 +167,7 @@
             // Create portal with default position
             const defaultTransform = new THREE.Object3D();
             defaultTransform.position.set(15, 1.5, 10);
+            defaultTransform.scale.set(1, 1, 1);
             this.portal = new Portal(this, defaultTransform);
             console.log('VibeJam portal created at default position:', defaultTransform.position);
           }
