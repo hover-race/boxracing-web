@@ -238,7 +238,7 @@
           // Set up collision detection
           const finishLineBody = ghostObject.body
           finishLineBody.on.collision((otherObject, event) => {
-            if (otherObject === this.car.chassis.body) {
+            if (otherObject === this.car.chassis) {
               if (event === 'start') {
                 console.log('TRIGGER: Car crossed the finish line!')
                 // Flash the finish line mesh for visual feedback
