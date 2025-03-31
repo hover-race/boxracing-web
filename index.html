@@ -39,6 +39,7 @@
     <script src="js/vehicle.js"></script>
     <script src="js/curves.js"></script>
     <script src="js/gui.js"></script>
+    <script src="js/checkpointManager.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="js/firestore-signaling.js"></script>
@@ -60,6 +61,7 @@
         vehicleSteering = 0
         light
         joystick = null
+        checkpointManager = null
 
         async loadGltf(path) {
           const obj = await this.load.gltf(path)
@@ -80,6 +82,9 @@
           this.camera.updateProjectionMatrix()
           // Add audio listener to camera
           this.listener = new THREE.AudioListener()
+
+          // Initialize checkpoint manager
+          this.checkpointManager = new CheckpointManager(this)
 
           // Preload car model once
           console.log("Preloading car model...");
@@ -130,14 +135,17 @@
               console.log('startTransform (world pos):', this.startTransform.position)
             }
             if (child.name === 'FinishLineVolume') {
-              this.setupFinishLine(child)
+              this.checkpointManager.setupFinishLine(child)
             }
             if (child.name === 'Checkpoint1') {
-              this.setupCheckPoint(child)
+              this.checkpointManager.setupCheckpoint(child)
             }
           })
 
           this.car = await Vehicle.setupCarMustang(this, this.startTransform, carModel.clone())
+          
+          // Initialize checkpoint manager with the car
+          this.checkpointManager.init(this.car)
 
           console.log('car', this.car.chassis.position)
 
@@ -203,141 +211,6 @@
           });
         }
 
-        setupCheckPoint(cube) {
-          console.log('Setting up checkpoint trigger at', cube.position)
-          
-          // Create a visible mesh for debugging purposes
-          const geometry = new THREE.BoxGeometry(
-            cube.scale.x * 2,
-            cube.scale.y * 2,
-            cube.scale.z * 2
-          )
-          const material = new THREE.MeshBasicMaterial({
-            color: 0x0000ff,  // Blue color to distinguish from finish line
-            transparent: true,
-            opacity: 0.5
-          })
-          const visibleMesh = new THREE.Mesh(geometry, material)
-          visibleMesh.position.copy(cube.position)
-          visibleMesh.quaternion.copy(cube.quaternion)
-          this.scene.add(visibleMesh)
-          
-          // Create a ghost object with physics for collision detection
-          const ghostObject = new THREE.Object3D()
-          ghostObject.position.copy(cube.position)
-          ghostObject.quaternion.copy(cube.quaternion)
-          this.scene.add(ghostObject)
-          
-          // Add physics to the ghost object (as a trigger volume)
-          this.physics.add.existing(ghostObject, {
-            shape: 'box',
-            width: cube.scale.x * 2,
-            height: cube.scale.y * 2,
-            depth: cube.scale.z * 2,
-            mass: 0,  // Static object
-            collisionFlags: 4  // CF_NO_CONTACT_RESPONSE - ghost object
-          })
-          
-          // Set up collision detection
-          const checkpointBody = ghostObject.body
-          checkpointBody.on.collision((otherObject, event) => {
-            if (otherObject === this.car.chassis) {
-              if (event === 'start') {
-                // Only count checkpoint if player has crossed the start/finish line
-                if (this.checkpointProgress === 1) {
-                  console.log('TRIGGER: Car crossed checkpoint!')
-                  this.checkpointProgress = 2 // Mark checkpoint as crossed
-                  
-                  // Flash the checkpoint mesh for visual feedback
-                  const originalOpacity = material.opacity
-                  material.opacity = 0.9
-                  setTimeout(() => {
-                    material.opacity = originalOpacity
-                  }, 300)
-                } else {
-                  console.log('Checkpoint crossed but not in sequence - must cross finish line first')
-                }
-              }
-            }
-          })
-          
-          // Store the checkpoint ghost object for later reference
-          this.checkpointGhost = ghostObject
-          this.checkpointMesh = visibleMesh
-        }
-        
-        setupFinishLine(cube) {
-          console.log('Setting up finish line trigger at', cube.position)
-          
-          // Initialize checkpoint progress tracking
-          // 0 = new lap not started, 1 = crossed finish line first time, 2 = crossed checkpoint, 3 = completed lap
-          this.checkpointProgress = 0
-          this.lapCount = 0
-          
-          // Create a visible mesh for debugging purposes
-          const geometry = new THREE.BoxGeometry(
-            cube.scale.x * 2,
-            cube.scale.y * 2,
-            cube.scale.z * 2
-          )
-          const material = new THREE.MeshBasicMaterial({
-            color: 0x00ff00,
-            transparent: true,
-            opacity: 0.5
-          })
-          const visibleMesh = new THREE.Mesh(geometry, material)
-          visibleMesh.position.copy(cube.position)
-          visibleMesh.quaternion.copy(cube.quaternion)
-          this.scene.add(visibleMesh)
-          
-          // Create a ghost object with physics for collision detection
-          const ghostObject = new THREE.Object3D()
-          ghostObject.position.copy(cube.position)
-          ghostObject.quaternion.copy(cube.quaternion)
-          this.scene.add(ghostObject)
-          
-          // Add physics to the ghost object (as a trigger volume)
-          this.physics.add.existing(ghostObject, {
-            shape: 'box',
-            width: cube.scale.x * 2,
-            height: cube.scale.y * 2,
-            depth: cube.scale.z * 2,
-            mass: 0,  // Static object
-            collisionFlags: 4  // CF_NO_CONTACT_RESPONSE - ghost object
-          })
-          
-          // Set up collision detection
-          const finishLineBody = ghostObject.body
-          finishLineBody.on.collision((otherObject, event) => {
-            if (otherObject === this.car.chassis) {
-              if (event === 'start') {
-                if (this.checkpointProgress === 0) {
-                  // Starting a new lap
-                  console.log('TRIGGER: Car crossed the start line!')
-                  this.checkpointProgress = 1
-                } else if (this.checkpointProgress === 2) {
-                  // Completed a lap (crossed finish after checkpoint)
-                  this.lapCount++
-                  console.log(`TRIGGER: Lap ${this.lapCount} completed!`)
-                  this.checkpointProgress = 1 // Reset to 1 to start next lap
-                } else {
-                  console.log('Finish line crossed but not in sequence - must cross checkpoint first')
-                }
-                
-                // Flash the finish line mesh for visual feedback
-                const originalOpacity = material.opacity
-                material.opacity = 0.9
-                setTimeout(() => {
-                  material.opacity = originalOpacity
-                }, 300)
-              }
-            }
-          })
-          
-          // Store the finish line ghost object for later reference
-          this.finishLineGhost = ghostObject
-          this.finishLineMesh = visibleMesh
-        }
         log(a, b) {
           console.log(a, b)
         }
