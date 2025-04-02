@@ -173,7 +173,7 @@
           }
           
           this.followCam = new THREE.Object3D()
-          this.followCam.position.set(0, 1.3, -2)
+          this.followCam.position.set(0, 1.3, -4)
 
           this.car.chassis.add(this.followCam)
 
@@ -382,17 +382,27 @@
           });
         }
 
-        update() {
+        update(time, deltaTime) {
           this.car.update(inputControls);
           this.car.updateTireMarks();
-          this.updateCamera();
+          this.updateCamera(deltaTime);
+
           if (!params.offlinePlay && this.remoteManager) {
             this.remoteManager.update();
           }
         }
 
-        updateCamera() {
-          this.camera.position.lerp(this.followCam.getWorldPosition(new THREE.Vector3()), 0.1)
+        preRender() {
+
+        }
+
+        updateCamera(deltaTime) {
+          // const smoothingFactor = 2
+
+          // const targetPosition = this.followCam.getWorldPosition(new THREE.Vector3());
+          // const lerpFactor = 1.0 - Math.exp(-smoothingFactor * deltaTime); // Frame-rate independent lerp factor
+          this.camera.position.lerp(this.followCam.getWorldPosition(new THREE.Vector3()), .99);
+
           if (!params.updateCamera) {
             return
           }
