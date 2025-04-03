@@ -82,3 +82,57 @@ class CameraSmoothFollow {
     return start + diff * t;
   }
 }
+
+// Camera system for smooth following with damping
+function setupCamera(camera, target) {
+  const cameraController = {
+    // Configuration
+    distance: 5,           // Distance behind target
+    height: 2,             // Height above target
+    damping: 0.05,         // How quickly camera moves (0-1)
+    lookAheadFactor: 0.2,  // How much to look ahead based on velocity
+    
+    // Current state
+    currentPosition: new THREE.Vector3(),
+    currentLookAt: new THREE.Vector3(),
+    
+    // Update method
+    update: function(camera, target, deltaTime) {
+      // Get target position
+      const targetPosition = target.getWorldPosition(new THREE.Vector3());
+      
+      // Calculate ideal camera position (behind and above target)
+      const idealPosition = targetPosition.clone();
+      idealPosition.y += this.height;
+      
+      // Get target's forward direction
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(target.quaternion);
+      
+      // Move camera back along forward direction
+      idealPosition.sub(forward.multiplyScalar(this.distance));
+      
+      // Calculate look-ahead position based on velocity
+      const velocity = target.body.velocity;
+      const lookAhead = targetPosition.clone().add(
+        new THREE.Vector3(velocity.x, 0, velocity.z).multiplyScalar(this.lookAheadFactor)
+      );
+      
+      // Initialize current position if needed
+      if (this.currentPosition.lengthSq() === 0) {
+        this.currentPosition.copy(idealPosition);
+        this.currentLookAt.copy(targetPosition);
+      }
+      
+      // Smoothly move current position toward ideal position
+      const lerpFactor = Math.min(1, this.damping * (deltaTime || 1/60));
+      this.currentPosition.lerp(idealPosition, lerpFactor);
+      this.currentLookAt.lerp(lookAhead, lerpFactor);
+      
+      // Apply to actual camera
+      camera.position.copy(this.currentPosition);
+      camera.lookAt(this.currentLookAt);
+    }
+  };
+  
+  return cameraController;
+}
