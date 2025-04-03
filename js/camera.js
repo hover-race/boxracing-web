@@ -119,8 +119,8 @@ function setupCamera(camera, target) {
   cameraController.reset(camera, target);
   
   // Configure with good default settings
-  cameraController.distance = 8.0;
-  cameraController.height = 3.0;
+  cameraController.distance = 2.75;
+  cameraController.height = 1.3;
   cameraController.heightDamping = 2.0;
   cameraController.rotationDamping = 3.0;
   cameraController.followVelocity = true;
