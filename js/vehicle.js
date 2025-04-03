@@ -12,6 +12,7 @@ class Vehicle {
   steeringClamp = 0.3
   maxEngineForce = 3000
   maxBrakingForce = 100
+  steeringSensitivity = 1.0
 
   FRONT_LEFT = 0
   FRONT_RIGHT = 1
@@ -100,6 +101,12 @@ class Vehicle {
 
   update(inputs) {
     this.updateControls(inputs)
+    
+    // Check if steering sensitivity has changed in GUI
+    if (vehicleParams && vehicleParams.steeringSensitivity !== this.steeringSensitivity) {
+      this.steeringSensitivity = vehicleParams.steeringSensitivity;
+    }
+    
     // this.applyPushForce()
     let tm, p, q, i
     const n = this.vehicle.getNumWheels()
@@ -243,11 +250,14 @@ class Vehicle {
     // Apply forces based on input controls
     this.engineForce = this.maxEngineForce * (inputs.throttle - inputs.brake);
     
-    // Smooth steering
+    // Apply steering with sensitivity adjustment
+    const adjustedSteeringIncrement = this.steeringIncrement * this.steeringSensitivity;
+    
+    // Use adjusted increment in steering calculations
     const targetSteering = -this.steeringClamp * inputs.steering;
     const steeringDiff = targetSteering - this.vehicleSteering;
-    if (Math.abs(steeringDiff) > this.steeringIncrement) {
-      this.vehicleSteering += Math.sign(steeringDiff) * this.steeringIncrement;
+    if (Math.abs(steeringDiff) > adjustedSteeringIncrement) {
+      this.vehicleSteering += Math.sign(steeringDiff) * adjustedSteeringIncrement;
     } else {
       this.vehicleSteering = targetSteering;
     }

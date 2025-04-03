@@ -128,7 +128,8 @@ const vehicleParams = {
   forceDirY: 0,
   forceDirZ: 0,
   forwardForceScalar: 0,
-  volume: volumeControl.volume // Initialize with the volume control value
+  volume: volumeControl.volume, // Initialize with the volume control value
+  steeringSensitivity: 1.0, // Default sensitivity multiplier
 }
 
 const vehicleData = gui.addFolder('Vehicle data')
@@ -153,4 +154,11 @@ forceDirYController.listen()
 const forceDirZController = forceFolder.add(vehicleParams, 'forceDirZ', -100, 100).step(0.1)
 forceDirZController.listen()
 
-forceFolder.open() 
+forceFolder.open()
+
+// Add steering sensitivity to the inputs folder
+inputFolder.add(vehicleParams, 'steeringSensitivity', 0.1, 2.0).step(0.1).name('Steering Sensitivity')
+  .onChange(value => {
+    // Store the value in vehicleParams for the car to access
+    vehicleParams.steeringSensitivity = value;
+  }); 
