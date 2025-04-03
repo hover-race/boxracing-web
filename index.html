@@ -157,8 +157,8 @@
 
           this.car = await Vehicle.setupCarMustang(this, this.startTransform, carModel.clone())
           
-          // Initialize camera controller
-          this.cameraController = setupCamera(this.camera, this.car.chassis)
+          // Initialize camera controller using setupCamera helper
+          this.cameraController = setupCamera(this.camera, this.car.chassis);
           
           // Initialize checkpoint manager with the car
           this.checkpointManager.init(this.car)
@@ -397,7 +397,8 @@
         }
 
         updateCamera(deltaTime) {
-          this.cameraController.update(this.camera, this.car.chassis, deltaTime)
+          // Use the CameraSmoothFollow update method
+          this.cameraController.update(this.camera, this.car.chassis, deltaTime);
         }
 
         cleanup() {
