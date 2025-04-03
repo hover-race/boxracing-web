@@ -230,7 +230,7 @@ class Vehicle {
     wheelInfo.set_m_wheelsDampingRelaxation(suspensionDampingRelaxation)
     wheelInfo.set_m_wheelsDampingCompression(suspensionDampingCompression)
 
-    wheelInfo.set_m_frictionSlip(2)
+    wheelInfo.set_m_frictionSlip(1.5)
     wheelInfo.set_m_rollInfluence(1)
     // wheelInfo.set_m_wheelsSideFrictionStiffness(10)
     // wheelInfo.set_m_frictionSlip(10)
