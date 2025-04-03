@@ -122,9 +122,9 @@ function setupCamera(camera, target) {
   cameraController.distance = 2.75;
   cameraController.height = 1.3;
   cameraController.heightDamping = 2.0;
-  cameraController.rotationDamping = 3.0;
+  cameraController.rotationDamping = .60;
   cameraController.followVelocity = true;
-  cameraController.velocityDamping = 5.0;
+  cameraController.velocityDamping = 2.0;
   
   return cameraController;
 }
