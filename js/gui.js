@@ -65,9 +65,7 @@ inputFolder.open()
 
 const params = {
   offlinePlay: false,
-  velocityFactor: 0.1,
   updateCamera: true,
-  pushForce: 0,
   sideForceMultiplier: 1,
   asdf: 8000,
   analogControls: true,
@@ -85,11 +83,7 @@ const params = {
 }
 
 gui.add(params, 'offlinePlay').name('Offline Play')
-gui.add(params, 'velocityFactor', 0, 0.5).step(0.01)
 gui.add(params, 'updateCamera')
-gui.add(params, 'pushForce', -10, 10)
-gui.add(params, 'sideForceMultiplier', -2000, 2000)
-gui.add(params, 'asdf', -4000, 4000).listen()
 
 // Add volume control
 const volumeController = gui.add(params, 'volume', 0, 1).name('Volume')
@@ -97,22 +91,7 @@ volumeController.onChange((value) => {
   localStorage.setItem('volume', value)
 })
 
-// Add camera controls
-const cameraFolder = gui.addFolder('Camera')
-cameraFolder.add(params, 'updateCamera').name('Update Camera')
-cameraFolder.add(params, 'velocityFactor', 0, 0.2).name('Look Ahead')
 
-// Add network controls
-const networkFolder = gui.addFolder('Network')
-networkFolder.add(params, 'offlinePlay').name('Offline Mode')
-
-// Add explosion controls
-const explosionFolder = gui.addFolder('Explosion Settings')
-explosionFolder.add(params, 'explosionEnabled').name('Enable Explosions')
-explosionFolder.add(params, 'explosionForceThreshold', 5, 100).step(1).name('Impact Threshold')
-explosionFolder.add(params, 'respawnDelay', 1000, 5000).step(100).name('Respawn Delay (ms)')
-explosionFolder.add(params, 'particleCount', 10, 200).step(5).name('Particle Count')
-explosionFolder.open()
 
 const vehicleParams = {
   speed: 0, // Will be updated from code
@@ -133,7 +112,7 @@ const vehicleParams = {
 }
 
 const vehicleData = gui.addFolder('Vehicle data')
-vehicleData.open() // Make folder expanded by default
+vehicleData.close()
 const speedController = vehicleData.add(vehicleParams, 'speed', 0, 200)
 vehicleData.add(vehicleParams, 'sideForceScalar', -2000, 2000).listen()
 vehicleData.add(vehicleParams, 'forwardForceScalar', -4000, 4000).listen()
