@@ -43,6 +43,7 @@
     <script src="js/checkpointManager.js"></script>
     <script src="js/explosions.js"></script>
     <script src="js/portal.js"></script>
+    <script src="js/stars.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="js/firestore-signaling.js"></script>
@@ -68,6 +69,7 @@
         portal = null
         cameraController = null
         controlsManager = null
+        starSystem = null
 
         async loadGltf(path) {
           const obj = await this.load.gltf(path)
@@ -235,6 +237,15 @@
               this.updateConnectionStatus(`Error: ${error.message}`, "disconnected");
             }
           });
+
+          // Create star system
+          this.starSystem = new StarSystem(this, {
+            count: 150,
+            height: 60,
+            color: 0xFFFFFF,
+            size: 0.3,
+            speed: 0.2
+          });
         }
 
         log(a, b) {
@@ -329,6 +340,11 @@
           this.car.update(inputControls);
           this.car.updateTireMarks();
           this.updateCamera(deltaTime);
+          
+          // Update star system
+          if (this.starSystem) {
+            this.starSystem.update(deltaTime);
+          }
 
           if (!params.offlinePlay && this.remoteManager) {
             this.remoteManager.update();
@@ -358,6 +374,11 @@
           // Clean up controls
           if (this.controlsManager) {
             this.controlsManager.cleanup();
+          }
+          
+          // Clean up star system
+          if (this.starSystem) {
+            this.starSystem.cleanup();
           }
         }
       }
