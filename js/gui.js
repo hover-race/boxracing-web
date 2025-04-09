@@ -104,9 +104,44 @@ const tiltSteeringController = gui.add(params, 'tiltSteering').name('Tilt Steeri
 tiltSteeringController.onChange((value) => {
   // Save to localStorage
   localStorage.setItem('tiltSteering', value);
-  // Update controls manager if it exists
-  if (window.scene && window.scene.controlsManager) {
-    window.scene.controlsManager.tiltControlsActive = value;
+
+  // Only request permission when the checkbox is checked (value is true)
+  if (value) {
+    console.log('GUI: Tilt steering checked. Requesting permission if needed.');
+    // Directly check for iOS permission requirement and request if applicable
+    if (typeof window.DeviceOrientationEvent.requestPermission === 'function') {
+      window.DeviceOrientationEvent.requestPermission()
+        .then(permissionState => {
+          if (permissionState === 'granted') {
+            console.log('GUI: Device orientation permission granted via checkbox.');
+            // ControlsManager.update() will eventually enable if manager exists
+          } else {
+            console.log('GUI: Permission denied via checkbox.');
+            // Uncheck the box if permission is denied
+            params.tiltSteering = false;
+            tiltSteeringController.updateDisplay();
+          }
+        })
+        .catch(error => {
+          console.error('GUI: Error requesting permission via checkbox:', error);
+          // Uncheck the box on error
+          params.tiltSteering = false;
+          tiltSteeringController.updateDisplay();
+        });
+    } else if (window.DeviceOrientationEvent) {
+      // Non-iOS device where DeviceOrientationEvent exists but no permission needed
+      console.log('GUI: Tilt controls enabled via checkbox (no permission needed).');
+      // ControlsManager.update() will eventually enable if manager exists
+    } else {
+      // DeviceOrientationEvent is not supported at all
+      console.warn('GUI: Tilt controls checked, but DeviceOrientationEvent is not supported.');
+      // Uncheck the box as it cannot be used
+      params.tiltSteering = false;
+      tiltSteeringController.updateDisplay();
+    }
+  } else {
+    // When unchecking, ControlsManager.update() will handle disabling
+    console.log('GUI: Tilt controls unchecked via checkbox.');
   }
 });
 

@@ -163,16 +163,23 @@ class ControlsManager {
   }
   
   update() {
+    // Check if tilt controls are available on this device
+    if (!this.tiltAvailable) {
+      return; // Do nothing if tilt is not supported
+    }
+    
     // Check if tilt controls are enabled in the GUI
     const tiltSteeringEnabled = document.getElementById('tiltSteering')?.checked || false;
     
-    // If tilt steering is enabled in GUI but not active, enable it
+    // Enabling Tilt Controls (if checkbox is checked and not already active)
     if (tiltSteeringEnabled && !this.tiltControlsActive) {
+      // Permission request is now handled by the GUI interaction
+      console.log('ControlsManager.update: Enabling tilt controls.');
       this.enableTiltControls();
-    }
-    
-    // If tilt steering is disabled in GUI but active, disable it
-    if (!tiltSteeringEnabled && this.tiltControlsActive) {
+    } 
+    // Disabling Tilt Controls (if checkbox is unchecked and currently active)
+    else if (!tiltSteeringEnabled && this.tiltControlsActive) {
+      console.log('ControlsManager.update: Disabling tilt controls.');
       this.disableTiltControls();
     }
   }
