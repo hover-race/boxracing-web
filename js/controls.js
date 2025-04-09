@@ -131,8 +131,7 @@ class ControlsManager {
       vehicleParams.forceDirZ = event.beta;
       vehicleParams.forceDirY = event.gamma;
       
-      // Get gamma rotation (left-right tilt)
-      const gamma = event.gamma;
+      const gamma = event.alpha;
       
       // Convert gamma (-90 to 90) to steering (-1 to 1)
       // Use a smaller range (±30°) for more precise control
