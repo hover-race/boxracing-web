@@ -20,7 +20,6 @@ class CheckpointManager {
     this.lapCompleted = false;
     this.lastCheckpoint = null;
     this.lastCheckpointTime = 0;
-    this.checkpointTimeout = 10000; // 10 seconds timeout for checkpoints
     this.lastLapTime = 0;
     
     // UI elements
@@ -38,7 +37,18 @@ class CheckpointManager {
    */
   init(car) {
     this.car = car;
-    console.log("CheckpointManager initialized");
+    this.checkpointProgress = 0; // Start with progress 0
+    this.lapCount = 0;
+    this.bestLapTime = Infinity;
+    this.resetLapTimer(); // Reset timer display and start time
+    // Update UI elements to initial state
+    if (this.lapCountElement) {
+      this.lapCountElement.textContent = `Lap: ${this.lapCount}`;
+    }
+    if (this.bestLapTimeElement) {
+      this.bestLapTimeElement.textContent = `Best: ${this.formatTime(this.bestLapTime)}`;
+    }
+    console.log("CheckpointManager initialized and reset");
   }
 
   /**
