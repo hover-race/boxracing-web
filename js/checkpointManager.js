@@ -1,4 +1,9 @@
 class CheckpointManager {
+  // This is an oval track.
+  // There is a start/finish line and one checkpoint.
+  // The start/finish line must be crossed first to start the lap timer.
+  // Then the checkpoint must be crossed, and the start/finish line must be crossed again to complete the lap.
+  
   constructor(scene) {
     this.DEBUG_MESHES = false;
 
