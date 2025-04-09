@@ -1,4 +1,3 @@
-
 class ControlsManager {
   constructor(scene) {
     this.scene = scene;
@@ -81,16 +80,53 @@ class ControlsManager {
   }
   
   setupTiltControls() {
-    // Only proceed if device orientation is supported
-    if (!window.DeviceOrientationEvent) return;
+    // Check if device orientation is supported
+    if (!window.DeviceOrientationEvent) {
+      console.log('Device orientation not supported');
+      return;
+    }
+
+    // Check if tilt steering is enabled in the GUI
+    const tiltSteeringEnabled = document.getElementById('tiltSteering')?.checked || false;
     
-    // Check if device is in landscape mode
-    const isLandscape = () => window.innerWidth > window.innerHeight;
+    if (!tiltSteeringEnabled) {
+      console.log('Tilt steering is disabled in settings');
+      return;
+    }
+
+    // For iOS devices, request permission
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission()
+        .then(permissionState => {
+          if (permissionState === 'granted') {
+            // Enable tilt controls
+            this.enableTiltControls();
+          } else {
+            console.log('Permission to use device orientation was denied');
+          }
+        })
+        .catch(console.error);
+    } else {
+      // For non-iOS devices, just enable tilt controls
+      this.enableTiltControls();
+    }
+  }
+  
+  // Clean up method to remove event listeners
+  cleanup() {
+    if (this.joystick) {
+      this.joystick.destroy();
+    }
+  }
+
+  enableTiltControls() {
+    // Set tilt controls as active
+    this.tiltControlsActive = true;
     
     // Function to handle device orientation
     const handleOrientation = (event) => {
-      // Only use tilt in landscape mode
-      if (!isLandscape() || !this.tiltControlsActive) return;
+      // Only use tilt if controls are active
+      if (!this.tiltControlsActive) return;
       
       // Get gamma rotation (left-right tilt)
       const gamma = event.gamma;
@@ -108,49 +144,33 @@ class ControlsManager {
     // Add orientation event listener
     window.addEventListener('deviceorientation', handleOrientation, true);
     
-    // Add button to toggle tilt controls
-    const tiltButton = document.createElement('button');
-    tiltButton.id = 'tilt-steering-btn';
-    tiltButton.textContent = 'Enable Tilt Steering';
-    tiltButton.style.position = 'fixed';
-    tiltButton.style.bottom = '20px';
-    tiltButton.style.right = '20px';
-    tiltButton.style.padding = '10px';
-    tiltButton.style.zIndex = '1000';
-    document.body.appendChild(tiltButton);
+    // Store the handler for cleanup
+    this.orientationHandler = handleOrientation;
+  }
+
+  disableTiltControls() {
+    // Set tilt controls as inactive
+    this.tiltControlsActive = false;
     
-    // Toggle tilt controls on button click
-    tiltButton.addEventListener('click', () => {
-      this.tiltControlsActive = !this.tiltControlsActive;
-      tiltButton.textContent = this.tiltControlsActive ? 'Disable Tilt Steering' : 'Enable Tilt Steering';
-      
-      // Request permission if needed (iOS 13+)
-      if (this.tiltControlsActive && DeviceOrientationEvent.requestPermission) {
-        DeviceOrientationEvent.requestPermission()
-          .then(response => {
-            if (response !== 'granted') {
-              this.tiltControlsActive = false;
-              tiltButton.textContent = 'Enable Tilt Steering';
-              alert('Permission to use device orientation was denied');
-            }
-          })
-          .catch(console.error);
-      }
-    });
-    
-    // Update button visibility based on orientation
-    window.addEventListener('resize', () => {
-      tiltButton.style.display = isLandscape() ? 'block' : 'none';
-    });
-    
-    // Initial visibility
-    tiltButton.style.display = isLandscape() ? 'block' : 'none';
+    // Remove the orientation event listener if it exists
+    if (this.orientationHandler) {
+      window.removeEventListener('deviceorientation', this.orientationHandler, true);
+      this.orientationHandler = null;
+    }
   }
   
-  // Clean up method to remove event listeners
-  cleanup() {
-    if (this.joystick) {
-      this.joystick.destroy();
+  update() {
+    // Check if tilt controls are enabled in the GUI
+    const tiltSteeringEnabled = document.getElementById('tiltSteering')?.checked || false;
+    
+    // If tilt steering is enabled in GUI but not active, enable it
+    if (tiltSteeringEnabled && !this.tiltControlsActive) {
+      this.enableTiltControls();
+    }
+    
+    // If tilt steering is disabled in GUI but active, disable it
+    if (!tiltSteeringEnabled && this.tiltControlsActive) {
+      this.disableTiltControls();
     }
   }
 } 

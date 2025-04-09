@@ -30,6 +30,8 @@ class CheckpointManager {
    * Create the lap timing UI elements
    */
   createLapUI() {
+    // TODO move to html
+    
     // Create container for lap timing info
     const lapInfoContainer = document.createElement('div');
     lapInfoContainer.id = 'lap-info-container';

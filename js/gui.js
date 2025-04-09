@@ -79,7 +79,15 @@ const params = {
   explosionForceThreshold: 50,
   respawnDelay: 1000,
   particleCount: 100,
-  portalEnabled: true
+  portalEnabled: true,
+  // Add tilt steering option, default to true on mobile
+  tiltSteering: (() => {
+    // Check if device is mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Get saved value or default to true on mobile
+    const savedValue = localStorage.getItem('tiltSteering');
+    return savedValue !== null ? savedValue === 'true' : isMobile;
+  })()
 }
 
 gui.add(params, 'offlinePlay').name('Offline Play')
@@ -91,7 +99,16 @@ volumeController.onChange((value) => {
   localStorage.setItem('volume', value)
 })
 
-
+// Add tilt steering checkbox
+const tiltSteeringController = gui.add(params, 'tiltSteering').name('Tilt Steering')
+tiltSteeringController.onChange((value) => {
+  // Save to localStorage
+  localStorage.setItem('tiltSteering', value);
+  // Update controls manager if it exists
+  if (window.scene && window.scene.controlsManager) {
+    window.scene.controlsManager.tiltControlsActive = value;
+  }
+});
 
 const vehicleParams = {
   speed: 0, // Will be updated from code

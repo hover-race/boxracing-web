@@ -33,6 +33,8 @@
       <button id="create-server-btn">Create Server</button>
     </div>
     <div id="speedometer" style="position: fixed; bottom: 20px; left: 20px; color: white; font-family: monospace; font-size: 34px;">0 mph</div>
+    <div id="lap-times" style="position: fixed; top: 20px; right: 20px; color: white; font-family: monospace; font-size: 16px;"></div>
+    <div id="best-lap" style="position: fixed; top: 50px; right: 20px; color: white; font-family: monospace; font-size: 16px;"></div>
     <div id="joystick-zone" style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); width: 120px; height: 120px;"></div>
     <script src="js/camera.js"></script>
     <script src="js/controls.js"></script>
@@ -352,6 +354,11 @@
           // Update star system
           if (this.starSystem) {
             this.starSystem.update(deltaTime);
+          }
+
+          // Update controls manager
+          if (this.controlsManager) {
+            this.controlsManager.update();
           }
 
           if (!params.offlinePlay && this.remoteManager) {
