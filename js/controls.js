@@ -126,6 +126,10 @@ class ControlsManager {
     const handleOrientation = (event) => {
       // Only use tilt if controls are active
       if (!this.tiltControlsActive) return;
+
+      vehicleParams.forceDirX = event.alpha;
+      vehicleParams.forceDirZ = event.beta;
+      vehicleParams.forceDirY = event.gamma;
       
       // Get gamma rotation (left-right tilt)
       const gamma = event.gamma;
