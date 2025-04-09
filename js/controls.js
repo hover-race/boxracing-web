@@ -86,8 +86,7 @@ class ControlsManager {
       return;
     }
 
-    // Check if tilt steering is enabled in the GUI
-    const tiltSteeringEnabled = document.getElementById('tiltSteering')?.checked || false;
+    const tiltSteeringEnabled = params.tiltSteering || false;
     
     if (!tiltSteeringEnabled) {
       console.log('Tilt steering is disabled in settings');
