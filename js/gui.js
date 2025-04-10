@@ -163,21 +163,21 @@ const vehicleParams = {
   steeringSensitivity: 1.0, // Default sensitivity multiplier
 }
 
-const vehicleData = gui.addFolder('Vehicle data')
-vehicleData.close()
-const speedController = vehicleData.add(vehicleParams, 'speed', 0, 200)
-vehicleData.add(vehicleParams, 'sideForceScalar', -2000, 2000).listen()
-vehicleData.add(vehicleParams, 'forwardForceScalar', -4000, 4000).listen()
-vehicleData.add(vehicleParams, 'slipAngle', -20, 20).step(0.1).listen()
+const debugFolder = gui.addFolder('Debug')
+debugFolder.close()
+const speedController = debugFolder.add(vehicleParams, 'speed', 0, 200)
+debugFolder.add(vehicleParams, 'sideForceScalar', -2000, 2000).listen()
+debugFolder.add(vehicleParams, 'forwardForceScalar', -4000, 4000).listen()
+debugFolder.add(vehicleParams, 'slipAngle', -20, 20).step(0.1).listen()
 
-const slipRatioController = vehicleData.add(vehicleParams, 'slipRatio', -1, 1).step(0.01)
+const slipRatioController = debugFolder.add(vehicleParams, 'slipRatio', -1, 1).step(0.01)
 slipRatioController.listen() // Makes it read-only and updates when value changes
 
-const turnAngleController = vehicleData.add(vehicleParams, 'turnAngle', -0.5, 0.5).step(0.01)
+const turnAngleController = debugFolder.add(vehicleParams, 'turnAngle', -0.5, 0.5).step(0.01)
 turnAngleController.listen() // Makes it read-only and updates when value changes
 
 // Add force direction controllers
-const forceFolder = vehicleData.addFolder('Force Direction')
+const forceFolder = debugFolder.addFolder('Force Direction')
 const forceDirXController = forceFolder.add(vehicleParams, 'forceDirX', -100, 100).step(0.1)
 forceDirXController.listen()
 const forceDirYController = forceFolder.add(vehicleParams, 'forceDirY', -100, 100).step(0.1)
