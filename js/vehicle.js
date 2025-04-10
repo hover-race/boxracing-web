@@ -141,7 +141,7 @@ class Vehicle {
     this.wheels[this.BACK_RIGHT].gui()
 
 
-    this.applyTorqueSteering()
+    // this.applyTorqueSteering()
 
     // this.wheels[this.FRONT_LEFT].update(dt, this.engineForce, this.brakingForce)
     // this.wheels[this.FRONT_RIGHT].update(dt, this.engineForce, this.brakingForce)
