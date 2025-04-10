@@ -126,25 +126,42 @@ class ControlsManager {
     const handleOrientation = (event) => {
       // Only use tilt if controls are active
       if (!this.tiltControlsActive) return;
-
       vehicleParams.forceDirX = event.alpha;
       vehicleParams.forceDirZ = event.beta;
       vehicleParams.forceDirY = event.gamma;
+
+      // Get alpha rotation (compass direction, 0-360)
+      let alpha = event.alpha;
+
+      // Normalize alpha to be centered around 0 (-180 to 180)
+      // This helps in handling the wrap-around (e.g., 350 degrees becomes -10)
+      if (alpha > 180) {
+        alpha -= 360;
+      }
+
+      // Define the control range (degrees)
+      const minAlpha = -30; // Corresponds to steering = 1 (turn right)
+      const maxAlpha = 30;  // Corresponds to steering = -1 (turn left)
+
+      // Clamp the normalized alpha to the control range [-30, 30]
+      const clampedAlpha = Math.max(minAlpha, Math.min(maxAlpha, alpha));
+
+      let tiltSteering = 0;
+      // Check if alpha is within the active range to avoid mapping outside values
+      if (clampedAlpha >= minAlpha && clampedAlpha <= maxAlpha) {
+          // Linearly map clampedAlpha from [-30, 30] to steering [1, -1]
+          // Formula: output = output_start + ((output_end - output_start) / (input_end - input_start)) * (input - input_start)
+          tiltSteering = 1 + ((-1 - 1) / (maxAlpha - minAlpha)) * (clampedAlpha - minAlpha);
+      }
       
-      const gamma = event.alpha;
-      
-      // Convert gamma (-90 to 90) to steering (-1 to 1)
-      // Use a smaller range (±30°) for more precise control
-      const tiltSteering = Math.max(-1, Math.min(1, gamma / 30));
-      
-      // Apply to steering if no touch controls are active
-      if (!this.joystick.active) {
+      // Apply to steering if no joystick is active
+      if (!this.joystick || !this.joystick.active) { // Added check for joystick existence
         inputControls.steering = tiltSteering;
       }
     };
     
     // Add orientation event listener
-    window.addEventListener('deviceorientation', handleOrientation, true);
+    window.addEventListener('deviceorientationabsolute', handleOrientation, true);
     
     // Store the handler for cleanup
     this.orientationHandler = handleOrientation;
