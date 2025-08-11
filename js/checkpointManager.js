@@ -1,83 +1,34 @@
 class CheckpointManager {
+  // This is an oval track.
+  // There is a start/finish line and one checkpoint.
+  // The start/finish line must be crossed first to start the lap timer.
+  // Then the checkpoint must be crossed, and the start/finish line must be crossed again to complete the lap.
+  
   constructor(scene) {
     this.DEBUG_MESHES = false;
 
     this.scene = scene;
     this.checkpoints = [];
     this.finishLine = null;
-    this.checkpointProgress = 0;
-    this.lapCount = 0;
-    this.car = null;
-    
-    // Lap timing variables
+    this.checkpointCount = 0;
+    this.lapTimes = [];
     this.currentLapStartTime = 0;
-    this.lastLapTime = 0;
     this.bestLapTime = Infinity;
+    this.currentLap = 0;
+    this.checkpointsPassed = new Set();
+    this.finishLinePassed = false;
+    this.lapCompleted = false;
+    this.lastCheckpoint = null;
+    this.lastCheckpointTime = 0;
+    this.lastLapTime = 0;
     
     // UI elements
-    this.lapTimerElement = null;
-    this.bestLapTimeElement = null;
-    this.lapCountElement = null;
-    
-    // Create UI elements
-    this.createLapUI();
+    this.lapCountElement = document.getElementById('lap-count');
+    this.currentLapTimeElement = document.getElementById('current-lap-time');
+    this.bestLapTimeElement = document.getElementById('best-lap-time');
     
     // Start update loop for current lap timer
     this.updateTimerInterval = setInterval(() => this.updateCurrentLapTime(), 100);
-  }
-
-  /**
-   * Create the lap timing UI elements
-   */
-  createLapUI() {
-    // Create container for lap timing info
-    const lapInfoContainer = document.createElement('div');
-    lapInfoContainer.id = 'lap-info-container';
-    lapInfoContainer.style.position = 'fixed';
-    lapInfoContainer.style.top = '20px';
-    lapInfoContainer.style.right = '20px';
-    lapInfoContainer.style.padding = '15px';
-    lapInfoContainer.style.background = 'rgba(0, 0, 0, 0.7)';
-    lapInfoContainer.style.color = 'white';
-    lapInfoContainer.style.fontFamily = 'monospace';
-    lapInfoContainer.style.fontSize = '18px';
-    lapInfoContainer.style.borderRadius = '8px';
-    lapInfoContainer.style.textAlign = 'right';
-    lapInfoContainer.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.3)';
-    lapInfoContainer.style.zIndex = '1000';
-    lapInfoContainer.style.minWidth = '200px';
-    
-    // Create title element
-    const titleElement = document.createElement('div');
-    titleElement.textContent = '🏁 LAP TIMES';
-    titleElement.style.fontWeight = 'bold';
-    titleElement.style.marginBottom = '8px';
-    titleElement.style.fontSize = '20px';
-    titleElement.style.borderBottom = '1px solid rgba(255, 255, 255, 0.3)';
-    titleElement.style.paddingBottom = '5px';
-    
-    // Create elements for lap count, current time, and best time
-    this.lapCountElement = document.createElement('div');
-    this.lapCountElement.textContent = 'Lap: 0';
-    this.lapCountElement.style.margin = '3px 0';
-    
-    this.lapTimerElement = document.createElement('div');
-    this.lapTimerElement.textContent = 'Current: 0:00.000';
-    this.lapTimerElement.style.margin = '3px 0';
-    
-    this.bestLapTimeElement = document.createElement('div');
-    this.bestLapTimeElement.textContent = 'Best: --:--.---';
-    this.bestLapTimeElement.style.margin = '3px 0';
-    this.bestLapTimeElement.style.fontWeight = 'bold';
-    
-    // Add elements to container
-    lapInfoContainer.appendChild(titleElement);
-    lapInfoContainer.appendChild(this.lapCountElement);
-    lapInfoContainer.appendChild(this.lapTimerElement);
-    lapInfoContainer.appendChild(this.bestLapTimeElement);
-    
-    // Add container to document
-    document.body.appendChild(lapInfoContainer);
   }
 
   /**
@@ -86,10 +37,18 @@ class CheckpointManager {
    */
   init(car) {
     this.car = car;
-    console.log("CheckpointManager initialized");
-    
-    // Reset lap timer when initialized
-    this.resetLapTimer();
+    this.checkpointProgress = 0; // Start with progress 0
+    this.lapCount = 0;
+    this.bestLapTime = Infinity;
+    this.resetLapTimer(); // Reset timer display and start time
+    // Update UI elements to initial state
+    if (this.lapCountElement) {
+      this.lapCountElement.textContent = `Lap: ${this.lapCount}`;
+    }
+    if (this.bestLapTimeElement) {
+      this.bestLapTimeElement.textContent = `Best: ${this.formatTime(this.bestLapTime)}`;
+    }
+    console.log("CheckpointManager initialized and reset");
   }
 
   /**
@@ -120,8 +79,8 @@ class CheckpointManager {
     const currentTime = performance.now();
     const lapTime = currentTime - this.currentLapStartTime;
     
-    if (this.lapTimerElement) {
-      this.lapTimerElement.textContent = `Current: ${this.formatTime(lapTime)}`;
+    if (this.currentLapTimeElement) {
+      this.currentLapTimeElement.textContent = `Current: ${this.formatTime(lapTime)}`;
     }
   }
 
@@ -130,8 +89,8 @@ class CheckpointManager {
    */
   resetLapTimer() {
     this.currentLapStartTime = 0;
-    if (this.lapTimerElement) {
-      this.lapTimerElement.textContent = 'Current: 0:00.000';
+    if (this.currentLapTimeElement) {
+      this.currentLapTimeElement.textContent = 'Current: 0:00.000';
     }
   }
 

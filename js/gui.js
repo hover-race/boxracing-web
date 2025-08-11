@@ -65,9 +65,7 @@ inputFolder.open()
 
 const params = {
   offlinePlay: false,
-  velocityFactor: 0.1,
   updateCamera: true,
-  pushForce: 0,
   sideForceMultiplier: 1,
   asdf: 8000,
   analogControls: true,
@@ -81,15 +79,19 @@ const params = {
   explosionForceThreshold: 50,
   respawnDelay: 1000,
   particleCount: 100,
-  portalEnabled: true
+  portalEnabled: true,
+  // Add tilt steering option, default to true on mobile
+  tiltSteering: (() => {
+    // Check if device is mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Get saved value or default to true on mobile
+    const savedValue = localStorage.getItem('tiltSteering');
+    return savedValue !== null ? savedValue === 'true' : isMobile;
+  })()
 }
 
 gui.add(params, 'offlinePlay').name('Offline Play')
-gui.add(params, 'velocityFactor', 0, 0.5).step(0.01)
 gui.add(params, 'updateCamera')
-gui.add(params, 'pushForce', -10, 10)
-gui.add(params, 'sideForceMultiplier', -2000, 2000)
-gui.add(params, 'asdf', -4000, 4000).listen()
 
 // Add volume control
 const volumeController = gui.add(params, 'volume', 0, 1).name('Volume')
@@ -97,22 +99,51 @@ volumeController.onChange((value) => {
   localStorage.setItem('volume', value)
 })
 
-// Add camera controls
-const cameraFolder = gui.addFolder('Camera')
-cameraFolder.add(params, 'updateCamera').name('Update Camera')
-cameraFolder.add(params, 'velocityFactor', 0, 0.2).name('Look Ahead')
+// Add tilt steering checkbox
+const tiltSteeringController = gui.add(params, 'tiltSteering').name('Tilt Steering')
+tiltSteeringController.onChange((value) => {
+  // Save to localStorage
+  localStorage.setItem('tiltSteering', value);
 
-// Add network controls
-const networkFolder = gui.addFolder('Network')
-networkFolder.add(params, 'offlinePlay').name('Offline Mode')
-
-// Add explosion controls
-const explosionFolder = gui.addFolder('Explosion Settings')
-explosionFolder.add(params, 'explosionEnabled').name('Enable Explosions')
-explosionFolder.add(params, 'explosionForceThreshold', 5, 100).step(1).name('Impact Threshold')
-explosionFolder.add(params, 'respawnDelay', 1000, 5000).step(100).name('Respawn Delay (ms)')
-explosionFolder.add(params, 'particleCount', 10, 200).step(5).name('Particle Count')
-explosionFolder.open()
+  // Only request permission when the checkbox is checked (value is true)
+  if (value) {
+    console.log('GUI: Tilt steering checked. Requesting permission if needed.');
+    // Directly check for iOS permission requirement and request if applicable
+    if (typeof window.DeviceOrientationEvent.requestPermission === 'function') {
+      window.DeviceOrientationEvent.requestPermission()
+        .then(permissionState => {
+          if (permissionState === 'granted') {
+            console.log('GUI: Device orientation permission granted via checkbox.');
+            // ControlsManager.update() will eventually enable if manager exists
+          } else {
+            console.log('GUI: Permission denied via checkbox.');
+            // Uncheck the box if permission is denied
+            params.tiltSteering = false;
+            tiltSteeringController.updateDisplay();
+          }
+        })
+        .catch(error => {
+          console.error('GUI: Error requesting permission via checkbox:', error);
+          // Uncheck the box on error
+          params.tiltSteering = false;
+          tiltSteeringController.updateDisplay();
+        });
+    } else if (window.DeviceOrientationEvent) {
+      // Non-iOS device where DeviceOrientationEvent exists but no permission needed
+      console.log('GUI: Tilt controls enabled via checkbox (no permission needed).');
+      // ControlsManager.update() will eventually enable if manager exists
+    } else {
+      // DeviceOrientationEvent is not supported at all
+      console.warn('GUI: Tilt controls checked, but DeviceOrientationEvent is not supported.');
+      // Uncheck the box as it cannot be used
+      params.tiltSteering = false;
+      tiltSteeringController.updateDisplay();
+    }
+  } else {
+    // When unchecking, ControlsManager.update() will handle disabling
+    console.log('GUI: Tilt controls unchecked via checkbox.');
+  }
+});
 
 const vehicleParams = {
   speed: 0, // Will be updated from code
@@ -128,24 +159,25 @@ const vehicleParams = {
   forceDirY: 0,
   forceDirZ: 0,
   forwardForceScalar: 0,
-  volume: volumeControl.volume // Initialize with the volume control value
+  volume: volumeControl.volume, // Initialize with the volume control value
+  steeringSensitivity: 1.0, // Default sensitivity multiplier
 }
 
-const vehicleData = gui.addFolder('Vehicle data')
-vehicleData.open() // Make folder expanded by default
-const speedController = vehicleData.add(vehicleParams, 'speed', 0, 200)
-vehicleData.add(vehicleParams, 'sideForceScalar', -2000, 2000).listen()
-vehicleData.add(vehicleParams, 'forwardForceScalar', -4000, 4000).listen()
-vehicleData.add(vehicleParams, 'slipAngle', -20, 20).step(0.1).listen()
+const debugFolder = gui.addFolder('Debug')
+debugFolder.close()
+const speedController = debugFolder.add(vehicleParams, 'speed', 0, 200)
+debugFolder.add(vehicleParams, 'sideForceScalar', -2000, 2000).listen()
+debugFolder.add(vehicleParams, 'forwardForceScalar', -4000, 4000).listen()
+debugFolder.add(vehicleParams, 'slipAngle', -20, 20).step(0.1).listen()
 
-const slipRatioController = vehicleData.add(vehicleParams, 'slipRatio', -1, 1).step(0.01)
+const slipRatioController = debugFolder.add(vehicleParams, 'slipRatio', -1, 1).step(0.01)
 slipRatioController.listen() // Makes it read-only and updates when value changes
 
-const turnAngleController = vehicleData.add(vehicleParams, 'turnAngle', -0.5, 0.5).step(0.01)
+const turnAngleController = debugFolder.add(vehicleParams, 'turnAngle', -0.5, 0.5).step(0.01)
 turnAngleController.listen() // Makes it read-only and updates when value changes
 
 // Add force direction controllers
-const forceFolder = vehicleData.addFolder('Force Direction')
+const forceFolder = debugFolder.addFolder('Force Direction')
 const forceDirXController = forceFolder.add(vehicleParams, 'forceDirX', -100, 100).step(0.1)
 forceDirXController.listen()
 const forceDirYController = forceFolder.add(vehicleParams, 'forceDirY', -100, 100).step(0.1)
@@ -153,4 +185,11 @@ forceDirYController.listen()
 const forceDirZController = forceFolder.add(vehicleParams, 'forceDirZ', -100, 100).step(0.1)
 forceDirZController.listen()
 
-forceFolder.open() 
+forceFolder.open()
+
+// Add steering sensitivity to the inputs folder
+inputFolder.add(vehicleParams, 'steeringSensitivity', 0.1, 2.0).step(0.1).name('Steering Sensitivity')
+  .onChange(value => {
+    // Store the value in vehicleParams for the car to access
+    vehicleParams.steeringSensitivity = value;
+  }); 

@@ -12,6 +12,7 @@ class Vehicle {
   steeringClamp = 0.3
   maxEngineForce = 3000
   maxBrakingForce = 100
+  steeringSensitivity = 1.0
 
   FRONT_LEFT = 0
   FRONT_RIGHT = 1
@@ -100,6 +101,12 @@ class Vehicle {
 
   update(inputs) {
     this.updateControls(inputs)
+    
+    // Check if steering sensitivity has changed in GUI
+    if (vehicleParams && vehicleParams.steeringSensitivity !== this.steeringSensitivity) {
+      this.steeringSensitivity = vehicleParams.steeringSensitivity;
+    }
+    
     // this.applyPushForce()
     let tm, p, q, i
     const n = this.vehicle.getNumWheels()
@@ -134,7 +141,7 @@ class Vehicle {
     this.wheels[this.BACK_RIGHT].gui()
 
 
-    this.applyTorqueSteering()
+    // this.applyTorqueSteering()
 
     // this.wheels[this.FRONT_LEFT].update(dt, this.engineForce, this.brakingForce)
     // this.wheels[this.FRONT_RIGHT].update(dt, this.engineForce, this.brakingForce)
@@ -230,7 +237,7 @@ class Vehicle {
     wheelInfo.set_m_wheelsDampingRelaxation(suspensionDampingRelaxation)
     wheelInfo.set_m_wheelsDampingCompression(suspensionDampingCompression)
 
-    wheelInfo.set_m_frictionSlip(2)
+    wheelInfo.set_m_frictionSlip(1.5)
     wheelInfo.set_m_rollInfluence(1)
     // wheelInfo.set_m_wheelsSideFrictionStiffness(10)
     // wheelInfo.set_m_frictionSlip(10)
@@ -243,11 +250,14 @@ class Vehicle {
     // Apply forces based on input controls
     this.engineForce = this.maxEngineForce * (inputs.throttle - inputs.brake);
     
-    // Smooth steering
+    // Apply steering with sensitivity adjustment
+    const adjustedSteeringIncrement = this.steeringIncrement * this.steeringSensitivity;
+    
+    // Use adjusted increment in steering calculations
     const targetSteering = -this.steeringClamp * inputs.steering;
     const steeringDiff = targetSteering - this.vehicleSteering;
-    if (Math.abs(steeringDiff) > this.steeringIncrement) {
-      this.vehicleSteering += Math.sign(steeringDiff) * this.steeringIncrement;
+    if (Math.abs(steeringDiff) > adjustedSteeringIncrement) {
+      this.vehicleSteering += Math.sign(steeringDiff) * adjustedSteeringIncrement;
     } else {
       this.vehicleSteering = targetSteering;
     }

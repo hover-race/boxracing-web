@@ -207,6 +207,7 @@ class Wheel {
   
   update(dt, engineForce, brakeForce, inputs) {
     this.updateSlipRatio(dt, inputs)
+    return
 
     const forwardForceScalar = this.getForwardForce(this.slipRatio)
     vehicleParams.forwardForceScalar = forwardForceScalar
@@ -214,7 +215,6 @@ class Wheel {
     // this.applyForces(forwardForceScalar, 0)
 
     // this.slipRatio = this.calculateSlipRatio()
-    return
 
     this.updateDeltaRotation(dt, engineForce, brakeForce)
 
