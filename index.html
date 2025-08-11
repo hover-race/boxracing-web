@@ -159,18 +159,18 @@
           this.checkpointManager.init(this.car)
           
           // Create and position the VibeJam portal
-          if (this.portalTransform) {
-            // Create portal with the transform from the track
-            this.portal = new Portal(this, this.portalTransform);
-            console.log('VibeJam portal created using transform from track');
-          } else {
-            // Create portal with default position
-            const defaultTransform = new THREE.Object3D();
-            defaultTransform.position.set(15, 1.5, 10);
-            defaultTransform.scale.set(1, 1, 1);
-            this.portal = new Portal(this, defaultTransform);
-            console.log('VibeJam portal created at default position:', defaultTransform.position);
-          }
+          // if (this.portalTransform) {
+          //   // Create portal with the transform from the track
+          //   this.portal = new Portal(this, this.portalTransform);
+          //   console.log('VibeJam portal created using transform from track');
+          // } else {
+          //   // Create portal with default position
+          //   const defaultTransform = new THREE.Object3D();
+          //   defaultTransform.position.set(15, 1.5, 10);
+          //   defaultTransform.scale.set(1, 1, 1);
+          //   this.portal = new Portal(this, defaultTransform);
+          //   console.log('VibeJam portal created at default position:', defaultTransform.position);
+          // }
           
           this.followCam = new THREE.Object3D()
           this.followCam.position.set(0, 1.3, -2)
