@@ -1,3 +1,6 @@
+import { Vehicle } from './vehicle.js?v=1';
+import { ReplayPlayer, ReplayUI } from './replays.js?v=1';
+
 export class MainScene extends Scene3D {
   car
   keys = {
