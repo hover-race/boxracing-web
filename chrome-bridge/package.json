@@ -1,0 +1,16 @@
+{
+  "name": "chrome-bridge",
+  "version": "1.0.0",
+  "description": "Chrome debugging bridge for boxracing-web",
+  "main": "check-console.js",
+  "scripts": {
+    "check-console": "node check-console.js",
+    "install-deps": "npm install chrome-remote-interface"
+  },
+  "dependencies": {
+    "chrome-remote-interface": "^0.33.3"
+  },
+  "keywords": ["chrome", "debugging", "console"],
+  "author": "",
+  "license": "MIT"
+}
