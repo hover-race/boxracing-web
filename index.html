@@ -43,8 +43,8 @@
     <script src="js/camera.js"></script>
     <script src="js/controls.js"></script>
     <script src="js/wheel.js"></script>
-    <script src="js/vehicle.js"></script>
-    <script src="js/replays.js?v=1"></script>
+    <script type="module" src="js/vehicle.js?v=1"></script>
+    <script type="module" src="js/replays.js?v=1"></script>
     <script src="js/curves.js"></script>
     <script src="js/gui.js"></script>
     <script src="js/checkpointManager.js"></script>
@@ -57,8 +57,13 @@
     <script src="js/network-classes.js"></script>
     <script src="js/remote-objects.js"></script>
 
-    <script>
+    <script type="module">
+      import { Vehicle } from './js/vehicle.js?v=1';
+      
       const { Project, Scene3D, PhysicsLoader, THREE } = ENABLE3D
+      
+      // Make THREE available globally for other scripts
+      window.THREE = THREE;
 
       class MainScene extends Scene3D {
         car

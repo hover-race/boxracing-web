@@ -1,3 +1,5 @@
+import { ReplayRecorder } from './replays.js';
+
 class Vehicle {
   vehicle
   tuning
@@ -634,3 +636,5 @@ class RemoteCar {
     }
   }
 }
+
+export { Vehicle };

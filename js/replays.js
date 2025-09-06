@@ -1,4 +1,4 @@
-class ReplayRecorder {
+export class ReplayRecorder {
   constructor() {
     this.isRecording = false;
     this.frames = [];
@@ -42,7 +42,7 @@ class ReplayRecorder {
   }
 }
 
-class ReplayPlayer {
+export class ReplayPlayer {
   constructor() {
     this.isPlaying = false;
     this.frames = [];
@@ -116,7 +116,7 @@ class ReplayPlayer {
   }
 }
 
-class ReplayUI {
+export class ReplayUI {
   constructor() {
     this.isVisible = false;
     this.createUI();
