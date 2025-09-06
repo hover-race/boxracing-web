@@ -19,6 +19,10 @@ async function reloadAndGetConsole() {
         
         console.log('Connected successfully!');
         
+        // Check current page URL
+        const currentUrl = await Page.getFrameTree();
+        console.log('Current page URL:', currentUrl.frameTree.frame.url);
+        
         // Set up console message listeners BEFORE reload
         const messages = [];
         
@@ -57,13 +61,23 @@ async function reloadAndGetConsole() {
             });
         });
         
-        console.log('\n=== Reloading Page ===');
-        await Page.reload();
-        console.log('Page reloaded successfully!');
+        console.log('\n=== Navigating to Game Page ===');
+        await Page.navigate({url: 'http://localhost:8080/'});
+        
+        // Wait for navigation with timeout
+        try {
+            await Promise.race([
+                Page.loadEventFired(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Navigation timeout')), 10000))
+            ]);
+            console.log('Game page loaded successfully!');
+        } catch (error) {
+            console.log('Navigation timeout, continuing anyway...');
+        }
         
         // Wait for page to load and capture messages
         console.log('Capturing console output...');
-        await new Promise(resolve => setTimeout(resolve, 4000));
+        await new Promise(resolve => setTimeout(resolve, 6000));
         
         // Display captured messages
         console.log('\n=== Console Output ===');

@@ -87,6 +87,14 @@ class Vehicle {
 
     this.decals = new THREE.Group()
     scene.add(this.decals)
+    
+    // Initialize replay recorder (if available)
+    if (typeof ReplayRecorder !== 'undefined') {
+      this.recorder = new ReplayRecorder()
+    } else {
+      console.warn('ReplayRecorder not available - replay functionality disabled')
+      this.recorder = null
+    }
   }
 
   applyPushForce() {
