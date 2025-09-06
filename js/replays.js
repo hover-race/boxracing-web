@@ -9,10 +9,12 @@ export class ReplayRecorder {
     this.isRecording = true;
     this.frames = [];
     this.startTime = performance.now();
+    console.log('ReplayRecorder: Recording started');
   }
 
   stop() {
     this.isRecording = false;
+    console.log('ReplayRecorder: Recording stopped, captured', this.frames.length, 'frames');
     return this.frames;
   }
 
@@ -47,25 +49,28 @@ export class ReplayPlayer {
   load(frames) {
     this.frames = frames;
     this.currentFrame = 0;
+    console.log('ReplayPlayer: Loaded', frames.length, 'frames');
   }
 
   play() {
     if (this.frames.length === 0) return;
     this.isPlaying = true;
     this.startTime = performance.now();
+    console.log('ReplayPlayer: Playback started');
   }
 
   pause() {
     this.isPlaying = false;
+    console.log('ReplayPlayer: Playback paused');
   }
 
   stop() {
     this.isPlaying = false;
     this.currentFrame = 0;
+    console.log('ReplayPlayer: Playback stopped');
   }
 
   seek(time) {
-    // Find frame closest to time
     for (let i = 0; i < this.frames.length; i++) {
       if (this.frames[i].timestamp >= time) {
         this.currentFrame = i;
@@ -81,7 +86,6 @@ export class ReplayPlayer {
       const currentTime = (performance.now() - this.startTime) * this.playbackSpeed;
       const targetTime = currentTime;
 
-      // Find current frame
       while (this.currentFrame < this.frames.length - 1 && 
              this.frames[this.currentFrame + 1].timestamp <= targetTime) {
         this.currentFrame++;
@@ -94,7 +98,6 @@ export class ReplayPlayer {
 
       const frame = this.frames[this.currentFrame];
       
-      // Apply frame data to car
       car.chassis.position.copy(frame.position);
       car.chassis.quaternion.copy(frame.rotation);
       car.chassis.body.velocity.copy(frame.velocity);
@@ -105,7 +108,6 @@ export class ReplayPlayer {
   }
 }
 
-
 export class ReplayUI {
   constructor() {
     this.isVisible = false;
@@ -113,7 +115,6 @@ export class ReplayUI {
   }
 
   createUI() {
-    // Simple replay controls panel
     this.panel = document.createElement('div');
     this.panel.id = 'replay-controls';
     this.panel.style.cssText = `
@@ -128,12 +129,10 @@ export class ReplayUI {
       z-index: 1000;
     `;
 
-    // Play/Pause button
     this.playBtn = document.createElement('button');
     this.playBtn.textContent = '▶';
     this.playBtn.style.cssText = 'margin: 0 5px; padding: 5px 10px;';
 
-    // Timeline
     this.timeline = document.createElement('input');
     this.timeline.type = 'range';
     this.timeline.min = '0';
@@ -141,7 +140,6 @@ export class ReplayUI {
     this.timeline.value = '0';
     this.timeline.style.cssText = 'width: 200px; margin: 0 10px;';
 
-    // Time display
     this.timeDisplay = document.createElement('span');
     this.timeDisplay.textContent = '0:00 / 0:00';
     this.timeDisplay.style.cssText = 'color: white; font-family: monospace; margin: 0 10px;';

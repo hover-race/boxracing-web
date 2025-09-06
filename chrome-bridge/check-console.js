@@ -154,7 +154,22 @@ async function reloadAndGetConsole() {
         
         // Wait for page to load and capture messages
         console.log('Capturing console output...');
-        await new Promise(resolve => setTimeout(resolve, 6000));
+        
+        // Check for custom wait time
+        const timeIndex = args.indexOf('--time') || args.indexOf('--seconds');
+        let waitTime = 6000; // default 6 seconds
+        
+        if (timeIndex !== -1 && timeIndex + 1 < args.length) {
+            const customTime = parseInt(args[timeIndex + 1]);
+            if (!isNaN(customTime) && customTime > 0) {
+                waitTime = customTime * 1000; // convert to milliseconds
+                console.log(`Listening for ${customTime} seconds...`);
+            }
+        } else {
+            console.log('Listening for 6 seconds...');
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, waitTime));
         
         // Display captured messages
         console.log('\n=== Console Output ===');
@@ -216,6 +231,31 @@ async function restartPage() {
 
 // Check command line arguments
 const args = process.argv.slice(2);
+
+// Show help if requested
+if (args.includes('--help') || args.includes('-h')) {
+    console.log(`
+Chrome Remote Debugger Console Reader
+
+Usage:
+  node check-console.js [options]
+
+Options:
+  --navigate <url>     Navigate to specific URL instead of reloading current page
+  --time <seconds>     Listen for specified number of seconds (default: 6)
+  --seconds <seconds>  Alias for --time
+  --restart           Just restart/reload the current page (no console capture)
+  --help, -h          Show this help message
+
+Examples:
+  node check-console.js                           # Reload current page, listen for 6 seconds
+  node check-console.js --time 10                 # Reload current page, listen for 10 seconds
+  node check-console.js --navigate http://example.com --time 15  # Navigate to URL, listen for 15 seconds
+  node check-console.js --restart                 # Just reload the page
+`);
+    process.exit(0);
+}
+
 if (args.includes('--restart')) {
     restartPage();
 } else {

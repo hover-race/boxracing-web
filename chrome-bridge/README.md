@@ -4,11 +4,28 @@ A tool to monitor console output from Chrome's debugging interface for the boxra
 
 ## Usage
 
-**Workflow**: Update game code → Reload page and get console output
+```bash
+# Navigate to http://localhost:8080/ and listen for 6 seconds
+./read-console.sh
 
-1. Start boxracing web server: `run.sh`
-2. Start Chrome with debugging enabled: `./start-chrome-debugger.sh` from the project root. 
-3. After making code changes, run `node check-console.js` to reload the page and capture console output from the fresh load.
-4. Use `node check-console.js --restart` to just restart the page without capturing console.
+# Listen for 10 seconds
+./read-console.sh --time 10
 
-This is perfect for debugging the replay functionality - make changes to your code, then run the script to see console output from the reloaded page, including any errors from the replay system.
+# Listen for 30 seconds
+./read-console.sh --time 30
+
+# Reload current page and listen for 6 seconds (default)
+node check-console.js
+
+# Reload current page and listen for 5 seconds
+node check-console.js --time 5
+
+# Navigate to specific URL and listen for 15 seconds
+node check-console.js --navigate http://example.com --time 15
+
+# Just restart/reload the page (no console capture)
+node check-console.js --restart
+
+# Show help
+node check-console.js --help
+```
