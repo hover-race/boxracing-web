@@ -1,4 +1,4 @@
-export class ReplayRecorder {
+class ReplayRecorder {
   constructor() {
     this.isRecording = false;
     this.frames = [];
@@ -23,11 +23,16 @@ export class ReplayRecorder {
     
     try {
       const timestamp = performance.now() - this.startTime;
+      
+      // Get velocity from Ammo.js body and convert to Three.js Vector3
+      const ammoVelocity = car.chassis.body.ammo.getLinearVelocity();
+      const velocity = new THREE.Vector3(ammoVelocity.x(), ammoVelocity.y(), ammoVelocity.z());
+      
       const frame = {
         timestamp,
         position: car.chassis.position.clone(),
         rotation: car.chassis.quaternion.clone(),
-        velocity: car.chassis.body.velocity.clone()
+        velocity: velocity.clone()
       };
       
       this.frames.push(frame);
@@ -37,7 +42,7 @@ export class ReplayRecorder {
   }
 }
 
-export class ReplayPlayer {
+class ReplayPlayer {
   constructor() {
     this.isPlaying = false;
     this.frames = [];
@@ -100,7 +105,10 @@ export class ReplayPlayer {
       
       car.chassis.position.copy(frame.position);
       car.chassis.quaternion.copy(frame.rotation);
-      car.chassis.body.velocity.copy(frame.velocity);
+      
+      // Set velocity back to Ammo.js body
+      const ammoVelocity = new Ammo.btVector3(frame.velocity.x, frame.velocity.y, frame.velocity.z);
+      car.chassis.body.ammo.setLinearVelocity(ammoVelocity);
     } catch (error) {
       console.error('Error updating replay:', error);
       this.stop();
@@ -108,7 +116,7 @@ export class ReplayPlayer {
   }
 }
 
-export class ReplayUI {
+class ReplayUI {
   constructor() {
     this.isVisible = false;
     this.createUI();
