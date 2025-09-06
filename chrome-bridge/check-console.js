@@ -6,8 +6,27 @@ async function reloadAndGetConsole() {
     try {
         console.log('Connecting to Chrome debugging interface on localhost:9222...');
         
-        // Connect to Chrome debugging interface
-        client = await CDP();
+        // First, get list of available tabs
+        const allTabs = await CDP.List();
+        console.log(`\nFound ${allTabs.length} available tabs:`);
+        allTabs.forEach((tab, index) => {
+            console.log(`  ${index + 1}. ${tab.title} - ${tab.url}`);
+        });
+        
+        // Filter out DevTools tabs and find the first regular tab
+        const regularTabs = allTabs.filter(tab => !tab.url.startsWith('devtools://'));
+        console.log(`\nFound ${regularTabs.length} regular tabs (excluding DevTools):`);
+        regularTabs.forEach((tab, index) => {
+            console.log(`  ${index + 1}. ${tab.title} - ${tab.url}`);
+        });
+        
+        const targetTab = regularTabs[0];
+        if (!targetTab) {
+            throw new Error('No regular tabs found (all tabs are DevTools)');
+        }
+        
+        console.log(`\nConnecting to first regular tab: ${targetTab.title}`);
+        client = await CDP({target: targetTab});
         
         // Extract domains we need
         const {Runtime, Console, Page} = client;
@@ -61,18 +80,37 @@ async function reloadAndGetConsole() {
             });
         });
         
-        console.log('\n=== Navigating to Game Page ===');
-        await Page.navigate({url: 'http://localhost:8080/'});
-        
-        // Wait for navigation with timeout
-        try {
-            await Promise.race([
-                Page.loadEventFired(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Navigation timeout')), 10000))
-            ]);
-            console.log('Game page loaded successfully!');
-        } catch (error) {
-            console.log('Navigation timeout, continuing anyway...');
+        // Check if we should navigate to a specific URL
+        const navigateIndex = args.indexOf('--navigate');
+        if (navigateIndex !== -1 && navigateIndex + 1 < args.length) {
+            const targetUrl = args[navigateIndex + 1];
+            console.log(`\n=== Navigating to ${targetUrl} ===`);
+            await Page.navigate({url: targetUrl});
+            
+            // Wait for navigation with timeout
+            try {
+                await Promise.race([
+                    Page.loadEventFired(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Navigation timeout')), 10000))
+                ]);
+                console.log('Page navigated successfully!');
+            } catch (error) {
+                console.log('Navigation timeout, continuing anyway...');
+            }
+        } else {
+            console.log('\n=== Reloading Current Page ===');
+            await Page.reload();
+            
+            // Wait for reload with timeout
+            try {
+                await Promise.race([
+                    Page.loadEventFired(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Reload timeout')), 10000))
+                ]);
+                console.log('Page reloaded successfully!');
+            } catch (error) {
+                console.log('Reload timeout, continuing anyway...');
+            }
         }
         
         // Wait for page to load and capture messages
@@ -112,7 +150,17 @@ async function restartPage() {
     let client;
     try {
         console.log('Connecting to Chrome debugging interface...');
-        client = await CDP();
+        
+        // Get list of available tabs and connect to first regular tab
+        const allTabs = await CDP.List();
+        const regularTabs = allTabs.filter(tab => !tab.url.startsWith('devtools://'));
+        const targetTab = regularTabs[0];
+        if (!targetTab) {
+            throw new Error('No regular tabs found (all tabs are DevTools)');
+        }
+        
+        console.log(`Connecting to first regular tab: ${targetTab.title}`);
+        client = await CDP({target: targetTab});
         const {Page} = client;
         await Page.enable();
         
