@@ -5,27 +5,21 @@ A tool to monitor console output from Chrome's debugging interface for the boxra
 ## Usage
 
 ```bash
-# Navigate to http://localhost:8080/ and listen for 6 seconds
+# Reload current page, show errors only (default)
 ./read-console.sh
 
-# Listen for 10 seconds
+# Listen for 10 seconds, show errors only
 ./read-console.sh --time 10
 
-# Listen for 30 seconds
-./read-console.sh --time 30
+# Show all console messages
+./read-console.sh --all
 
-# Reload current page and listen for 6 seconds (default)
-node check-console.js
-
-# Reload current page and listen for 5 seconds
-node check-console.js --time 5
-
-# Navigate to specific URL and listen for 15 seconds
-node check-console.js --navigate http://example.com --time 15
+# Show all messages with timestamps
+./read-console.sh --verbose
 
 # Just restart/reload the page (no console capture)
-node check-console.js --restart
+./read-console.sh --restart
 
 # Show help
-node check-console.js --help
+./read-console.sh --help
 ```

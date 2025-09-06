@@ -31,8 +31,16 @@
   }
   
   // Test uncaught exception (this should show stack trace)
-  console.log('Testing uncaught exception...');
-  level1();
+  // console.log('Testing uncaught exception...');
+  // level1();
+
+  setTimeout(() => {
+    console.log('About to raise delayed exception...');
+    throw new Error('Test Exception raised after 0.5 seconds');
+  }, 500);
+  
+  // Signal that we're done with immediate tests
+  console.log('=== Immediate tests completed, waiting for delayed exception ==='); 
 </script>
 
 Debug page
