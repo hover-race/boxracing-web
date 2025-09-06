@@ -207,6 +207,8 @@ async function reloadAndGetConsole() {
         if (client) {
             await client.close();
         }
+        // Force exit to prevent hanging
+        process.exit(0);
     }
 }
 
@@ -236,6 +238,8 @@ async function restartPage() {
         if (client) {
             await client.close();
         }
+        // Force exit to prevent hanging
+        process.exit(0);
     }
 }
 
