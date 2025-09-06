@@ -1,0 +1,38 @@
+<script>
+  console.log('test 123');
+  console.error('test error');
+  
+  // Test functions for stack trace capture
+  function level3() {
+    console.log('Level 3 function called');
+    throw new Error('Test exception from level 3');
+  }
+  
+  function level2() {
+    console.log('Level 2 function called');
+    level3();
+  }
+  
+  function level1() {
+    console.log('Level 1 function called');
+    level2();
+  }
+  
+  
+  // Call the functions to generate stack traces
+  console.log('=== Testing Stack Trace Capture ===');
+  console.log('About to test exceptions...');
+  
+  // Test immediate exception with try/catch
+  try {
+    level1();
+  } catch (e) {
+    console.error('Caught exception:', e.message);
+  }
+  
+  // Test uncaught exception (this should show stack trace)
+  console.log('Testing uncaught exception...');
+  level1();
+</script>
+
+Debug page
