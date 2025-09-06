@@ -43,6 +43,7 @@
     <script src="js/camera.js"></script>
     <script src="js/controls.js"></script>
     <script src="js/wheel.js"></script>
+    <script src="js/vehicle.js"></script>
     <script src="js/curves.js"></script>
     <script src="js/gui.js"></script>
     <script src="js/checkpointManager.js"></script>
@@ -54,18 +55,9 @@
     <script src="js/firestore-signaling.js"></script>
     <script src="js/network-classes.js"></script>
     <script src="js/remote-objects.js"></script>
-    <script src="js/vehicle.js?v=2"></script>
 
-    <script type="module">
-      import { ReplayRecorder, ReplayPlayer, ReplayUI } from './js/replays.js';
-      
+    <script>
       const { Project, Scene3D, PhysicsLoader, THREE } = ENABLE3D
-      
-      // Make THREE and replay classes available globally for non-module scripts
-      window.THREE = THREE;
-      window.ReplayRecorder = ReplayRecorder;
-      window.ReplayPlayer = ReplayPlayer;
-      window.ReplayUI = ReplayUI;
 
       class MainScene extends Scene3D {
         car
@@ -84,8 +76,6 @@
         cameraController = null
         controlsManager = null
         starSystem = null
-        replayPlayer = null
-        replayUI = null
 
         async loadGltf(path) {
           const obj = await this.load.gltf(path)
@@ -182,12 +172,6 @@
           
           // Initialize checkpoint manager with the car
           this.checkpointManager.init(this.car)
-          
-          // Initialize replay system
-          console.log('Initializing replay system...')
-          this.replayPlayer = new ReplayPlayer()
-          this.replayUI = new ReplayUI()
-          console.log('Replay system initialized')
           
           // Create and position the VibeJam portal
           // if (this.portalTransform) {
@@ -369,16 +353,7 @@
         update(time, deltaTime) {
           this.car.update(inputControls);
           this.car.updateTireMarks();
-          
-          // Record replay data
-          this.car.recorder.recordFrame(this.car);
-          
-          // Update replay player if playing
-          if (this.replayPlayer && this.replayPlayer.isPlaying) {
-            this.replayPlayer.update(this.car);
-          } else {
-            this.updateCamera(deltaTime);
-          }
+          this.updateCamera(deltaTime);
           
           // Update star system
           if (this.starSystem) {
