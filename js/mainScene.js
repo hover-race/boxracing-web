@@ -1,5 +1,5 @@
-import { Vehicle } from './vehicle.js?v=1';
-import { ReplayPlayer, ReplayUI } from './replays.js?v=1';
+import { Vehicle } from './vehicle.js';
+import { ReplayPlayer, ReplayUI } from './replays.js';
 
 export class MainScene extends Scene3D {
   car
@@ -148,26 +148,29 @@ export class MainScene extends Scene3D {
     const recordBtn = document.getElementById('record-replay-btn');
     const playBtn = document.getElementById('play-replay-btn');
     
-    recordBtn.addEventListener('click', () => {
-      if (!this.car.recorder) {
-        console.log('Recorder not available');
-        return;
-      }
-      if (this.car.recorder.isRecording) {
-        const frames = this.car.recorder.stop();
-        recordBtn.textContent = 'Record';
-        console.log('Recording stopped, captured', frames.length, 'frames');
-      } else {
-        this.car.recorder.start();
-        recordBtn.textContent = 'Stop';
-        console.log('Recording started');
-      }
-    });
+    if (recordBtn) {
+      recordBtn.addEventListener('click', () => {
+        if (!this.car.recorder) {
+          console.log('Recorder not available');
+          return;
+        }
+        if (this.car.recorder.isRecording) {
+          const frames = this.car.recorder.stop();
+          recordBtn.textContent = 'Record';
+          console.log('Recording stopped, captured', frames.length, 'frames');
+        } else {
+          this.car.recorder.start();
+          recordBtn.textContent = 'Stop';
+          console.log('Recording started');
+        }
+      });
+      
+      // Update button text to show recording state
+      recordBtn.textContent = 'Stop';
+    }
     
-    // Update button text to show recording state
-    recordBtn.textContent = 'Stop';
-    
-    playBtn.addEventListener('click', () => {
+    if (playBtn) {
+      playBtn.addEventListener('click', () => {
       if (this.replayPlayer.isPlaying) {
         this.replayPlayer.pause();
         playBtn.textContent = 'Play';
@@ -183,7 +186,8 @@ export class MainScene extends Scene3D {
           console.log('No replay data to play');
         }
       }
-    });
+      });
+    }
 
     // Setup create server button
     const createServerBtn = document.getElementById('create-server-btn');
