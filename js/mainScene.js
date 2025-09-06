@@ -1,5 +1,6 @@
 import { Vehicle } from './vehicle.js';
 import { ReplayPlayer, ReplayUI } from './replays.js';
+import { UIController } from './ui.js';
 
 export class MainScene extends Scene3D {
   car
@@ -144,93 +145,10 @@ export class MainScene extends Scene3D {
       this.networkManager.addSender(this.carsender)
     }
 
-    // Setup replay buttons
-    const recordBtn = document.getElementById('record-replay-btn');
-    const playBtn = document.getElementById('play-replay-btn');
-    
-    if (recordBtn) {
-      recordBtn.addEventListener('click', () => {
-        if (!this.car.recorder) {
-          console.log('Recorder not available');
-          return;
-        }
-        if (this.car.recorder.isRecording) {
-          const frames = this.car.recorder.stop();
-          recordBtn.textContent = 'Record';
-          console.log('Recording stopped, captured', frames.length, 'frames');
-        } else {
-          this.car.recorder.start();
-          recordBtn.textContent = 'Stop';
-          console.log('Recording started');
-        }
-      });
-      
-      // Update button text to show recording state
-      recordBtn.textContent = 'Stop';
-    }
-    
-    if (playBtn) {
-      playBtn.addEventListener('click', () => {
-      if (this.replayPlayer.isPlaying) {
-        this.replayPlayer.pause();
-        playBtn.textContent = 'Play';
-        this.replayUI.hide();
-      } else {
-        const frames = this.car.recorder.frames;
-        if (frames.length > 0) {
-          this.replayPlayer.load(frames);
-          this.replayPlayer.play();
-          playBtn.textContent = 'Pause';
-          this.replayUI.show();
-        } else {
-          console.log('No replay data to play');
-        }
-      }
-      });
-    }
+    // Setup UI controller
+    this.uiController = new UIController(this);
+    this.uiController.setup();
 
-    // Setup create server button
-    const createServerBtn = document.getElementById('create-server-btn');
-    createServerBtn.addEventListener('click', async () => {
-      if (this.networkManager) {
-        this.networkManager.cleanup();
-      }
-      // Clear remote cars when creating new server
-      if (this.remoteManager) {
-        this.remoteManager.clearAll();
-      }
-      this.updateConnectionStatus("Creating new server...", "connecting");
-      
-      // Create new network manager
-      this.networkManager = new NetworkManager(
-        (message, state) => {
-          this.updateConnectionStatus(message, state);
-          this.log(message);
-        },
-        this.log,
-        this.log
-      );
-
-      try {
-        await this.networkManager.signalingManager.becomeServer();
-        const peerId = this.networkManager.signalingManager.peerId;
-        this.updateConnectionStatus(`Server: ${peerId}`, "connected");
-        
-        // Add car sender after becoming server
-        this.carsender = new NetworkSender('car', () => {
-          return this.car.serialize()
-        });
-        this.networkManager.addSender(this.carsender);
-        
-        // Setup state update handler
-        this.networkManager.on('state-update', (states) => {
-          const myPeerId = this.networkManager.signalingManager.peerId;
-          this.remoteManager.handleStateUpdate(states, myPeerId);
-        });
-      } catch (error) {
-        this.updateConnectionStatus(`Error: ${error.message}`, "disconnected");
-      }
-    });
   }
 
   log(a, b) {
@@ -240,7 +158,7 @@ export class MainScene extends Scene3D {
   async setupNetwork() {
     if (params.offlinePlay) {
       console.log("Offline play enabled - skipping network setup");
-      this.updateConnectionStatus("Offline Mode", "offline");
+      this.uiController.updateConnectionStatus("Offline Mode", "offline");
       return;
     }
 
@@ -251,7 +169,7 @@ export class MainScene extends Scene3D {
     // Create network manager
     this.networkManager = new NetworkManager(
       (message, state) => {
-        this.updateConnectionStatus(message, state);
+        this.uiController.updateConnectionStatus(message, state);
         this.log(message);
       },
       this.log,
@@ -267,7 +185,7 @@ export class MainScene extends Scene3D {
     // If gameId exists in URL, try to connect to that server
     if (gameId) {
       try {
-        this.updateConnectionStatus(`Connecting to ${gameId}...`, "connecting");
+        this.uiController.updateConnectionStatus(`Connecting to ${gameId}...`, "connecting");
         const serverRef = await this.networkManager.signalingManager.db.collection('servers').doc(gameId).get();
         if (serverRef.exists) {
           await this.networkManager.signalingManager.joinServer(gameId, serverRef.data());
@@ -276,7 +194,7 @@ export class MainScene extends Scene3D {
         }
       } catch (error) {
         console.error('Failed to connect to server:', error);
-        this.updateConnectionStatus(`Failed to connect to ${gameId}`, "disconnected");
+        this.uiController.updateConnectionStatus(`Failed to connect to ${gameId}`, "disconnected");
         // If connection fails, try to find or become a server
         await this.networkManager.signalingManager.findOrBecomeServer();
       }
@@ -286,40 +204,6 @@ export class MainScene extends Scene3D {
     }
   }
 
-  updateConnectionStatus(message, state = 'connected') {
-    const statusDiv = document.getElementById('connection-status');
-    const createServerBtn = document.getElementById('create-server-btn');
-    
-    statusDiv.textContent = message;
-    statusDiv.className = `status-${state}`;
-
-    // Clear remote cars when disconnected or offline
-    if (state === 'disconnected' || state === 'offline') {
-      if (this.remoteManager) {
-        this.remoteManager.clearAll();
-      }
-    }
-
-    // Update URL with server's gameId when we have a valid server ID
-    if (this.networkManager?.signalingManager) {
-      const gameId = this.networkManager.signalingManager.getServerId();
-      const url = new URL(window.location);
-      
-      if (gameId?.startsWith('game_')) {
-        url.searchParams.set('gameId', gameId);
-        window.history.replaceState({}, '', url);
-      } else if (state === 'disconnected' || state === 'offline') {
-        // Remove gameId from URL when disconnected or offline
-        url.searchParams.delete('gameId');
-        window.history.replaceState({}, '', url);
-      }
-    }
-    
-    // Log the state and IDs for debugging
-    console.log('Connection State:', state, 
-      'PeerId:', this.networkManager?.signalingManager?.peerId,
-      'ServerId:', this.networkManager?.signalingManager?.getServerId());
-  }
 
   update(time, deltaTime) {
     this.car.update(inputControls);
@@ -382,4 +266,5 @@ export class MainScene extends Scene3D {
       this.starSystem.cleanup();
     }
   }
+
 }

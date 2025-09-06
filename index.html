@@ -40,6 +40,16 @@
       <div id="best-lap-time" style="margin: 3px 0; font-weight: bold;">Best: --:--.---</div>
     </div> -->
     <div id="joystick-zone" style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); width: 120px; height: 120px;"></div>
+    
+    <!-- Replay Controls -->
+    <div id="replay-controls" style="position: fixed; bottom: 20px; right: 20px; background: linear-gradient(145deg, #2a2a2a, #1a1a1a); border-radius: 15px; padding: 15px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5); border: 2px solid #444; font-family: 'Courier New', monospace;">
+      <div style="display: flex; justify-content: center; gap: 12px; align-items: center;">
+        <button id="rewind-back-btn" style="background: linear-gradient(145deg, #444, #333); border: 1px solid #666; color: #fff; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; font-size: 18px; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">⏪</button>
+        <button id="play-replay-btn" style="background: linear-gradient(145deg, #4ecdc4, #44a08d); border: 1px solid #5dd5c4; color: #fff; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; font-size: 20px; transition: all 0.2s ease; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);">▶</button>
+        <button id="pause-replay-btn" style="background: linear-gradient(145deg, #ffa726, #ff9800); border: 1px solid #ffb74d; color: #fff; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; font-size: 20px; transition: all 0.2s ease; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4); display: none;">⏸</button>
+        <button id="rewind-forward-btn" style="background: linear-gradient(145deg, #444, #333); border: 1px solid #666; color: #fff; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; font-size: 18px; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">⏩</button>
+      </div>
+    </div>
     <script src="js/camera.js"></script>
     <script src="js/controls.js"></script>
     <script src="js/wheel.js"></script>
@@ -54,6 +64,31 @@
     <script src="js/firestore-signaling.js"></script>
     <script src="js/network-classes.js"></script>
     <script src="js/remote-objects.js"></script>
+
+    <style>
+      /* Replay Controls Button Hover Effects */
+      #replay-controls button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4) !important;
+      }
+      
+      #replay-controls button:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+      }
+      
+      #play-replay-btn:hover {
+        background: linear-gradient(145deg, #5dd5c4, #4ecdc4) !important;
+      }
+      
+      #pause-replay-btn:hover {
+        background: linear-gradient(145deg, #ffb74d, #ffa726) !important;
+      }
+      
+      #rewind-back-btn:hover, #rewind-forward-btn:hover {
+        background: linear-gradient(145deg, #555, #444) !important;
+      }
+    </style>
 
     <script>
       // Make ENABLE3D objects available globally before modules load

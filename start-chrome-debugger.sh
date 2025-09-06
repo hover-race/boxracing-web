@@ -4,8 +4,4 @@
   --disable-background-timer-throttling \
   --disable-renderer-backgrounding \
   --disable-backgrounding-occluded-windows \
-  --disable-ipc-flooding-protection \
-  --disable-web-security \
-  --disable-features=VizDisplayCompositor \
-  --aggressive-cache-discard \
-  --disable-http-cache
+  --disable-ipc-flooding-protection
