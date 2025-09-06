@@ -64,19 +64,58 @@ async function reloadAndGetConsole() {
             });
         });
         
-        // Listen for runtime exceptions
+        
+        // Also listen for console errors that might contain detailed exception info
+        Runtime.consoleAPICalled((params) => {
+            if (params.type === 'error' && params.args && params.args.length > 0) {
+                const timestamp = new Date().toISOString();
+                const errorText = params.args.map(arg => {
+                    if (arg.type === 'string') return arg.value;
+                    if (arg.type === 'object' && arg.subtype === 'error') {
+                        return `${arg.className}: ${arg.description}`;
+                    }
+                    return arg.description || arg.value || 'Unknown';
+                }).join(' ');
+                
+                messages.push({
+                    timestamp,
+                    level: 'CONSOLE_ERROR',
+                    text: errorText,
+                    url: params.stackTrace && params.stackTrace.callFrames.length > 0 ? 
+                         params.stackTrace.callFrames[0].url : 'unknown',
+                    line: params.stackTrace && params.stackTrace.callFrames.length > 0 ? 
+                          params.stackTrace.callFrames[0].lineNumber : 0,
+                    column: params.stackTrace && params.stackTrace.callFrames.length > 0 ? 
+                            params.stackTrace.callFrames[0].columnNumber : 0,
+                    stackTrace: params.stackTrace
+                });
+            }
+        });
+        
+        // Listen for promise rejections
         Runtime.exceptionThrown((params) => {
             const exception = params.exceptionDetails;
             const timestamp = new Date().toISOString();
             
+            // Use exception.exception.description for full error message with stack trace
+            let exceptionText = exception.exception?.description || exception.text || 'Unknown exception';
+            
+            // Check if this is a promise rejection
+            const isPromiseRejection = exceptionText.includes('(in promise)') || 
+                                     exception.stackTrace?.callFrames?.some(frame => 
+                                         frame.functionName?.includes('await') || 
+                                         frame.functionName?.includes('Promise')
+                                     );
+            
             messages.push({
                 timestamp,
-                level: 'EXCEPTION',
-                text: exception.text,
+                level: isPromiseRejection ? 'PROMISE_REJECTION' : 'EXCEPTION',
+                text: exceptionText,
                 url: exception.url,
                 line: exception.lineNumber,
                 column: exception.columnNumber,
-                stackTrace: exception.stackTrace
+                stackTrace: exception.stackTrace,
+                exceptionId: exception.exceptionId
             });
         });
         
