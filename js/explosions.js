@@ -500,10 +500,4 @@ class ExplosionManager {
   }
 }
 
-// Export the ExplosionManager class
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = ExplosionManager;
-} else {
-  // Browser environment
-  window.ExplosionManager = ExplosionManager;
-} 
+export { ExplosionManager }; 

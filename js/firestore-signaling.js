@@ -323,4 +323,6 @@ class SignalingManager {
             console.error('Error updating server can_join status:', error);
         }
     }
-} 
+}
+
+export { SignalingManager }; 

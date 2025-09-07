@@ -1,4 +1,4 @@
-export class ReplayRecorder {
+class ReplayRecorder {
   constructor() {
     this.isRecording = false;
     this.frames = [];
@@ -42,7 +42,7 @@ export class ReplayRecorder {
   }
 }
 
-export class ReplayPlayer {
+class ReplayPlayer {
   constructor() {
     this.isPlaying = false;
     this.frames = [];
@@ -116,7 +116,7 @@ export class ReplayPlayer {
   }
 }
 
-export class ReplayUI {
+class ReplayUI {
   constructor() {
     this.isVisible = false;
     this.createUI();
@@ -179,3 +179,5 @@ export class ReplayUI {
     this.timeline.value = total > 0 ? (current / total) * 100 : 0;
   }
 }
+
+export { ReplayRecorder, ReplayPlayer, ReplayUI };

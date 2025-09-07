@@ -661,10 +661,4 @@ class Portal {
   }
 }
 
-// Export the Portal class
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = Portal;
-} else {
-  // Browser environment
-  window.Portal = Portal;
-} 
+export { Portal }; 

@@ -1,4 +1,4 @@
-export class UIController {
+class UIController {
   constructor(mainScene) {
     this.mainScene = mainScene;
   }
@@ -144,3 +144,5 @@ export class UIController {
       'ServerId:', this.mainScene.networkManager?.signalingManager?.getServerId());
   }
 }
+
+export { UIController };

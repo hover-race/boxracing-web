@@ -128,3 +128,5 @@ function setupCamera(camera, target) {
   
   return cameraController;
 }
+
+export { CameraSmoothFollow, setupCamera };

@@ -1,3 +1,4 @@
+import { Wheel } from './wheel.js';
 import { ReplayRecorder } from './replays.js';
 
 class Vehicle {
@@ -637,4 +638,4 @@ class RemoteCar {
   }
 }
 
-export { Vehicle };
+export { Vehicle, RemoteCar };

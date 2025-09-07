@@ -199,4 +199,6 @@ class ControlsManager {
       this.disableTiltControls();
     }
   }
-} 
+}
+
+export { ControlsManager }; 

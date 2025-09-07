@@ -468,10 +468,4 @@ class CheckpointManager {
   }
 }
 
-// Export the CheckpointManager class
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = CheckpointManager;
-} else {
-  // Browser environment
-  window.CheckpointManager = CheckpointManager;
-} 
+export { CheckpointManager }; 

@@ -277,4 +277,6 @@ class Wheel {
     vehicleParams.speed = this.vehicleRigidBody.getLinearVelocity().length()
 
   }
-} 
+}
+
+export { Wheel }; 

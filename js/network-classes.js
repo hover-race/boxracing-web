@@ -1,3 +1,5 @@
+import { SignalingManager } from './firestore-signaling.js';
+
 class NetworkSender {
     constructor(type, serializeFn) {
         this.type = type;
@@ -483,4 +485,6 @@ class NetworkManager {
             }
         });
     }
-} 
+}
+
+export { NetworkSender, RemoteObject, NetworkManager }; 

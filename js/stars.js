@@ -176,4 +176,6 @@ class StarSystem {
     });
     this.stars = [];
   }
-} 
+}
+
+export { StarSystem }; 

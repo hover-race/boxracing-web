@@ -50,20 +50,10 @@
         <button id="rewind-forward-btn" style="background: linear-gradient(145deg, #444, #333); border: 1px solid #666; color: #fff; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; font-size: 18px; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">⏩</button>
       </div>
     </div>
-    <script src="js/camera.js"></script>
-    <script src="js/controls.js"></script>
-    <script src="js/wheel.js"></script>
     <script src="js/curves.js"></script>
     <script src="js/gui.js"></script>
-    <script src="js/checkpointManager.js"></script>
-    <script src="js/explosions.js"></script>
-    <script src="js/portal.js"></script>
-    <script src="js/stars.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="js/firestore-signaling.js"></script>
-    <script src="js/network-classes.js"></script>
-    <script src="js/remote-objects.js"></script>
 
     <style>
       /* Replay Controls Button Hover Effects */
@@ -100,11 +90,8 @@
     </script>
 
     <script type="module">
-      import { Vehicle } from './js/vehicle.js';
       import { MainScene } from './js/mainScene.js';
       
-
-
       PhysicsLoader('lib/ammo/kripken', () => new Project({ scenes: [MainScene], antialias: true }))
     </script>
   </body>

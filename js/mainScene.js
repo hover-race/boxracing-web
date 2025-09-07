@@ -1,6 +1,12 @@
 import { Vehicle } from './vehicle.js';
-import { ReplayPlayer, ReplayUI } from './replays.js';
+import { RemoteObjectManager } from './remote-objects.js';
+import { NetworkSender, NetworkManager } from './network-classes.js';
+import { SignalingManager } from './firestore-signaling.js';
+import { setupCamera } from './camera.js';
+import { ControlsManager } from './controls.js';
+import { CheckpointManager } from './checkpointManager.js';
 import { UIController } from './ui.js';
+import { ReplayPlayer, ReplayUI } from './replays.js';
 
 export class MainScene extends Scene3D {
   car
@@ -136,6 +142,10 @@ export class MainScene extends Scene3D {
     // Initialize controls manager instead of setupKeyboardControls
     this.controlsManager = new ControlsManager(this);
     
+    // Setup UI controller first
+    this.uiController = new UIController(this);
+    this.uiController.setup();
+    
     await this.setupNetwork()
     
     if (!params.offlinePlay && this.networkManager) {
@@ -144,10 +154,6 @@ export class MainScene extends Scene3D {
       })
       this.networkManager.addSender(this.carsender)
     }
-
-    // Setup UI controller
-    this.uiController = new UIController(this);
-    this.uiController.setup();
 
   }
 

@@ -1,3 +1,5 @@
+import { RemoteCar } from './vehicle.js';
+
 class RemoteObjectManager {
   constructor(scene) {
     this.scene = scene;
@@ -74,3 +76,5 @@ class RemoteObjectManager {
     console.log('Cleared all remote cars');
   }
 }
+
+export { RemoteObjectManager };
