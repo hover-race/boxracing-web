@@ -1,4 +1,16 @@
 export class DesertScene extends Scene3D {
+  async loadGltf(path) {
+    const obj = await this.load.gltf(path)
+    const scene = obj.scenes[0]
+    scene.traverse(child => {
+      if (child.material) {
+        child.material.metalness = 0;
+      }
+    })
+    this.add.existing(scene)
+    return scene
+  }
+
   async create() {
     const { lights, orbitControls } = await this.warpSpeed('-ground', '-sky', '-light')
     this.orbitControls = orbitControls
@@ -46,7 +58,7 @@ export class DesertScene extends Scene3D {
     texture.needsUpdate = true
 
     // Create plane geometry
-    const planeSize = 10
+    const planeSize = 100
     const planeGeometry = new THREE.PlaneGeometry(planeSize, planeSize)
     // Use MeshBasicMaterial to avoid lighting effects that might blur the texture
     const planeMaterial = new THREE.MeshBasicMaterial({
@@ -61,6 +73,10 @@ export class DesertScene extends Scene3D {
 
     // Add physics to the plane
     this.physics.add.existing(plane, { collisionFlags: 1, mass: 0, shape: 'box' })
+
+    // Load truck model
+    const truck = await this.loadGltf('assets/glb/3-axes-truck.glb')
+    truck.position.set(0, 0, 0)  // Position above the plane
 
     // Position camera to look at the plane
     this.camera.position.set(0, 10, 15)
