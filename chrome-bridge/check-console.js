@@ -171,24 +171,12 @@ async function reloadAndGetConsole() {
         
         await new Promise(resolve => setTimeout(resolve, waitTime));
         
-        // Check if we should show only errors
-        const errorsOnly = !args.includes('--all') && !args.includes('--verbose');
-        
-        // Filter messages to show only errors if requested
-        const filteredMessages = errorsOnly ? 
-            messages.filter(msg => 
-                msg.level === 'ERROR' || 
-                msg.level === 'EXCEPTION' || 
-                msg.level === 'PROMISE_REJECTION' ||
-                msg.level === 'CONSOLE_ERROR'
-            ) : messages;
-        
         // Display captured messages
-        if (filteredMessages.length === 0) {
-            console.log('No errors found.');
+        if (messages.length === 0) {
+            console.log('No messages found.');
         } else {
-            filteredMessages.forEach(msg => {
-                console.log(msg.text);
+            messages.forEach(msg => {
+                console.log(`${msg.level}: ${msg.text}`);
                 if (msg.url !== 'unknown') {
                     console.log(`  at ${msg.url}:${msg.line}:${msg.column}`);
                 }
@@ -258,15 +246,13 @@ Options:
   --navigate <url>     Navigate to specific URL instead of reloading current page
   --time <seconds>     Listen for specified number of seconds (default: 1)
   --seconds <seconds>  Alias for --time
-  --all               Show all console messages (default: errors only)
   --verbose           Show all console messages with timestamps
   --restart           Just restart/reload the current page (no console capture)
   --help, -h          Show this help message
 
 Examples:
-  node check-console.js                           # Reload current page, show errors only
-  node check-console.js --time 10                 # Listen for 10 seconds, show errors only
-  node check-console.js --all                     # Show all console messages
+  node check-console.js                           # Reload current page, show all messages
+  node check-console.js --time 10                 # Listen for 10 seconds, show all messages
   node check-console.js --verbose                 # Show all messages with timestamps
   node check-console.js --restart                 # Just reload the page
 `);
