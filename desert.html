@@ -10,23 +10,41 @@
     <title>Desert Scene</title>
     <link rel="stylesheet" href="/css/examples.css?ver=1.0.0" />
     <script src="/js/examples.js?ver=1.1.1"></script>
-    <script src="/lib/enable3d/enable3d.framework.0.25.4.min.js"></script>
+    <script>
+      function initEnable3D() {
+        if (typeof ENABLE3D !== 'undefined') {
+          // Make ENABLE3D objects available globally before modules load
+          const { Project, Scene3D, PhysicsLoader, THREE } = ENABLE3D;
+          window.THREE = THREE;
+          window.Scene3D = Scene3D;
+          window.Project = Project;
+          window.PhysicsLoader = PhysicsLoader;
+        }
+      }
+    </script>
+    <script src="lib/enable3d.framework.0.25.4.min.js" onload="initEnable3D()"></script>
+    <script>
+      // Also try to initialize immediately in case script loaded synchronously
+      if (typeof ENABLE3D !== 'undefined') {
+        initEnable3D();
+      }
+    </script>
   </head>
 
   <body>
-    <script>
-      // Make ENABLE3D objects available globally before modules load
-      const { Project, Scene3D, PhysicsLoader, THREE } = ENABLE3D;
-      window.THREE = THREE;
-      window.Scene3D = Scene3D;
-      window.Project = Project;
-      window.PhysicsLoader = PhysicsLoader;
-    </script>
 
     <script type="module">
       import { DesertScene } from './js/desertScene.js';
       
-      PhysicsLoader('/lib/ammo/kripken', () => new Project({ scenes: [DesertScene], antialias: true }))
+      // Wait for Scene3D to be available
+      function waitForScene3D() {
+        if (window.Scene3D && window.PhysicsLoader && window.Project) {
+          PhysicsLoader('/lib/ammo/kripken', () => new Project({ scenes: [DesertScene], antialias: true }))
+        } else {
+          setTimeout(waitForScene3D, 10);
+        }
+      }
+      waitForScene3D();
     </script>
   </body>
 </html>

@@ -39,6 +39,10 @@ export class DesertScene extends Scene3D {
     texture.wrapS = THREE.RepeatWrapping
     texture.wrapT = THREE.RepeatWrapping
     texture.repeat.set(10, 10)  // Repeat pattern 10 times
+    // Pixel-perfect nearest filtering
+    texture.magFilter = THREE.NearestFilter
+    texture.minFilter = THREE.NearestFilter
+    texture.generateMipmaps = false
 
     // Create plane geometry
     const planeSize = 100
