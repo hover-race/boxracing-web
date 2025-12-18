@@ -1,0 +1,68 @@
+export class DesertScene extends Scene3D {
+  async create() {
+    const { lights, orbitControls } = await this.warpSpeed('-ground', '-sky', '-light')
+    this.orbitControls = orbitControls
+    this.camera.fov = 70
+    this.camera.updateProjectionMatrix()
+
+    // Add ambient light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0)
+    this.scene.add(ambientLight)
+
+    // Add directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
+    directionalLight.position.set(10, 10, 5)
+    this.scene.add(directionalLight)
+
+    // Create checkerboard texture
+    const checkerboardSize = 64
+    const canvas = document.createElement('canvas')
+    canvas.width = checkerboardSize
+    canvas.height = checkerboardSize
+    const ctx = canvas.getContext('2d')
+
+    // Brown and gray colors
+    const brownColor = '#8B6F47'  // Brown
+    const grayColor = '#6B6B6B'    // Gray
+
+    // Draw checkerboard pattern
+    const tileSize = checkerboardSize / 8  // 8x8 checkerboard
+    for (let x = 0; x < 8; x++) {
+      for (let y = 0; y < 8; y++) {
+        ctx.fillStyle = (x + y) % 2 === 0 ? brownColor : grayColor
+        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize)
+      }
+    }
+
+    // Create texture from canvas
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(10, 10)  // Repeat pattern 10 times
+
+    // Create plane geometry
+    const planeSize = 100
+    const planeGeometry = new THREE.PlaneGeometry(planeSize, planeSize)
+    const planeMaterial = new THREE.MeshStandardMaterial({
+      map: texture,
+      side: THREE.DoubleSide
+    })
+
+    const plane = new THREE.Mesh(planeGeometry, planeMaterial)
+    plane.rotation.x = -Math.PI / 2  // Rotate to be horizontal
+    plane.position.y = 0
+    this.scene.add(plane)
+
+    // Add physics to the plane
+    this.physics.add.existing(plane, { collisionFlags: 1, mass: 0, shape: 'box' })
+
+    // Position camera to look at the plane
+    this.camera.position.set(0, 10, 15)
+    this.camera.lookAt(0, 0, 0)
+  }
+
+  update() {
+    // Empty update method
+  }
+}
+
