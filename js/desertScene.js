@@ -36,18 +36,20 @@ export class DesertScene extends Scene3D {
 
     // Create texture from canvas
     const texture = new THREE.CanvasTexture(canvas)
-    texture.wrapS = THREE.RepeatWrapping
-    texture.wrapT = THREE.RepeatWrapping
-    texture.repeat.set(10, 10)  // Repeat pattern 10 times
-    // Pixel-perfect nearest filtering
+    // Pixel-perfect nearest filtering - set before other properties
     texture.magFilter = THREE.NearestFilter
     texture.minFilter = THREE.NearestFilter
     texture.generateMipmaps = false
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(3, 3)
+    texture.needsUpdate = true
 
     // Create plane geometry
-    const planeSize = 100
+    const planeSize = 10
     const planeGeometry = new THREE.PlaneGeometry(planeSize, planeSize)
-    const planeMaterial = new THREE.MeshStandardMaterial({
+    // Use MeshBasicMaterial to avoid lighting effects that might blur the texture
+    const planeMaterial = new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.DoubleSide
     })
