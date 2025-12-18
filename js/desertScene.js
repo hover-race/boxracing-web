@@ -1,4 +1,8 @@
+import { setupTruck1 } from './truck1.js';
+
 export class DesertScene extends Scene3D {
+  truck = null
+
   async loadGltf(path) {
     const obj = await this.load.gltf(path)
     const scene = obj.scenes[0]
@@ -74,17 +78,32 @@ export class DesertScene extends Scene3D {
     // Add physics to the plane
     this.physics.add.existing(plane, { collisionFlags: 1, mass: 0, shape: 'box' })
 
-    // Load truck model
-    const truck = await this.loadGltf('assets/glb/3-axes-truck.glb')
-    truck.position.set(0, 0, 0)  // Position above the plane
+    // Setup truck with GenericVehicle
+    const startTransform = new THREE.Object3D()
+    startTransform.position.set(0, 2, 0)  // Position above the plane
+    startTransform.quaternion.set(0, 0, 0, 1)
 
-    // Position camera to look at the plane
+    this.truck = await setupTruck1(this, startTransform)
+
+    // Position camera to look at the truck
     this.camera.position.set(0, 10, 15)
-    this.camera.lookAt(0, 0, 0)
+    this.camera.lookAt(0, 2, 0)
   }
 
   update() {
-    // Empty update method
+    // Update truck physics
+    if (this.truck) {
+      // Simple keyboard controls (you can enhance this later)
+      const keys = {
+        w: false,
+        a: false,
+        s: false,
+        d: false,
+        space: false
+      }
+      this.truck.update(keys)
+      this.truck.updateTireMarks()
+    }
   }
 }
 

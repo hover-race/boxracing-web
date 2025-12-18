@@ -1,3 +1,5 @@
+import { Wheel } from './wheel.js';
+
 class GenericVehicle {
   vehicle
   tuning
@@ -278,6 +280,20 @@ class GenericVehicle {
       scene3D = gltf.scenes[0]
     }
 
+    // Debug: Log all node names to help identify wheel nodes
+    const allNodeNames = []
+    const wheelNodeNames = []
+    scene3D.traverse(child => {
+      if (child.name) {
+        allNodeNames.push(child.name)
+        if (child.name.toLowerCase().includes('wheel')) {
+          wheelNodeNames.push(child.name)
+        }
+      }
+    })
+    console.log('GenericVehicle: All node names in GLB:', allNodeNames)
+    console.log('GenericVehicle: Wheel-related node names:', wheelNodeNames)
+
     // Traverse the model and extract nodes
     scene3D.traverse(child => {
       if (child.isMesh) {
@@ -296,7 +312,7 @@ class GenericVehicle {
           chassis = child
         }
 
-        // Check for wheels
+        // Check for wheels (direct mesh match)
         wheelConfigs.forEach((config, index) => {
           if (child.name === config.nodeName) {
             wheelMeshes[config.nodeName] = child
@@ -308,11 +324,42 @@ class GenericVehicle {
           }
         })
 
+        // Check for wheels by parent node name (if mesh is child of wheel node)
+        if (child.parent) {
+          wheelConfigs.forEach((config, index) => {
+            if (child.parent.name === config.nodeName && !foundWheels[config.nodeName]) {
+              wheelMeshes[config.nodeName] = child
+              foundWheels[config.nodeName] = true
+              child.receiveShadow = child.castShadow = true
+              if (config.centerGeometry !== false) {
+                child.geometry.center()
+              }
+            }
+          })
+        }
+
         // Apply custom node handlers
         if (nodeHandlers[child.name]) {
           nodeHandlers[child.name](child, { chassis, wheelMeshes, scene })
         }
       } else {
+        // Check for wheel nodes that are Object3D (non-mesh) - find first mesh child
+        wheelConfigs.forEach((config, index) => {
+          if (child.name === config.nodeName && !foundWheels[config.nodeName]) {
+            // Look for first mesh child
+            child.traverse(descendant => {
+              if (descendant.isMesh && !foundWheels[config.nodeName]) {
+                wheelMeshes[config.nodeName] = descendant
+                foundWheels[config.nodeName] = true
+                descendant.receiveShadow = descendant.castShadow = true
+                if (config.centerGeometry !== false) {
+                  descendant.geometry.center()
+                }
+              }
+            })
+          }
+        })
+
         // Apply handlers to non-mesh nodes too
         if (nodeHandlers[child.name]) {
           nodeHandlers[child.name](child, { chassis, wheelMeshes, scene })
@@ -418,4 +465,6 @@ class GenericVehicle {
     }
   }
 }
+
+export { GenericVehicle };
 
