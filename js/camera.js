@@ -168,11 +168,16 @@ class CameraHelicopter {
 
 class CameraOrbit {
   constructor() {
-    // Same framing as follow cam
-    this.distance = 2.75
-    this.height = 1.3
-    this.viewHeightRatio = 0.5
+    // Framing
+    this.distance = 6
+    this.minDistance = 2
+    this.maxDistance = 30
+    this.zoomSpeed = 1.5
+    this.height = 0.5
+    this.viewHeightRatio = 0.3
     this.heightDamping = 2.0
+    // How far ahead of the car to look (in velocity direction)
+    this.lookAheadDistance = 3.0
 
     // 45 degrees behind and to the side of the car's travel direction
     this.trailAngleOffset = Math.PI * 0.75  // 135 deg from forward = 45 deg behind-side
@@ -217,15 +222,23 @@ class CameraOrbit {
       }
     }
 
+    this._onWheel = (e) => {
+      e.preventDefault()
+      this.distance += e.deltaY * 0.01 * this.zoomSpeed
+      this.distance = Math.max(this.minDistance, Math.min(this.maxDistance, this.distance))
+    }
+
     window.addEventListener('mousedown', this._onMouseDown)
     window.addEventListener('mousemove', this._onMouseMove)
     window.addEventListener('mouseup', this._onMouseUp)
+    window.addEventListener('wheel', this._onWheel, { passive: false })
   }
 
   cleanup() {
     window.removeEventListener('mousedown', this._onMouseDown)
     window.removeEventListener('mousemove', this._onMouseMove)
     window.removeEventListener('mouseup', this._onMouseUp)
+    window.removeEventListener('wheel', this._onWheel)
   }
 
   initFromCamera(camera, target) {
@@ -298,9 +311,14 @@ class CameraOrbit {
       target.position.z + Math.cos(this.currentAngle) * this.distance
     )
 
-    // Look at target with slight height offset, keeping the road ahead in frame
+    // Look at a point ahead of the car in its travel direction
     const lookAtPos = target.position.clone()
       .add(new THREE.Vector3(0, this.height * this.viewHeightRatio, 0))
+    if (this.smoothVelocity.length() > 0.5) {
+      const ahead = this.smoothVelocity.clone().normalize().multiplyScalar(this.lookAheadDistance)
+      lookAtPos.x += ahead.x
+      lookAtPos.z += ahead.z
+    }
     camera.lookAt(lookAtPos)
   }
 }
