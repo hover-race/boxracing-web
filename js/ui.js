@@ -67,7 +67,7 @@ class UIController {
         const frames = this.mainScene.car.recorder.frames;
         if (frames.length > 0) {
           this.mainScene.replayPlayer.load(frames);
-          this.mainScene.replayPlayer.play();
+          this.mainScene.replayPlayer.play(this.mainScene.car);
           playBtn.style.display = 'none';
           pauseBtn.style.display = 'block';
           this.mainScene.replayUI.show();
@@ -80,7 +80,7 @@ class UIController {
     
     if (pauseBtn) {
       pauseBtn.addEventListener('click', () => {
-        this.mainScene.replayPlayer.pause();
+        this.mainScene.replayPlayer.stop(this.mainScene.car);
         playBtn.style.display = 'block';
         pauseBtn.style.display = 'none';
         this.mainScene.replayUI.hide();

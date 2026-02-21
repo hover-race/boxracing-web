@@ -6,7 +6,7 @@ import { setupCamera } from './camera.js';
 import { ControlsManager } from './controls.js';
 import { CheckpointManager } from './checkpointManager.js';
 import { UIController } from './ui.js';
-import { ReplayPlayer, ReplayUI } from './replays.js';
+import { ReplayPlayer, ReplayUI, CameraMode, CameraSwitcher } from './replays.js';
 
 export class MainScene extends Scene3D {
   car
@@ -27,6 +27,7 @@ export class MainScene extends Scene3D {
   starSystem = null
   replayPlayer = null
   replayUI = null
+  cameraSwitcher = null
 
   async loadGltf(path) {
     const obj = await this.load.gltf(path)
@@ -122,6 +123,9 @@ export class MainScene extends Scene3D {
     // Initialize checkpoint manager with the car
     this.checkpointManager.init(this.car)
     
+    // Initialize camera switcher
+    this.cameraSwitcher = new CameraSwitcher(this)
+
     // Initialize replay system
     console.log('Initializing replay system...')
     this.replayPlayer = new ReplayPlayer()
@@ -247,8 +251,12 @@ export class MainScene extends Scene3D {
   }
 
   updateCamera(deltaTime) {
-    // Use the CameraSmoothFollow update method
-    this.cameraController.update(this.camera, this.car.chassis, deltaTime);
+    if (this.cameraSwitcher && this.cameraSwitcher.mode === CameraMode.OVERHEAD) {
+      this.cameraSwitcher.updateCamera(this.camera, this.car.chassis, deltaTime);
+    } else {
+      // Use the CameraSmoothFollow update method
+      this.cameraController.update(this.camera, this.car.chassis, deltaTime);
+    }
   }
 
   cleanup() {
