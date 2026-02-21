@@ -2,11 +2,11 @@ import { Vehicle } from './vehicle.js';
 import { RemoteObjectManager } from './remote-objects.js';
 import { NetworkSender, NetworkManager } from './network-classes.js';
 import { SignalingManager } from './firestore-signaling.js';
-import { setupCamera } from './camera.js';
+import { CameraMode, CameraSwitcher } from './camera.js';
 import { ControlsManager } from './controls.js';
 import { CheckpointManager } from './checkpointManager.js';
 import { UIController } from './ui.js';
-import { ReplayPlayer, ReplayUI, CameraMode, CameraSwitcher } from './replays.js';
+import { ReplayPlayer, ReplayUI } from './replays.js';
 
 export class MainScene extends Scene3D {
   car
@@ -22,7 +22,6 @@ export class MainScene extends Scene3D {
   joystick = null
   checkpointManager = null
   portal = null
-  cameraController = null
   controlsManager = null
   starSystem = null
   replayPlayer = null
@@ -117,14 +116,12 @@ export class MainScene extends Scene3D {
 
     this.car = await Vehicle.setupCarMustang(this, this.startTransform, carModel.clone())
     
-    // Initialize camera controller using setupCamera helper
-    this.cameraController = setupCamera(this.camera, this.car.chassis);
+    // Initialize camera switcher
+    this.cameraSwitcher = new CameraSwitcher(this)
+    this.cameraSwitcher.initFollow(this.camera, this.car.chassis);
     
     // Initialize checkpoint manager with the car
     this.checkpointManager.init(this.car)
-    
-    // Initialize camera switcher
-    this.cameraSwitcher = new CameraSwitcher(this)
 
     // Initialize replay system
     console.log('Initializing replay system...')
@@ -251,11 +248,8 @@ export class MainScene extends Scene3D {
   }
 
   updateCamera(deltaTime) {
-    if (this.cameraSwitcher && this.cameraSwitcher.mode === CameraMode.OVERHEAD) {
-      this.cameraSwitcher.updateCamera(this.camera, this.car.chassis, deltaTime);
-    } else {
-      // Use the CameraSmoothFollow update method
-      this.cameraController.update(this.camera, this.car.chassis, deltaTime);
+    if (this.cameraSwitcher) {
+      this.cameraSwitcher.update(this.camera, this.car.chassis, deltaTime);
     }
   }
 

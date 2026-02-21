@@ -138,84 +138,6 @@ class ReplayPlayer {
   }
 }
 
-const CameraMode = Object.freeze({
-  FOLLOW: 'follow',
-  OVERHEAD: 'overhead',
-})
-
-class CameraSwitcher {
-  constructor(scene) {
-    this.scene = scene
-    this.mode = CameraMode.FOLLOW
-    this.overheadHeight = 30
-    this.overheadSmooth = 0.05
-    this.createUI()
-  }
-
-  createUI() {
-    this.panel = document.createElement('div')
-    this.panel.style.cssText = `
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 8px;
-      z-index: 1000;
-    `
-
-    const btnStyle = (active) => `
-      padding: 8px 16px;
-      border: 1px solid #666;
-      border-radius: 6px;
-      color: #fff;
-      font-family: monospace;
-      font-size: 14px;
-      cursor: pointer;
-      background: ${active ? 'rgba(78, 205, 196, 0.8)' : 'rgba(0, 0, 0, 0.7)'};
-    `
-
-    this.followBtn = document.createElement('button')
-    this.followBtn.textContent = 'Follow Cam'
-    this.followBtn.style.cssText = btnStyle(true)
-    this.followBtn.onclick = () => this.setMode(CameraMode.FOLLOW)
-
-    this.overheadBtn = document.createElement('button')
-    this.overheadBtn.textContent = 'Overhead Cam'
-    this.overheadBtn.style.cssText = btnStyle(false)
-    this.overheadBtn.onclick = () => this.setMode(CameraMode.OVERHEAD)
-
-    this.panel.appendChild(this.followBtn)
-    this.panel.appendChild(this.overheadBtn)
-    document.body.appendChild(this.panel)
-  }
-
-  setMode(mode) {
-    this.mode = mode
-
-    const activeStyle = 'rgba(78, 205, 196, 0.8)'
-    const inactiveStyle = 'rgba(0, 0, 0, 0.7)'
-
-    this.followBtn.style.background = mode === CameraMode.FOLLOW ? activeStyle : inactiveStyle
-    this.overheadBtn.style.background = mode === CameraMode.OVERHEAD ? activeStyle : inactiveStyle
-  }
-
-  updateCamera(camera, target, deltaTime) {
-    if (!target) return
-
-    if (this.mode === CameraMode.OVERHEAD) {
-      // Overhead: look straight down, follow target XZ
-      const tx = target.position.x
-      const tz = target.position.z
-      camera.position.x += (tx - camera.position.x) * this.overheadSmooth
-      camera.position.z += (tz - camera.position.z) * this.overheadSmooth
-      camera.position.y += (this.overheadHeight - camera.position.y) * this.overheadSmooth
-      camera.lookAt(camera.position.x, 0, camera.position.z)
-    }
-    // 'follow' mode is handled by the existing CameraSmoothFollow
-  }
-}
-
 class ReplayUI {
   constructor() {
     this.isVisible = false;
@@ -280,4 +202,4 @@ class ReplayUI {
   }
 }
 
-export { ReplayRecorder, ReplayPlayer, ReplayUI, CameraMode, CameraSwitcher };
+export { ReplayRecorder, ReplayPlayer, ReplayUI };
