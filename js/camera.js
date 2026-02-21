@@ -1,6 +1,7 @@
 const CameraMode = Object.freeze({
   FOLLOW: 'follow',
   OVERHEAD: 'overhead',
+  ORBIT: 'orbit',
 })
 
 class CameraFollow {
@@ -165,12 +166,152 @@ class CameraHelicopter {
   }
 }
 
+class CameraOrbit {
+  constructor() {
+    // Same framing as follow cam
+    this.distance = 2.75
+    this.height = 1.3
+    this.viewHeightRatio = 0.5
+    this.heightDamping = 2.0
+
+    // 45 degrees behind and to the side of the car's travel direction
+    this.trailAngleOffset = Math.PI * 0.75  // 135 deg from forward = 45 deg behind-side
+    // Very slow convergence so it lazily rotates into position
+    this.rotationDamping = 0.4
+
+    // Mouse drag sensitivity (radians per pixel)
+    this.dragSensitivity = 0.005
+
+    // Internal state
+    this.currentAngle = 0
+    this.selfHeight = 0
+    this.smoothVelocity = new THREE.Vector3()
+    this.smoothLastPos = new THREE.Vector3()
+    this.velocityDamping = 3.0
+    this._isDragging = false
+    this._dragActive = false  // true while user is actively overriding the angle
+    this._dragDecayTimer = 0  // time since last drag, controls convergence back
+
+    this._setupMouseDrag()
+  }
+
+  _setupMouseDrag() {
+    this._onMouseDown = (e) => {
+      if (e.button === 0) {  // left click
+        this._isDragging = true
+        this._dragActive = true
+        this._dragDecayTimer = 0
+        this._lastMouseX = e.clientX
+      }
+    }
+    this._onMouseMove = (e) => {
+      if (!this._isDragging) return
+      const dx = e.clientX - this._lastMouseX
+      this._lastMouseX = e.clientX
+      this.currentAngle += dx * this.dragSensitivity
+      this._dragDecayTimer = 0
+    }
+    this._onMouseUp = (e) => {
+      if (e.button === 0) {
+        this._isDragging = false
+      }
+    }
+
+    window.addEventListener('mousedown', this._onMouseDown)
+    window.addEventListener('mousemove', this._onMouseMove)
+    window.addEventListener('mouseup', this._onMouseUp)
+  }
+
+  cleanup() {
+    window.removeEventListener('mousedown', this._onMouseDown)
+    window.removeEventListener('mousemove', this._onMouseMove)
+    window.removeEventListener('mouseup', this._onMouseUp)
+  }
+
+  initFromCamera(camera, target) {
+    if (target) {
+      // Start from current camera angle relative to target
+      const dx = camera.position.x - target.position.x
+      const dz = camera.position.z - target.position.z
+      this.currentAngle = Math.atan2(dx, dz)
+      this.selfHeight = camera.position.y
+      this.smoothLastPos.copy(target.position)
+      this.smoothVelocity.set(0, 0, 0)
+    }
+  }
+
+  lerpAngle(start, end, t) {
+    let diff = end - start
+    while (diff > Math.PI) diff -= Math.PI * 2
+    while (diff < -Math.PI) diff += Math.PI * 2
+    return start + diff * t
+  }
+
+  update(camera, target, deltaTime) {
+    if (!target || !deltaTime || deltaTime <= 0 || isNaN(deltaTime)) return
+
+    const dt = Math.min(deltaTime, 0.1)
+
+    // Calculate car's travel direction from velocity
+    const currentPos = target.position.clone()
+    const velocity = currentPos.clone().sub(this.smoothLastPos).divideScalar(dt)
+    this.smoothLastPos.copy(target.position)
+    velocity.y = 0
+
+    // Smooth the velocity to avoid jitter; decay toward zero when slow
+    if (velocity.length() > 0.5) {
+      this.smoothVelocity.lerp(velocity, this.velocityDamping * dt)
+    } else {
+      this.smoothVelocity.multiplyScalar(1.0 - 2.0 * dt)  // decay to zero at rest
+    }
+
+    // While dragging, don't auto-converge; after release, ease back gradually
+    if (!this._isDragging) {
+      this._dragDecayTimer += dt
+    }
+    const dragFadeIn = this._dragActive ? Math.min(1.0, this._dragDecayTimer / 2.0) : 1.0
+    if (this._dragDecayTimer > 3.0) {
+      this._dragActive = false  // fully back to auto after 3 seconds
+    }
+
+    const isMoving = this.smoothVelocity.length() > 0.5
+
+    if (isMoving) {
+      // Converge to trailing angle behind the car's travel direction
+      const travelAngle = Math.atan2(this.smoothVelocity.x, this.smoothVelocity.z)
+      const desiredAngle = travelAngle + this.trailAngleOffset
+      this.currentAngle = this.lerpAngle(this.currentAngle, desiredAngle, this.rotationDamping * dt * dragFadeIn)
+    } else if (!this._isDragging) {
+      // Gentle idle spin when stationary (0.05 rad/s, ~2 min per revolution)
+      this.currentAngle += 0.05 * dt
+    }
+
+    // Smooth height tracking
+    const wantedHeight = target.position.y + this.height
+    const heightLerpFactor = Math.min(1.0, this.heightDamping * dt)
+    this.selfHeight = this.selfHeight * (1 - heightLerpFactor) + wantedHeight * heightLerpFactor
+
+    // Position camera at current angle around the target
+    camera.position.set(
+      target.position.x + Math.sin(this.currentAngle) * this.distance,
+      this.selfHeight,
+      target.position.z + Math.cos(this.currentAngle) * this.distance
+    )
+
+    // Look at target with slight height offset, keeping the road ahead in frame
+    const lookAtPos = target.position.clone()
+      .add(new THREE.Vector3(0, this.height * this.viewHeightRatio, 0))
+    camera.lookAt(lookAtPos)
+  }
+}
+
 class CameraSwitcher {
   constructor(scene) {
     this.scene = scene
     this.mode = CameraMode.FOLLOW
     this.follow = new CameraFollow()
     this.helicopter = new CameraHelicopter()
+    this.orbit = new CameraOrbit()
     this.createUI()
   }
 
@@ -185,18 +326,25 @@ class CameraSwitcher {
   }
 
   createUI() {
+    // Ordered list of modes for cycling with C key
+    this.modes = [CameraMode.FOLLOW, CameraMode.OVERHEAD, CameraMode.ORBIT]
+    this.modeLabels = {
+      [CameraMode.FOLLOW]: 'Follow Cam',
+      [CameraMode.OVERHEAD]: 'Overhead Cam',
+      [CameraMode.ORBIT]: 'Orbit Cam',
+    }
+
     this.panel = document.createElement('div')
     this.panel.style.cssText = `
       position: fixed;
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      display: flex;
-      gap: 8px;
       z-index: 1000;
     `
 
-    const btnStyle = (active) => `
+    this.select = document.createElement('select')
+    this.select.style.cssText = `
       padding: 8px 16px;
       border: 1px solid #666;
       border-radius: 6px;
@@ -204,22 +352,34 @@ class CameraSwitcher {
       font-family: monospace;
       font-size: 14px;
       cursor: pointer;
-      background: ${active ? 'rgba(78, 205, 196, 0.8)' : 'rgba(0, 0, 0, 0.7)'};
+      background: rgba(0, 0, 0, 0.7);
+      outline: none;
+      appearance: auto;
     `
 
-    this.followBtn = document.createElement('button')
-    this.followBtn.textContent = 'Follow Cam'
-    this.followBtn.style.cssText = btnStyle(true)
-    this.followBtn.onclick = () => this.setMode(CameraMode.FOLLOW)
+    for (const mode of this.modes) {
+      const option = document.createElement('option')
+      option.value = mode
+      option.textContent = this.modeLabels[mode]
+      option.style.cssText = 'background: #222; color: #fff;'
+      this.select.appendChild(option)
+    }
 
-    this.overheadBtn = document.createElement('button')
-    this.overheadBtn.textContent = 'Overhead Cam'
-    this.overheadBtn.style.cssText = btnStyle(false)
-    this.overheadBtn.onclick = () => this.setMode(CameraMode.OVERHEAD)
+    this.select.value = this.mode
+    this.select.onchange = () => this.setMode(this.select.value)
 
-    this.panel.appendChild(this.followBtn)
-    this.panel.appendChild(this.overheadBtn)
+    this.panel.appendChild(this.select)
     document.body.appendChild(this.panel)
+
+    // Cycle camera modes on C key
+    this._onKeyDown = (e) => {
+      if (e.code === 'KeyC' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const currentIndex = this.modes.indexOf(this.mode)
+        const nextIndex = (currentIndex + 1) % this.modes.length
+        this.setMode(this.modes[nextIndex])
+      }
+    }
+    window.addEventListener('keydown', this._onKeyDown)
   }
 
   setMode(mode) {
@@ -227,23 +387,28 @@ class CameraSwitcher {
     if (mode === CameraMode.OVERHEAD) {
       this.helicopter.initFromCamera(this.scene.camera)
     }
+    if (mode === CameraMode.ORBIT) {
+      this.orbit.initFromCamera(this.scene.camera, this._lastTarget)
+    }
 
-    const activeStyle = 'rgba(78, 205, 196, 0.8)'
-    const inactiveStyle = 'rgba(0, 0, 0, 0.7)'
-
-    this.followBtn.style.background = mode === CameraMode.FOLLOW ? activeStyle : inactiveStyle
-    this.overheadBtn.style.background = mode === CameraMode.OVERHEAD ? activeStyle : inactiveStyle
+    // Keep dropdown in sync
+    if (this.select) {
+      this.select.value = mode
+    }
   }
 
   update(camera, target, deltaTime) {
     if (!target) return
+    this._lastTarget = target
 
     if (this.mode === CameraMode.OVERHEAD) {
       this.helicopter.update(camera, target, deltaTime)
+    } else if (this.mode === CameraMode.ORBIT) {
+      this.orbit.update(camera, target, deltaTime)
     } else {
       this.follow.update(camera, target, deltaTime)
     }
   }
 }
 
-export { CameraMode, CameraFollow, CameraHelicopter, CameraSwitcher };
+export { CameraMode, CameraFollow, CameraHelicopter, CameraOrbit, CameraSwitcher };
