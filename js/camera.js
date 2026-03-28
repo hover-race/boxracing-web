@@ -355,13 +355,13 @@ class CameraSwitcher {
     this.orbit = new CameraOrbit()
     // Bumper cam: low on the front of the car, looking forward
     this.bumper = new CameraFixed(
-      new THREE.Vector3(0, 0.4, 1.2),     // front of car, just above bumper
+      new THREE.Vector3(0, 0.4, 2),     // front of car, just above bumper
       new THREE.Vector3(0, 0.3, 10)        // look far ahead
     )
-    // Side cam: low to the right side, looking at the car
+    // Side cam: low to the side
     this.side = new CameraFixed(
-      new THREE.Vector3(2.5, 0.4, 0),      // right side, low
-      new THREE.Vector3(0, 0.3, 2)          // look slightly ahead of car center
+      new THREE.Vector3(0.8, 0.4, 0),      // left side, low
+      new THREE.Vector3(0.5, 0.3, 2)          // look slightly ahead of car center
     )
     this.createUI()
   }
