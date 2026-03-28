@@ -2,6 +2,8 @@ const CameraMode = Object.freeze({
   FOLLOW: 'follow',
   OVERHEAD: 'overhead',
   ORBIT: 'orbit',
+  BUMPER: 'bumper',
+  SIDE: 'side',
 })
 
 class CameraFollow {
@@ -323,6 +325,27 @@ class CameraOrbit {
   }
 }
 
+// Camera attached to the car at a fixed local offset, looking in a fixed local direction
+class CameraFixed {
+  constructor(offset, lookAtOffset) {
+    // Local-space offset from the car's position
+    this.offset = offset.clone()
+    // Local-space point to look at, relative to the car
+    this.lookAtOffset = lookAtOffset.clone()
+  }
+
+  update(camera, target, deltaTime) {
+    if (!target) return
+
+    // Convert local offset to world space using the car's quaternion
+    const worldOffset = this.offset.clone().applyQuaternion(target.quaternion)
+    camera.position.copy(target.position).add(worldOffset)
+
+    const worldLookAt = this.lookAtOffset.clone().applyQuaternion(target.quaternion)
+    camera.lookAt(target.position.clone().add(worldLookAt))
+  }
+}
+
 class CameraSwitcher {
   constructor(scene) {
     this.scene = scene
@@ -330,6 +353,16 @@ class CameraSwitcher {
     this.follow = new CameraFollow()
     this.helicopter = new CameraHelicopter()
     this.orbit = new CameraOrbit()
+    // Bumper cam: low on the front of the car, looking forward
+    this.bumper = new CameraFixed(
+      new THREE.Vector3(0, 0.4, 1.2),     // front of car, just above bumper
+      new THREE.Vector3(0, 0.3, 10)        // look far ahead
+    )
+    // Side cam: low to the right side, looking at the car
+    this.side = new CameraFixed(
+      new THREE.Vector3(2.5, 0.4, 0),      // right side, low
+      new THREE.Vector3(0, 0.3, 2)          // look slightly ahead of car center
+    )
     this.createUI()
   }
 
@@ -345,11 +378,13 @@ class CameraSwitcher {
 
   createUI() {
     // Ordered list of modes for cycling with C key
-    this.modes = [CameraMode.FOLLOW, CameraMode.OVERHEAD, CameraMode.ORBIT]
+    this.modes = [CameraMode.FOLLOW, CameraMode.OVERHEAD, CameraMode.ORBIT, CameraMode.BUMPER, CameraMode.SIDE]
     this.modeLabels = {
       [CameraMode.FOLLOW]: 'Follow Cam',
       [CameraMode.OVERHEAD]: 'Overhead Cam',
       [CameraMode.ORBIT]: 'Orbit Cam',
+      [CameraMode.BUMPER]: 'Bumper Cam',
+      [CameraMode.SIDE]: 'Side Cam',
     }
 
     this.panel = document.createElement('div')
@@ -423,10 +458,14 @@ class CameraSwitcher {
       this.helicopter.update(camera, target, deltaTime)
     } else if (this.mode === CameraMode.ORBIT) {
       this.orbit.update(camera, target, deltaTime)
+    } else if (this.mode === CameraMode.BUMPER) {
+      this.bumper.update(camera, target, deltaTime)
+    } else if (this.mode === CameraMode.SIDE) {
+      this.side.update(camera, target, deltaTime)
     } else {
       this.follow.update(camera, target, deltaTime)
     }
   }
 }
 
-export { CameraMode, CameraFollow, CameraHelicopter, CameraOrbit, CameraSwitcher };
+export { CameraMode, CameraFollow, CameraHelicopter, CameraOrbit, CameraFixed, CameraSwitcher };
