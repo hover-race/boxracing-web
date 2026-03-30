@@ -505,8 +505,6 @@ class CameraSwitcher {
   update(camera, target, deltaTime) {
     if (!target) return
     this._lastTarget = target
-    // If target wasn't ready during setController, this ensures fixed cams attach once available.
-    this._activeController.activate?.(camera, target)
     this._activeController.update(camera, target, deltaTime)
   }
 }

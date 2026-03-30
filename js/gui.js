@@ -2,6 +2,13 @@ dat.GUI.TEXT_OPEN = 'Options'
 dat.GUI.TEXT_CLOSED = 'Options'
 const gui = new dat.GUI({ width: 400, closed: true })
 
+window.addEventListener('keydown', (e) => {
+  if (e.key === '`') {
+    if (gui.closed) gui.open()
+    else gui.close()
+  }
+})
+
 // Generate default player name with 3 random digits
 function generateDefaultPlayerName() {
   const randomNum = Math.floor(Math.random() * 900) + 100; // generates number between 100-999
