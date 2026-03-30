@@ -2,7 +2,7 @@ import { Vehicle } from './vehicle.js';
 import { RemoteObjectManager } from './remote-objects.js';
 import { NetworkSender, NetworkManager } from './network-classes.js';
 import { SignalingManager } from './firestore-signaling.js';
-import { CameraMode, CameraSwitcher } from './camera.js';
+import { CameraSwitcher } from './camera.js';
 import { ControlsManager } from './controls.js';
 import { CheckpointManager } from './checkpointManager.js';
 import { UIController } from './ui.js';
@@ -119,6 +119,7 @@ export class MainScene extends Scene3D {
     // Initialize camera switcher
     this.cameraSwitcher = new CameraSwitcher(this)
     this.cameraSwitcher.initFollow(this.camera, this.car.chassis);
+    window.bindCameraSwitcherToGui?.(this.cameraSwitcher)
     
     // Initialize checkpoint manager with the car
     this.checkpointManager.init(this.car)

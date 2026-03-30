@@ -1,13 +1,8 @@
-const CameraMode = Object.freeze({
-  FOLLOW: 'follow',
-  OVERHEAD: 'overhead',
-  ORBIT: 'orbit',
-  BUMPER: 'bumper',
-  SIDE: 'side',
-})
 
 class CameraFollow {
   constructor() {
+    this.label = 'Follow Cam'
+
     // Configuration
     this.distance = 10.0;
     this.height = 5.0;
@@ -30,14 +25,14 @@ class CameraFollow {
     this.selfHeight = 0.0;
   }
 
-  reset(camera, target) {
+  activate(camera, target) {
     if (!target) return;
-
+    // Sync internal state from current camera/target so there's no snap on switch.
     this.smoothLastPos.copy(target.position);
     this.smoothVelocity.copy(target.getWorldDirection(new THREE.Vector3())).multiplyScalar(2.0);
     this.smoothTargetAngle = target.rotation.y;
     this.selfRotationAngle = camera.rotation.y;
-    this.selfHeight = target.position.y + this.height; // Initialize at proper height
+    this.selfHeight = target.position.y + this.height;
   }
 
   update(camera, target, deltaTime) {
@@ -123,6 +118,7 @@ class CameraFollow {
 
 class CameraHelicopter {
   constructor() {
+    this.label = 'Overhead Cam'
     this.height = 20
     this.distance = 25
     this.positionLerp = 0.02
@@ -130,7 +126,7 @@ class CameraHelicopter {
     this._lookTarget = new THREE.Vector3()
   }
 
-  initFromCamera(camera) {
+  activate(camera) {
     const dir = new THREE.Vector3()
     camera.getWorldDirection(dir)
     this._lookTarget.copy(camera.position).add(dir.multiplyScalar(20))
@@ -170,6 +166,8 @@ class CameraHelicopter {
 
 class CameraOrbit {
   constructor() {
+    this.label = 'Orbit Cam'
+
     // Framing
     this.distance = 6
     this.minDistance = 2
@@ -243,16 +241,15 @@ class CameraOrbit {
     window.removeEventListener('wheel', this._onWheel)
   }
 
-  initFromCamera(camera, target) {
-    if (target) {
-      // Start from current camera angle relative to target
-      const dx = camera.position.x - target.position.x
-      const dz = camera.position.z - target.position.z
-      this.currentAngle = Math.atan2(dx, dz)
-      this.selfHeight = camera.position.y
-      this.smoothLastPos.copy(target.position)
-      this.smoothVelocity.set(0, 0, 0)
-    }
+  activate(camera, target) {
+    if (!target) return
+    // Start from current camera angle relative to target
+    const dx = camera.position.x - target.position.x
+    const dz = camera.position.z - target.position.z
+    this.currentAngle = Math.atan2(dx, dz)
+    this.selfHeight = camera.position.y
+    this.smoothLastPos.copy(target.position)
+    this.smoothVelocity.set(0, 0, 0)
   }
 
   lerpAngle(start, end, t) {
@@ -325,68 +322,129 @@ class CameraOrbit {
   }
 }
 
-// Camera attached to the car at a fixed local offset, looking in a fixed local direction
+// Camera rigidly attached to the car, preserving roll axis
 class CameraFixed {
-  constructor(offset, lookAtOffset) {
+  constructor(offset, lookAtOffset, label = '') {
+    this.label = label
+
     // Local-space offset from the car's position
     this.offset = offset.clone()
     // Local-space point to look at, relative to the car
     this.lookAtOffset = lookAtOffset.clone()
+
+    // Mount object parented to the car; camera is parented to this mount.
+    this._mount = new THREE.Object3D()
+    this._restoreParent = null
+    this._applyLocalTransform()
+  }
+
+  _applyLocalTransform() {
+    this._mount.position.copy(this.offset)
+    // Use matrix lookAt so the up axis is always Y (avoids upside-down roll from setFromUnitVectors).
+    const m = new THREE.Matrix4()
+    m.lookAt(this.offset, this.lookAtOffset, new THREE.Vector3(0, 1, 0))
+    this._mount.quaternion.setFromRotationMatrix(m)
+  }
+
+  setOffset(x, y, z) {
+    this.offset.set(x, y, z)
+    this._applyLocalTransform()
+  }
+
+  getOffset() {
+    return this.offset.clone()
+  }
+
+  activate(camera, target) {
+    if (!camera || !target) return
+    if (camera.parent === this._mount && this._mount.parent === target) return
+
+    if (!this._restoreParent) {
+      this._restoreParent = camera.parent || null
+    }
+
+    // Keep mount attached to the current target.
+    if (this._mount.parent !== target) {
+      if (this._mount.parent) this._mount.parent.remove(this._mount)
+      target.add(this._mount)
+    }
+
+    // Keep local mount transform in sync with current offsets.
+    this._applyLocalTransform()
+
+    // Parent camera to mount so scene graph handles all motion/roll.
+    this._mount.add(camera)
+    camera.position.set(0, 0, 0)
+    camera.quaternion.identity()
+  }
+
+  deactivate(camera) {
+    if (!camera) return
+    if (camera.parent !== this._mount) return
+    if (this._restoreParent) {
+      this._restoreParent.attach(camera)
+    }
   }
 
   update(camera, target, deltaTime) {
-    if (!target) return
-
-    // Convert local offset to world space using the car's quaternion
-    const worldOffset = this.offset.clone().applyQuaternion(target.quaternion)
-    camera.position.copy(target.position).add(worldOffset)
-
-    const worldLookAt = this.lookAtOffset.clone().applyQuaternion(target.quaternion)
-    camera.lookAt(target.position.clone().add(worldLookAt))
+    // No-op: camera transform is fully driven by scene graph while attached.
   }
 }
 
 class CameraSwitcher {
   constructor(scene) {
     this.scene = scene
-    this.mode = CameraMode.FOLLOW
     this.follow = new CameraFollow()
     this.helicopter = new CameraHelicopter()
     this.orbit = new CameraOrbit()
     // Bumper cam: low on the front of the car, looking forward
     this.bumper = new CameraFixed(
       new THREE.Vector3(0, 0.4, 2),     // front of car, just above bumper
-      new THREE.Vector3(0, 0.3, 10)        // look far ahead
+      new THREE.Vector3(0, 0.3, 10),       // look far ahead
+      'Bumper Cam'
     )
     // Side cam: low to the side
     this.side = new CameraFixed(
       new THREE.Vector3(0.8, 0.4, 0),      // left side, low
-      new THREE.Vector3(0.5, 0.3, 2)          // look slightly ahead of car center
+      new THREE.Vector3(0.5, 0.3, 2),         // look slightly ahead of car center
+      'Side Cam'
     )
+
+    // Ordered list of controllers; index drives everything.
+    this.controllers = [this.follow, this.helicopter, this.orbit, this.bumper, this.side]
+    this._activeIndex = 0
     this.createUI()
   }
 
+  get _activeController() {
+    return this.controllers[this._activeIndex]
+  }
+
   initFollow(camera, target) {
-    this.follow.reset(camera, target)
     this.follow.distance = 2.75
     this.follow.height = 1.3
     this.follow.heightDamping = 2.0
     this.follow.rotationDamping = 0.60
     this.follow.followVelocity = true
     this.follow.velocityDamping = 2.0
+    this.follow.activate(camera, target)
+  }
+
+  getFixedCameraOffsets() {
+    const bumper = this.bumper.getOffset()
+    const side = this.side.getOffset()
+    return {
+      bumper: { x: bumper.x, y: bumper.y, z: bumper.z },
+      side: { x: side.x, y: side.y, z: side.z },
+    }
+  }
+
+  setFixedCameraOffset(name, x, y, z) {
+    if (name === 'bumper') this.bumper.setOffset(x, y, z)
+    if (name === 'side') this.side.setOffset(x, y, z)
   }
 
   createUI() {
-    // Ordered list of modes for cycling with C key
-    this.modes = [CameraMode.FOLLOW, CameraMode.OVERHEAD, CameraMode.ORBIT, CameraMode.BUMPER, CameraMode.SIDE]
-    this.modeLabels = {
-      [CameraMode.FOLLOW]: 'Follow Cam',
-      [CameraMode.OVERHEAD]: 'Overhead Cam',
-      [CameraMode.ORBIT]: 'Orbit Cam',
-      [CameraMode.BUMPER]: 'Bumper Cam',
-      [CameraMode.SIDE]: 'Side Cam',
-    }
-
     this.panel = document.createElement('div')
     this.panel.style.cssText = `
       position: fixed;
@@ -410,16 +468,16 @@ class CameraSwitcher {
       appearance: auto;
     `
 
-    for (const mode of this.modes) {
+    this.controllers.forEach((controller, i) => {
       const option = document.createElement('option')
-      option.value = mode
-      option.textContent = this.modeLabels[mode]
+      option.value = i
+      option.textContent = controller.label
       option.style.cssText = 'background: #222; color: #fff;'
       this.select.appendChild(option)
-    }
+    })
 
-    this.select.value = this.mode
-    this.select.onchange = () => this.setMode(this.select.value)
+    this.select.value = this._activeIndex
+    this.select.onchange = () => this.setController(Number(this.select.value))
 
     this.panel.appendChild(this.select)
     document.body.appendChild(this.panel)
@@ -427,45 +485,30 @@ class CameraSwitcher {
     // Cycle camera modes on C key
     this._onKeyDown = (e) => {
       if (e.code === 'KeyC' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        const currentIndex = this.modes.indexOf(this.mode)
-        const nextIndex = (currentIndex + 1) % this.modes.length
-        this.setMode(this.modes[nextIndex])
+        this.setController((this._activeIndex + 1) % this.controllers.length)
       }
     }
     window.addEventListener('keydown', this._onKeyDown)
   }
 
-  setMode(mode) {
-    this.mode = mode
-    if (mode === CameraMode.OVERHEAD) {
-      this.helicopter.initFromCamera(this.scene.camera)
-    }
-    if (mode === CameraMode.ORBIT) {
-      this.orbit.initFromCamera(this.scene.camera, this._lastTarget)
-    }
+  setController(index) {
+    this._activeController?.deactivate?.(this.scene.camera)
+    this._activeIndex = index
+    this._activeController.activate?.(this.scene.camera, this._lastTarget)
 
     // Keep dropdown in sync
     if (this.select) {
-      this.select.value = mode
+      this.select.value = index
     }
   }
 
   update(camera, target, deltaTime) {
     if (!target) return
     this._lastTarget = target
-
-    if (this.mode === CameraMode.OVERHEAD) {
-      this.helicopter.update(camera, target, deltaTime)
-    } else if (this.mode === CameraMode.ORBIT) {
-      this.orbit.update(camera, target, deltaTime)
-    } else if (this.mode === CameraMode.BUMPER) {
-      this.bumper.update(camera, target, deltaTime)
-    } else if (this.mode === CameraMode.SIDE) {
-      this.side.update(camera, target, deltaTime)
-    } else {
-      this.follow.update(camera, target, deltaTime)
-    }
+    // If target wasn't ready during setController, this ensures fixed cams attach once available.
+    this._activeController.activate?.(camera, target)
+    this._activeController.update(camera, target, deltaTime)
   }
 }
 
-export { CameraMode, CameraFollow, CameraHelicopter, CameraOrbit, CameraFixed, CameraSwitcher };
+export { CameraFollow, CameraHelicopter, CameraOrbit, CameraFixed, CameraSwitcher };
