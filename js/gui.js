@@ -203,12 +203,9 @@ inputFolder.add(vehicleParams, 'steeringSensitivity', 0.1, 2.0).step(0.1).name('
 
 // Fixed camera offsets (editable from GUI)
 const fixedCameraParams = {
-  bumperX: 0,
-  bumperY: 0.4,
-  bumperZ: 2,
-  sideX: 0.8,
-  sideY: 0.4,
-  sideZ: 0,
+  bumperX: 0,   bumperY: 0.4, bumperZ: 2,
+  hoodX: 0,     hoodY: 0.8,   hoodZ: 0.5,
+  sideX: 0.8,   sideY: 0.4,   sideZ: 0,
 }
 
 let boundCameraSwitcher = null
@@ -216,31 +213,30 @@ let boundCameraSwitcher = null
 function applyFixedCameraOffsets() {
   if (!boundCameraSwitcher) return
   boundCameraSwitcher.setFixedCameraOffset('bumper', fixedCameraParams.bumperX, fixedCameraParams.bumperY, fixedCameraParams.bumperZ)
-  boundCameraSwitcher.setFixedCameraOffset('side', fixedCameraParams.sideX, fixedCameraParams.sideY, fixedCameraParams.sideZ)
+  boundCameraSwitcher.setFixedCameraOffset('hood',   fixedCameraParams.hoodX,   fixedCameraParams.hoodY,   fixedCameraParams.hoodZ)
+  boundCameraSwitcher.setFixedCameraOffset('side',   fixedCameraParams.sideX,   fixedCameraParams.sideY,   fixedCameraParams.sideZ)
 }
 
-const fixedCamFolder = gui.addFolder('Fixed Cameras')
+const fixedCamFolder = gui.addFolder('Cameras')
 fixedCamFolder.add(fixedCameraParams, 'bumperX', -3, 3).step(0.01).name('Bumper X').onChange(applyFixedCameraOffsets)
 fixedCamFolder.add(fixedCameraParams, 'bumperY', -1, 3).step(0.01).name('Bumper Y').onChange(applyFixedCameraOffsets)
 fixedCamFolder.add(fixedCameraParams, 'bumperZ', -3, 8).step(0.01).name('Bumper Z').onChange(applyFixedCameraOffsets)
-fixedCamFolder.add(fixedCameraParams, 'sideX', -3, 3).step(0.01).name('Side X').onChange(applyFixedCameraOffsets)
-fixedCamFolder.add(fixedCameraParams, 'sideY', -1, 3).step(0.01).name('Side Y').onChange(applyFixedCameraOffsets)
-fixedCamFolder.add(fixedCameraParams, 'sideZ', -3, 8).step(0.01).name('Side Z').onChange(applyFixedCameraOffsets)
+fixedCamFolder.add(fixedCameraParams, 'hoodX',   -3, 3).step(0.01).name('Hood X').onChange(applyFixedCameraOffsets)
+fixedCamFolder.add(fixedCameraParams, 'hoodY',   -1, 3).step(0.01).name('Hood Y').onChange(applyFixedCameraOffsets)
+fixedCamFolder.add(fixedCameraParams, 'hoodZ',   -3, 8).step(0.01).name('Hood Z').onChange(applyFixedCameraOffsets)
+fixedCamFolder.add(fixedCameraParams, 'sideX',   -3, 3).step(0.01).name('Side X').onChange(applyFixedCameraOffsets)
+fixedCamFolder.add(fixedCameraParams, 'sideY',   -1, 3).step(0.01).name('Side Y').onChange(applyFixedCameraOffsets)
+fixedCamFolder.add(fixedCameraParams, 'sideZ',   -3, 8).step(0.01).name('Side Z').onChange(applyFixedCameraOffsets)
 fixedCamFolder.close()
 
 window.bindCameraSwitcherToGui = (cameraSwitcher) => {
   boundCameraSwitcher = cameraSwitcher
   const offsets = boundCameraSwitcher.getFixedCameraOffsets?.()
-  if (offsets?.bumper && offsets?.side) {
-    fixedCameraParams.bumperX = offsets.bumper.x
-    fixedCameraParams.bumperY = offsets.bumper.y
-    fixedCameraParams.bumperZ = offsets.bumper.z
-    fixedCameraParams.sideX = offsets.side.x
-    fixedCameraParams.sideY = offsets.side.y
-    fixedCameraParams.sideZ = offsets.side.z
-    for (const controller of fixedCamFolder.__controllers) {
-      controller.updateDisplay()
-    }
+  if (offsets) {
+    if (offsets.bumper) { fixedCameraParams.bumperX = offsets.bumper.x; fixedCameraParams.bumperY = offsets.bumper.y; fixedCameraParams.bumperZ = offsets.bumper.z }
+    if (offsets.hood)   { fixedCameraParams.hoodX   = offsets.hood.x;   fixedCameraParams.hoodY   = offsets.hood.y;   fixedCameraParams.hoodZ   = offsets.hood.z }
+    if (offsets.side)   { fixedCameraParams.sideX   = offsets.side.x;   fixedCameraParams.sideY   = offsets.side.y;   fixedCameraParams.sideZ   = offsets.side.z }
+    for (const controller of fixedCamFolder.__controllers) controller.updateDisplay()
   }
   applyFixedCameraOffsets()
 }

@@ -375,9 +375,15 @@ class CameraSwitcher {
       new THREE.Vector3(0.5, 0.3, 2),         // look slightly ahead of car center
       'Side Cam'
     )
+    // Hood cam: top of the hood, looking forward
+    this.hood = new CameraFixed(
+      new THREE.Vector3(0, 0.8, 0.5),      // center of hood
+      new THREE.Vector3(0, 0.7, 10),          // look far ahead
+      'Hood Cam'
+    )
 
     // Ordered list of controllers; index drives everything.
-    this.controllers = [this.follow, this.helicopter, this.orbit, this.bumper, this.side]
+    this.controllers = [this.follow, this.helicopter, this.orbit, this.bumper, this.hood, this.side]
     this._activeIndex = 0
     this.createUI()
   }
@@ -398,16 +404,19 @@ class CameraSwitcher {
 
   getFixedCameraOffsets() {
     const bumper = this.bumper.getOffset()
-    const side = this.side.getOffset()
+    const hood   = this.hood.getOffset()
+    const side   = this.side.getOffset()
     return {
       bumper: { x: bumper.x, y: bumper.y, z: bumper.z },
-      side: { x: side.x, y: side.y, z: side.z },
+      hood:   { x: hood.x,   y: hood.y,   z: hood.z },
+      side:   { x: side.x,   y: side.y,   z: side.z },
     }
   }
 
   setFixedCameraOffset(name, x, y, z) {
     if (name === 'bumper') this.bumper.setOffset(x, y, z)
-    if (name === 'side') this.side.setOffset(x, y, z)
+    if (name === 'hood')   this.hood.setOffset(x, y, z)
+    if (name === 'side')   this.side.setOffset(x, y, z)
   }
 
   createUI() {
@@ -437,7 +446,7 @@ class CameraSwitcher {
     this.controllers.forEach((controller, i) => {
       const option = document.createElement('option')
       option.value = i
-      option.textContent = controller.label
+      option.textContent = `${i + 1}. ${controller.label}`
       option.style.cssText = 'background: #222; color: #fff;'
       this.select.appendChild(option)
     })
@@ -448,10 +457,17 @@ class CameraSwitcher {
     this.panel.appendChild(this.select)
     document.body.appendChild(this.panel)
 
-    // Cycle camera modes on C key
     this._onKeyDown = (e) => {
-      if (e.code === 'KeyC' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
+      // C cycles to next camera
+      if (e.code === 'KeyC') {
         this.setController((this._activeIndex + 1) % this.controllers.length)
+      }
+      // 1–9 selects camera by index
+      const digit = e.code.match(/^Digit(\d)$/)?.[1]
+      if (digit !== undefined) {
+        const i = Number(digit) - 1
+        if (i >= 0 && i < this.controllers.length) this.setController(i)
       }
     }
     window.addEventListener('keydown', this._onKeyDown)
