@@ -27,11 +27,13 @@ class CameraFollow {
 
   activate(camera, target) {
     if (!target) return;
-    // Sync internal state from current camera/target so there's no snap on switch.
+    // Sync internal state from target so there's no snap on switch.
     this.smoothLastPos.copy(target.position);
     this.smoothVelocity.copy(target.getWorldDirection(new THREE.Vector3())).multiplyScalar(2.0);
-    this.smoothTargetAngle = target.rotation.y;
-    this.selfRotationAngle = camera.rotation.y;
+    // Derive yaw from the car's forward vector — reliable regardless of camera state.
+    const forward = target.getWorldDirection(new THREE.Vector3())
+    this.smoothTargetAngle = Math.atan2(forward.x, forward.z)
+    this.selfRotationAngle = this.smoothTargetAngle;
     this.selfHeight = target.position.y + this.height;
   }
 
@@ -326,68 +328,32 @@ class CameraOrbit {
 class CameraFixed {
   constructor(offset, lookAtOffset, label = '') {
     this.label = label
-
     // Local-space offset from the car's position
     this.offset = offset.clone()
     // Local-space point to look at, relative to the car
     this.lookAtOffset = lookAtOffset.clone()
-
-    // Mount object parented to the car; camera is parented to this mount.
-    this._mount = new THREE.Object3D()
-    this._restoreParent = null
-    this._applyLocalTransform()
-  }
-
-  _applyLocalTransform() {
-    this._mount.position.copy(this.offset)
-    // Use matrix lookAt so the up axis is always Y (avoids upside-down roll from setFromUnitVectors).
-    const m = new THREE.Matrix4()
-    m.lookAt(this.offset, this.lookAtOffset, new THREE.Vector3(0, 1, 0))
-    this._mount.quaternion.setFromRotationMatrix(m)
   }
 
   setOffset(x, y, z) {
     this.offset.set(x, y, z)
-    this._applyLocalTransform()
   }
 
   getOffset() {
     return this.offset.clone()
   }
 
-  activate(camera, target) {
-    if (!camera || !target) return
-    if (camera.parent === this._mount && this._mount.parent === target) return
-
-    if (!this._restoreParent) {
-      this._restoreParent = camera.parent || null
-    }
-
-    // Keep mount attached to the current target.
-    if (this._mount.parent !== target) {
-      if (this._mount.parent) this._mount.parent.remove(this._mount)
-      target.add(this._mount)
-    }
-
-    // Keep local mount transform in sync with current offsets.
-    this._applyLocalTransform()
-
-    // Parent camera to mount so scene graph handles all motion/roll.
-    this._mount.add(camera)
-    camera.position.set(0, 0, 0)
-    camera.quaternion.identity()
-  }
-
-  deactivate(camera) {
-    if (!camera) return
-    if (camera.parent !== this._mount) return
-    if (this._restoreParent) {
-      this._restoreParent.attach(camera)
-    }
-  }
-
   update(camera, target, deltaTime) {
-    // No-op: camera transform is fully driven by scene graph while attached.
+    if (!target) return
+
+    // Rotate local offset into world space using car's full quaternion (preserves roll).
+    const worldPos = this.offset.clone().applyQuaternion(target.quaternion)
+    camera.position.copy(target.position).add(worldPos)
+
+    // Build camera orientation using car's up axis so roll is inherited.
+    const worldLookAt = this.lookAtOffset.clone().applyQuaternion(target.quaternion).add(target.position)
+    const worldUp = new THREE.Vector3(0, 1, 0).applyQuaternion(target.quaternion)
+    const m = new THREE.Matrix4().lookAt(camera.position, worldLookAt, worldUp)
+    camera.quaternion.setFromRotationMatrix(m)
   }
 }
 
