@@ -90,11 +90,35 @@ class Vehicle {
 
     this.decals = new THREE.Group()
     scene.add(this.decals)
+
+    this.smokeTexture = this.createSmokeTexture()
+    this.smokeMaterial = new THREE.SpriteMaterial({
+      map: this.smokeTexture,
+      color: 0xcccccc,
+      transparent: true,
+      opacity: 0.35,
+      depthWrite: false,
+    })
+    this.smokeParticles = []
     
     // Initialize replay recorder and start recording immediately
     this.recorder = new ReplayRecorder()
     this.recorder.start()
     console.log('Vehicle: Auto-recording started on car load')
+  }
+
+  createSmokeTexture() {
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 64
+    const context = canvas.getContext('2d')
+    const gradient = context.createRadialGradient(32, 32, 4, 32, 32, 32)
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.55)')
+    gradient.addColorStop(0.45, 'rgba(190, 190, 190, 0.22)')
+    gradient.addColorStop(1, 'rgba(120, 120, 120, 0)')
+    context.fillStyle = gradient
+    context.fillRect(0, 0, 64, 64)
+    return new THREE.CanvasTexture(canvas)
   }
 
   applyPushForce() {
@@ -115,16 +139,20 @@ class Vehicle {
       this.steeringSensitivity = vehicleParams.steeringSensitivity;
     }
     
-    // this.applyPushForce()
+    const dt = 1/60;  // Assuming 60fps, ideally get this from the physics world
+    this.wheels[this.BACK_LEFT].update(dt, this.engineForce, this.brakingForce)
+    this.wheels[this.BACK_RIGHT].update(dt, this.engineForce, this.brakingForce)
+    this.wheels[this.BACK_LEFT].gui()
+
     let tm, p, q, i
     const n = this.vehicle.getNumWheels()
     for (i = 0; i < n; i++) {
-      // this.vehicle.updateWheelTransform(i, true) // This causes jitter
       tm = this.vehicle.getWheelTransformWS(i)
       p = tm.getOrigin()
       q = tm.getRotation()
       this.wheelMeshes[i].position.set(p.x(), p.y(), p.z())
       this.wheelMeshes[i].quaternion.set(q.x(), q.y(), q.z(), q.w())
+      this.wheelMeshes[i].rotateX(-this.wheels[i].extraRotation)
       this.wheelMeshes[i].rotateY(Math.PI)
     }
 
@@ -141,47 +169,7 @@ class Vehicle {
     // Update speed display in dat.gui
     vehicleParams.speed = speed
 
-    // Update wheel physics
-    const dt = 1/60;  // Assuming 60fps, ideally get this from the physics world
-
-    this.wheels[this.BACK_LEFT].update(dt, this.engineForce, this.brakingForce, inputs)
-    this.wheels[this.BACK_RIGHT].update(dt, this.engineForce, this.brakingForce, inputs)
-    this.wheels[this.BACK_RIGHT].gui()
-
-
-    // this.applyTorqueSteering()
-
-    // this.wheels[this.FRONT_LEFT].update(dt, this.engineForce, this.brakingForce)
-    // this.wheels[this.FRONT_RIGHT].update(dt, this.engineForce, this.brakingForce)
-    
-    // this.wheels.forEach((wheel, index) => {
-      
-    //   // Get engine force for this wheel
-    //   let engineForce = 0;
-    //   if (index === this.BACK_LEFT || index === this.BACK_RIGHT) {
-    //     engineForce = this.engineForce;
-    //   }
-      
-      
-      // Update wheel physics
-      // if (false && 
-      //   index === this.BACK_RIGHT
-      //    || 
-      //   index === this.BACK_LEFT
-      //   ) {
-      //   // wheel.applyDebugForce()
-      //   // return;
-      //   wheel.update(
-      //     dt,
-      //     engineForce,
-      //     this.brakingForce,
-      //   );
-
-      //   vehicleParams.wheelSpinVelocity = wheel.angularVelocity;
-      //   vehicleParams.wheelDeltaRotation = wheel.wheelInfo.m_deltaRotation;
-      // }
-    // });
-
+    this.updateSmoke(dt)
     this.updateSound()
   }
 
@@ -203,6 +191,75 @@ class Vehicle {
       const pitch = minPitch + (maxPitch - minPitch) * (speed / 100)
       this.chassis.engineSound.setPlaybackRate(Math.min(maxPitch, Math.max(minPitch, pitch)))
     }
+  }
+
+  updateSmoke(dt) {
+    if (params.smokeEnabled) {
+      this.emitSmoke(this.wheels[this.BACK_LEFT], dt)
+      this.emitSmoke(this.wheels[this.BACK_RIGHT], dt)
+    }
+
+    for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
+      const particle = this.smokeParticles[i]
+      particle.userData.age += dt
+      const progress = particle.userData.age / particle.userData.life
+      if (progress >= 1) {
+        this.removeSmokeParticle(i)
+        continue
+      }
+
+      particle.position.addScaledVector(particle.userData.velocity, dt)
+      particle.material.opacity = particle.userData.opacity * (1 - progress)
+      const scale = particle.userData.startScale * (1 + progress * 2.5)
+      particle.scale.set(scale, scale, scale)
+    }
+
+    while (this.smokeParticles.length > params.maxSmokeParticles) {
+      this.removeSmokeParticle(0)
+    }
+  }
+
+  emitSmoke(wheel, dt) {
+    const intensity = wheel.getSmokeIntensity()
+    if (intensity <= 0) return
+
+    wheel.smokeAccumulator += intensity * params.smokeRate * dt
+    while (wheel.smokeAccumulator >= 1) {
+      this.spawnSmokeParticle(wheel, intensity)
+      wheel.smokeAccumulator -= 1
+    }
+  }
+
+  spawnSmokeParticle(wheel, intensity) {
+    const contactPoint = wheel.getContactPoint()
+    const particle = new THREE.Sprite(this.smokeMaterial.clone())
+    const size = 0.25 + intensity * 0.35 + Math.random() * 0.1
+    const chassisVelocity = this.chassis.body.ammo.getLinearVelocity()
+
+    particle.position.set(contactPoint.x(), contactPoint.y() + 0.08, contactPoint.z())
+    particle.scale.set(size, size, size)
+    particle.material.opacity = 0.2 + intensity * 0.25
+    particle.userData = {
+      age: 0,
+      life: 0.65 + intensity * 0.8 + Math.random() * 0.25,
+      opacity: particle.material.opacity,
+      startScale: size,
+      velocity: new THREE.Vector3(
+        (Math.random() - 0.5) * 0.45 + chassisVelocity.x() * 0.02,
+        0.6 + Math.random() * 0.5,
+        (Math.random() - 0.5) * 0.45 + chassisVelocity.z() * 0.02
+      ),
+    }
+
+    this.scene.add(particle)
+    this.smokeParticles.push(particle)
+  }
+
+  removeSmokeParticle(index) {
+    const particle = this.smokeParticles[index]
+    this.scene.remove(particle)
+    particle.material.dispose()
+    this.smokeParticles.splice(index, 1)
   }
 
   debugRaycast(start) {
@@ -257,6 +314,15 @@ class Vehicle {
   updateControls(inputs) {
     // Apply forces based on input controls
     this.engineForce = this.maxEngineForce * (inputs.throttle - inputs.brake);
+    if (params.tractionControl && this.engineForce > 0 && this.wheels.length) {
+      const rearSlip = (
+        Math.abs(this.wheels[this.BACK_LEFT].slipRatio) +
+        Math.abs(this.wheels[this.BACK_RIGHT].slipRatio)
+      ) * 0.5
+      const slipOverLimit = Math.max(0, rearSlip - params.tcSlipLimit)
+      const cut = Math.min(params.tcMaxCut, slipOverLimit * params.tcStrength)
+      this.engineForce *= 1 - cut
+    }
     
     // Apply steering with sensitivity adjustment
     const adjustedSteeringIncrement = this.steeringIncrement * this.steeringSensitivity;

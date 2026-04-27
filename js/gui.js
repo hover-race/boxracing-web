@@ -76,6 +76,19 @@ const params = {
   sideForceMultiplier: 1,
   asdf: 8000,
   analogControls: true,
+  tractionControl: false,
+  tcSlipLimit: 0.25,
+  tcStrength: 2,
+  tcMaxCut: 0.75,
+  wheelSpinTorqueScale: 0.06,
+  wheelBrakeDrag: 0.08,
+  wheelSpinGrip: 4,
+  airWheelSpinGrip: 0.5,
+  maxExtraWheelAngularVelocity: 180,
+  smokeEnabled: true,
+  smokeSlipThreshold: 0.25,
+  smokeRate: 45,
+  maxSmokeParticles: 160,
   // Initialize player name with 12-char limit
   playerName: (() => {
     const name = localStorage.getItem('playerName') || generateDefaultPlayerName();
@@ -99,6 +112,18 @@ const params = {
 
 gui.add(params, 'offlinePlay').name('Offline Play')
 gui.add(params, 'updateCamera')
+
+const tractionFolder = gui.addFolder('Traction / Slip')
+tractionFolder.add(params, 'tractionControl').name('Traction Control')
+tractionFolder.add(params, 'tcSlipLimit', 0.05, 1).step(0.01).name('TC Slip Limit')
+tractionFolder.add(params, 'tcStrength', 0, 8).step(0.1).name('TC Strength')
+tractionFolder.add(params, 'tcMaxCut', 0, 1).step(0.01).name('TC Max Cut')
+tractionFolder.add(params, 'wheelSpinTorqueScale', 0, 0.2).step(0.001).name('Spin Torque')
+tractionFolder.add(params, 'wheelSpinGrip', 0, 20).step(0.1).name('Spin Grip')
+tractionFolder.add(params, 'smokeEnabled').name('Smoke')
+tractionFolder.add(params, 'smokeSlipThreshold', 0.05, 1).step(0.01).name('Smoke Slip')
+tractionFolder.add(params, 'smokeRate', 0, 120).step(1).name('Smoke Rate')
+tractionFolder.close()
 
 // Add volume control
 const volumeController = gui.add(params, 'volume', 0, 1).name('Volume')
@@ -155,6 +180,7 @@ tiltSteeringController.onChange((value) => {
 const vehicleParams = {
   speed: 0, // Will be updated from code
   slipRatio: 0,
+  rearLeftSlipRatio: 0,
   slipAngle: 0,
   sideForceScalar: 0,
   isSlipping: false,
@@ -176,6 +202,9 @@ const speedController = debugFolder.add(vehicleParams, 'speed', 0, 200)
 debugFolder.add(vehicleParams, 'sideForceScalar', -2000, 2000).listen()
 debugFolder.add(vehicleParams, 'forwardForceScalar', -4000, 4000).listen()
 debugFolder.add(vehicleParams, 'slipAngle', -20, 20).step(0.1).listen()
+debugFolder.add(vehicleParams, 'rearLeftSlipRatio', -1, 1).step(0.01).name('Rear Left Slip').listen()
+debugFolder.add(vehicleParams, 'isSlipping').name('Rear Left Slipping').listen()
+debugFolder.add(vehicleParams, 'wheelSpinVelocity', -200, 200).step(0.1).name('Extra Spin').listen()
 
 const slipRatioController = debugFolder.add(vehicleParams, 'slipRatio', -1, 1).step(0.01)
 slipRatioController.listen() // Makes it read-only and updates when value changes
