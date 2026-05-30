@@ -189,19 +189,36 @@ class Wheel {
     this.normalForce = normalForce
     this.maxSide = maxSide
 
-    // Longitudinal: spring on slip ratio + damping on slip velocity,
-    // bounded by the forward grip ceiling.
-    const slipVelocity = this.angularVelocity * this.radius - forwardSpeed
-    const longSpring = Math.tanh(this.slipRatio * params.tireLongitudinalStiffness) * maxForward
-    const longDamping = slipVelocity * params.tireSlipDamping
-    let forwardForce = this.clamp(longSpring + longDamping, -maxForward, maxForward)
+    const driveTorque = this.getDriveTorque(engineForce)
+    const brakeTorque = this.getBrakeTorque(brakeForce)
+    const c = params.tireSlipDamping
+    const r = this.radius
+    const I = params.wheelInertia
+    const fwdLimit = Math.abs(maxForward)
+
+    // Longitudinal: a stiff coupling drives the wheel toward the rolling condition
+    // (omega*r == forwardSpeed). Solve it implicitly so it is unconditionally stable
+    // (an explicit step with this stiffness overshoots and bang-bangs at the grip
+    // limit). If the required force exceeds the friction limit the tire is sliding,
+    // so clamp the force and integrate the wheel spin explicitly under the net torque.
+    let omegaNext =
+      (this.angularVelocity + dt / I * (driveTorque + brakeTorque + c * r * forwardSpeed)) /
+      (1 + dt * c * r * r / I)
+    let forwardForce = c * (omegaNext * r - forwardSpeed)
+    if (Math.abs(forwardForce) > fwdLimit) {
+      forwardForce = this.clamp(forwardForce, -fwdLimit, fwdLimit)
+      omegaNext = this.angularVelocity + dt / I * (driveTorque + brakeTorque - forwardForce * r)
+    }
+    this.angularVelocity = this.clamp(omegaNext, -params.maxWheelAngularVelocity, params.maxWheelAngularVelocity)
+    this.rotation += this.angularVelocity * dt
 
     // Side: opposes slip along the steered axle, bounded by the side grip ceiling.
-    let sideForce = this.clamp(-Math.tanh(lateralSpeed * params.tireLateralStiffness) * maxSide, -maxSide, maxSide)
+    const sideLimit = Math.abs(maxSide)
+    let sideForce = this.clamp(-Math.tanh(lateralSpeed * params.tireLateralStiffness) * maxSide, -sideLimit, sideLimit)
 
-    if (maxForward > 0 && maxSide > 0) {
-      const ex = sideForce / maxSide
-      const ey = forwardForce / maxForward
+    if (fwdLimit > 0 && sideLimit > 0) {
+      const ex = sideForce / sideLimit
+      const ey = forwardForce / fwdLimit
       const load = Math.sqrt(ex * ex + ey * ey)
       if (load > 1) {
         forwardForce /= load
@@ -210,14 +227,7 @@ class Wheel {
     }
 
     this.applyTireForce(forwardDir, forwardForce, sideDir, sideForce)
-
-    const tireTorque = -forwardForce * this.radius
-    const driveTorque = this.getDriveTorque(engineForce)
-    const brakeTorque = this.getBrakeTorque(brakeForce)
-    this.torque = driveTorque + brakeTorque + tireTorque
-    this.angularVelocity += this.torque / params.wheelInertia * dt
-    this.angularVelocity = this.clamp(this.angularVelocity, -params.maxWheelAngularVelocity, params.maxWheelAngularVelocity)
-    this.rotation += this.angularVelocity * dt
+    this.torque = driveTorque + brakeTorque - forwardForce * r
     this.isSlipping = Math.abs(this.slipRatio) >= params.smokeSlipThreshold
   }
 

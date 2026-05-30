@@ -227,7 +227,11 @@ export class MainScene extends Scene3D {
   update(time, deltaTime) {
     if (!params.runPhysics) return
 
-    this.car.update(inputControls);
+    const vehicleInputs = {
+      ...inputControls,
+      throttle: Math.max(0, Math.min(1, inputControls.throttle + params.throttleInput)),
+    }
+    this.car.update(vehicleInputs);
     this.car.updateTireMarks();
     
     // Record replay data
