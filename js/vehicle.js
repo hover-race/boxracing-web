@@ -10,6 +10,8 @@ class Vehicle {
   engineForce = 0
   vehicleSteering = 0
   breakingForce = 0
+  footBrake = 0
+  handBrake = 0
 
   steeringIncrement = 0.04
   steeringClamp = 0.3
@@ -75,7 +77,7 @@ class Vehicle {
     this.wheels = this.wheelMeshes.map((mesh, index) => {
       const wheelInfo = this.vehicle.getWheelInfo(index);
       const radius = index < 2 ? wheelRadiusFront : wheelRadiusBack;
-      return new Wheel(this.chassis.body.ammo, wheelInfo, radius);
+      return new Wheel(this.chassis.body.ammo, wheelInfo, radius, this.vehicle, index);
     });
 
     // Initialize decal system
@@ -124,9 +126,13 @@ class Vehicle {
     }
     
     const dt = 1/60;  // Assuming 60fps, ideally get this from the physics world
-    this.wheels[this.BACK_LEFT].update(dt, this.engineForce, this.brakingForce)
-    this.wheels[this.BACK_RIGHT].update(dt, this.engineForce, this.brakingForce)
-    this.wheels[this.BACK_LEFT].gui()
+    const frontBrake = this.footBrake
+    const rearBrake = this.footBrake + this.handBrake
+    this.wheels[this.FRONT_LEFT].update(dt, 0, frontBrake)
+    this.wheels[this.FRONT_RIGHT].update(dt, 0, frontBrake)
+    this.wheels[this.BACK_LEFT].update(dt, this.engineForce, rearBrake)
+    this.wheels[this.BACK_RIGHT].update(dt, this.engineForce, rearBrake)
+    this.wheels[this.FRONT_LEFT].gui()
 
     let tm, p, q, i
     const n = this.vehicle.getNumWheels()
@@ -136,9 +142,7 @@ class Vehicle {
       q = tm.getRotation()
       this.wheelMeshes[i].position.set(p.x(), p.y(), p.z())
       this.wheelMeshes[i].quaternion.set(q.x(), q.y(), q.z(), q.w())
-      if (i === this.BACK_LEFT || i === this.BACK_RIGHT) {
-        this.wheelMeshes[i].rotateX(-(this.wheels[i].rotation - this.wheels[i].wheelInfo.m_rotation))
-      }
+      this.wheelMeshes[i].rotateX(-(this.wheels[i].rotation - this.wheels[i].wheelInfo.m_rotation))
       this.wheelMeshes[i].rotateY(Math.PI)
     }
 
@@ -180,7 +184,7 @@ class Vehicle {
   }
 
   updateSmoke(dt) {
-    if (params.smokeEnabled && params.explosionEnabled) {
+    if (params.smokeEnabled) {
       this.emitSmoke(this.wheels[this.BACK_LEFT], dt)
       this.emitSmoke(this.wheels[this.BACK_RIGHT], dt)
     }
@@ -296,7 +300,7 @@ class Vehicle {
     wheelInfo.set_m_wheelsDampingRelaxation(suspensionDampingRelaxation)
     wheelInfo.set_m_wheelsDampingCompression(suspensionDampingCompression)
 
-    wheelInfo.set_m_frictionSlip(params.tireGrip)
+    wheelInfo.set_m_frictionSlip(0)
     wheelInfo.set_m_rollInfluence(1)
 
     this.wheelMeshes.push(wheelMesh)
@@ -304,8 +308,10 @@ class Vehicle {
   }
 
   updateControls(inputs) {
+    // The JS tire model handles all longitudinal and lateral grip, so Bullet
+    // contributes no wheel friction of its own (suspension + raycast only).
     for (const wheel of this.wheels) {
-      wheel.wheelInfo.set_m_frictionSlip(params.tireGrip)
+      wheel.wheelInfo.set_m_frictionSlip(0)
     }
 
     // Apply forces based on input controls
@@ -334,24 +340,22 @@ class Vehicle {
       this.vehicleSteering = targetSteering;
     }
 
-    // Apply handbrake
-    this.brakingForce = inputs.handbrake * this.maxBrakingForce;
+    // Brakes are applied as brake torque inside the JS wheel model. Foot brake
+    // hits all four wheels; handbrake adds extra torque to the rears only.
+    this.footBrake = inputs.brake * 100;
+    this.handBrake = inputs.handbrake * 100;
 
-    // Apply forces to wheels
+    // Bullet only provides steering geometry now; drive and brake are JS-side.
     this.vehicle.applyEngineForce(0, this.BACK_LEFT);
     this.vehicle.applyEngineForce(0, this.BACK_RIGHT);
 
     this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_LEFT);
     this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_RIGHT);
 
-    // Foot brake clamps all four wheels through Bullet so the chassis can be
-    // held in place. Combined with throttle this lets the rear tires spin up
-    // against a stationary car for a burnout.
-    const footBrake = inputs.brake * params.footBrakeForce;
-    this.vehicle.setBrake(footBrake, this.FRONT_LEFT);
-    this.vehicle.setBrake(footBrake, this.FRONT_RIGHT);
-    this.vehicle.setBrake(footBrake, this.BACK_LEFT);
-    this.vehicle.setBrake(footBrake, this.BACK_RIGHT);
+    this.vehicle.setBrake(0, this.FRONT_LEFT);
+    this.vehicle.setBrake(0, this.FRONT_RIGHT);
+    this.vehicle.setBrake(0, this.BACK_LEFT);
+    this.vehicle.setBrake(0, this.BACK_RIGHT);
   }
 
   getSpeed() {
