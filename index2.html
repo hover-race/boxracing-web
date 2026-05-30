@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <!-- Twitter Card Metadata -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Box Racing" />
+    <meta name="twitter:description" content="A multiplayer 3D racing game" />
+    <meta name="twitter:image" content="./assets/img/demo.png" />
+    <!-- Open Graph Metadata (for Facebook, LinkedIn, etc.) -->
+    <meta property="og:title" content="Box Racing" />
+    <meta property="og:description" content="A multiplayer 3D racing game" />
+    <meta property="og:image" content="./assets/img/demo.png" />
+    <meta property="og:type" content="website" />
+    <!-- Emoji Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚘</text></svg>">
+    <link rel="stylesheet" href="style.css">
+    <title>Box Racing</title>
+    <script src="lib/enable3d.framework.0.25.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.2/nipplejs.min.js"></script>
+  </head>
+
+  <body>
+    <!-- <div id="info-text">Car using Raycast Vehicle<br />WASD and SPACE</div> -->
+    <div id="top-left-controls">
+      <div id="connection-status" class="status-connecting">Connecting...</div>
+      <button id="create-server-btn">Create Server</button>
+    </div>
+    <div id="speedometer" style="position: fixed; bottom: 20px; left: 20px; color: white; font-family: monospace; font-size: 34px;">0 mph</div>
+    <!-- <div id="lap-info-container" style="position: fixed; top: 20px; right: 20px; padding: 15px; background: rgba(0, 0, 0, 0.7); color: white; font-family: monospace; font-size: 18px; border-radius: 8px; text-align: right; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); z-index: 1000; min-width: 200px;">
+      <div style="font-weight: bold; margin-bottom: 8px; font-size: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.3); padding-bottom: 5px;">🏁 LAP TIMES</div>
+      <div id="lap-count" style="margin: 3px 0;">Lap: 0</div>
+      <div id="current-lap-time" style="margin: 3px 0;">Current: 0:00.000</div>
+      <div id="best-lap-time" style="margin: 3px 0; font-weight: bold;">Best: --:--.---</div>
+    </div> -->
+    <div id="joystick-zone" style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); width: 120px; height: 120px;"></div>
+    
+    <!-- Replay Controls -->
+    <div id="replay-controls" style="position: fixed; bottom: 20px; right: 20px; background: linear-gradient(145deg, #2a2a2a, #1a1a1a); border-radius: 15px; padding: 15px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5); border: 2px solid #444; font-family: 'Courier New', monospace;">
+      <div style="display: flex; justify-content: center; gap: 12px; align-items: center;">
+        <button id="rewind-back-btn" style="background: linear-gradient(145deg, #444, #333); border: 1px solid #666; color: #fff; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; font-size: 18px; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">⏪</button>
+        <button id="play-replay-btn" style="background: linear-gradient(145deg, #4ecdc4, #44a08d); border: 1px solid #5dd5c4; color: #fff; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; font-size: 20px; transition: all 0.2s ease; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);">▶</button>
+        <button id="pause-replay-btn" style="background: linear-gradient(145deg, #ffa726, #ff9800); border: 1px solid #ffb74d; color: #fff; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; font-size: 20px; transition: all 0.2s ease; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4); display: none;">⏸</button>
+        <button id="rewind-forward-btn" style="background: linear-gradient(145deg, #444, #333); border: 1px solid #666; color: #fff; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; font-size: 18px; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">⏩</button>
+      </div>
+    </div>
+    <script src="js/curves.js"></script>
+    <script src="js/gui.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+      /* Replay Controls Button Hover Effects */
+      #replay-controls button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4) !important;
+      }
+      
+      #replay-controls button:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+      }
+      
+      #play-replay-btn:hover {
+        background: linear-gradient(145deg, #5dd5c4, #4ecdc4) !important;
+      }
+      
+      #pause-replay-btn:hover {
+        background: linear-gradient(145deg, #ffb74d, #ffa726) !important;
+      }
+      
+      #rewind-back-btn:hover, #rewind-forward-btn:hover {
+        background: linear-gradient(145deg, #555, #444) !important;
+      }
+    </style>
+
+    <script>
+      // Make ENABLE3D objects available globally before modules load
+      const { Project, Scene3D, PhysicsLoader, THREE } = ENABLE3D;
+      window.THREE = THREE;
+      window.Scene3D = Scene3D;
+      window.Project = Project;
+      window.PhysicsLoader = PhysicsLoader;
+    </script>
+
+    <script type="module">
+      import { MainScene } from './js/mainScene.js';
+      
+      PhysicsLoader('lib/ammo/kripken', () => new Project({ scenes: [MainScene], antialias: true }))
+    </script>
+
+    <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+
+  </body>
+</html>

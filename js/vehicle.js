@@ -180,7 +180,7 @@ class Vehicle {
   }
 
   updateSmoke(dt) {
-    if (params.smokeEnabled) {
+    if (params.smokeEnabled && params.explosionEnabled) {
       this.emitSmoke(this.wheels[this.BACK_LEFT], dt)
       this.emitSmoke(this.wheels[this.BACK_RIGHT], dt)
     }
@@ -309,7 +309,9 @@ class Vehicle {
     }
 
     // Apply forces based on input controls
-    this.engineForce = this.maxEngineForce * (inputs.throttle - inputs.brake);
+    // Throttle drives the rear tires independently of the brake so you can
+    // hold the foot brake and gas at the same time (burnout / left-foot braking).
+    this.engineForce = this.maxEngineForce * inputs.throttle;
     if (params.tractionControl && this.engineForce > 0 && this.wheels.length) {
       const rearSlip = (
         Math.abs(this.wheels[this.BACK_LEFT].slipRatio) +
@@ -342,10 +344,14 @@ class Vehicle {
     this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_LEFT);
     this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_RIGHT);
 
-    this.vehicle.setBrake(0, this.FRONT_LEFT);
-    this.vehicle.setBrake(0, this.FRONT_RIGHT);
-    this.vehicle.setBrake(0, this.BACK_LEFT);
-    this.vehicle.setBrake(0, this.BACK_RIGHT);
+    // Foot brake clamps all four wheels through Bullet so the chassis can be
+    // held in place. Combined with throttle this lets the rear tires spin up
+    // against a stationary car for a burnout.
+    const footBrake = inputs.brake * params.footBrakeForce;
+    this.vehicle.setBrake(footBrake, this.FRONT_LEFT);
+    this.vehicle.setBrake(footBrake, this.FRONT_RIGHT);
+    this.vehicle.setBrake(footBrake, this.BACK_LEFT);
+    this.vehicle.setBrake(footBrake, this.BACK_RIGHT);
   }
 
   getSpeed() {

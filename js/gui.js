@@ -83,6 +83,7 @@ const params = {
   wheelInertia: 1.2,
   engineTorque: 700,
   brakeTorque: 450,
+  footBrakeForce: 200,
   tireLongitudinalStiffness: 12,
   tireSlipDamping: 450,
   maxWheelAngularVelocity: 220,
@@ -117,6 +118,7 @@ gui.remember(params)
 
 gui.add(params, 'offlinePlay').name('Offline Play')
 gui.add(params, 'updateCamera')
+gui.add(params, 'explosionEnabled')
 
 const tractionFolder = gui.addFolder('Traction / Slip')
 tractionFolder.add(params, 'tractionControl').name('Traction Control')
@@ -126,6 +128,7 @@ tractionFolder.add(params, 'tcMaxCut', 0, 1).step(0.01).name('TC Max Cut')
 tractionFolder.add(params, 'wheelInertia', 0.2, 5).step(0.1).name('Wheel Inertia')
 tractionFolder.add(params, 'engineTorque', 0, 3000).step(25).name('Engine Torque')
 tractionFolder.add(params, 'brakeTorque', 0, 2000).step(25).name('Brake Torque')
+tractionFolder.add(params, 'footBrakeForce', 0, 1000).step(10).name('Foot Brake Force')
 tractionFolder.add(params, 'tireLongitudinalStiffness', 1, 30).step(0.5).name('Long Stiffness')
 tractionFolder.add(params, 'tireSlipDamping', 0, 2000).step(25).name('Slip Damping')
 tractionFolder.add(params, 'maxWheelAngularVelocity', 20, 500).step(10).name('Max Wheel Speed')
@@ -206,6 +209,8 @@ const vehicleParams = {
   volume: volumeControl.volume, // Initialize with the volume control value
   steeringSensitivity: 1.0, // Default sensitivity multiplier
 }
+
+gui.add(vehicleParams, 'wheelSpinVelocity', -200, 200).step(0.1).name('Wheel Angular Speed').listen()
 
 tractionFolder.add(vehicleParams, 'slipValue', 0, 1).step(0.01).name('Slip').listen()
 
