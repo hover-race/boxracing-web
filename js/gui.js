@@ -47,7 +47,7 @@ const params = {
   maxWheelAngularVelocity: 220,
   gripForward: 2,
   gripSide: 2,
-  smokeEnabled: true,
+  smokeEnabled: false,
   smokeSlipThreshold: 0.25,
   smokeRate: 45,
   maxSmokeParticles: 160,
@@ -92,7 +92,7 @@ gui.useLocalStorage = true
 gui.remember(params)
 
 gui.add(params, 'gripForward', 0, 5).step(0.05)
-gui.add(params, 'gripSide', 0, 5).step(0.05)
+gui.add(params, 'gripSide', -2, 2).step(0.05)
 gui.add(params, 'smokeEnabled')
 
 // One-wheel readouts

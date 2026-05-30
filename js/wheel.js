@@ -90,11 +90,8 @@ class Wheel {
   }
 
   rotateVectorAroundAxis(vec, axis, angle) {
-    const q = new Ammo.btQuaternion(axis, angle)
-    const out = new Ammo.btVector3(vec.x(), vec.y(), vec.z())
-    out.rotate(q)
-    Ammo.destroy(q)
-    return out
+    // Ammo's btVector3.rotate takes (axis, angle) and returns a new vector.
+    return vec.rotate(axis, angle)
   }
 
   getWheelAxes() {
@@ -107,7 +104,8 @@ class Wheel {
 
     const directionWS = this.chassisLocalToWorld(directionCS)
     const sideWS = this.chassisLocalToWorld(axleCS)
-    const forwardWS = this.crossProduct(sideWS, directionWS)
+    const fwd = this.crossProduct(sideWS, directionWS)
+    const forwardWS = new Ammo.btVector3(-fwd.x(), -fwd.y(), -fwd.z())
 
     return { forwardWS, sideWS }
   }
@@ -210,19 +208,23 @@ class Wheel {
     this.slipAngle = Math.atan2(lateralSpeed, Math.abs(forwardSpeed) + 0.5)
 
     this.forwardSpeed = forwardSpeed
+    this.lateralSpeed = lateralSpeed
 
     const normalForce = this.getNormalForce()
     const maxForward = normalForce * params.gripForward
     const maxSide = normalForce * params.gripSide
+    this.normalForce = normalForce
+    this.maxSide = maxSide
 
-    // Longitudinal: spring on slip ratio + damping on slip velocity
+    // Longitudinal: spring on slip ratio + damping on slip velocity,
+    // bounded by the forward grip ceiling.
     const slipVelocity = this.angularVelocity * this.radius - forwardSpeed
     const longSpring = Math.tanh(this.slipRatio * params.tireLongitudinalStiffness) * maxForward
     const longDamping = slipVelocity * params.tireSlipDamping
-    let forwardForce = longSpring + longDamping
+    let forwardForce = this.clamp(longSpring + longDamping, -maxForward, maxForward)
 
-    // Side: opposes slip along the steered axle (width of friction ellipse)
-    let sideForce = -Math.tanh(lateralSpeed * params.tireLateralStiffness) * maxSide
+    // Side: opposes slip along the steered axle, bounded by the side grip ceiling.
+    let sideForce = this.clamp(-Math.tanh(lateralSpeed * params.tireLateralStiffness) * maxSide, -maxSide, maxSide)
 
     if (maxForward > 0 && maxSide > 0) {
       const ex = sideForce / maxSide
@@ -254,6 +256,20 @@ class Wheel {
   }
 
   gui() {
+    if (this.wheelIndex === 0) {
+      window.__wheelLog = window.__wheelLog || []
+      window.__wheelLog.push({
+        steerDeg: +(this.getSteeringAngle() * 180 / Math.PI).toFixed(2),
+        latSpeed: +(this.lateralSpeed ?? 0).toFixed(3),
+        slipAngleDeg: +(this.slipAngle * 180 / Math.PI).toFixed(2),
+        normalForce: +(this.normalForce ?? 0).toFixed(1),
+        maxSide: +(this.maxSide ?? 0).toFixed(1),
+        sideForce: +(this.sideForceScalar ?? 0).toFixed(1),
+        yawRate: +(this.vehicleRigidBody.getAngularVelocity().y()).toFixed(3),
+        inContact: this.isInContact(),
+      })
+      if (window.__wheelLog.length > 20) window.__wheelLog.shift()
+    }
     vehicleParams.slipRatio = this.slipRatio
     vehicleParams.slipValue = Math.abs(this.slipRatio)
     vehicleParams.rearLeftSlipRatio = this.slipRatio

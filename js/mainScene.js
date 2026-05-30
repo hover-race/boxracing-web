@@ -148,6 +148,8 @@ export class MainScene extends Scene3D {
     this.uiController = new UIController(this);
     this.uiController.setup();
     
+    this.setupDebugStepper()
+
     await this.setupNetwork()
     
     if (!params.offlinePlay && this.networkManager) {
@@ -156,7 +158,24 @@ export class MainScene extends Scene3D {
       })
       this.networkManager.addSender(this.carsender)
     }
+  }
 
+  setupDebugStepper() {
+    const FIXED_MS = 1000 / 60
+    window.__mainScene = this
+    window.__sim = {
+      pause: () => this.renderer.setAnimationLoop(null),
+      resume: () => this.renderer.setAnimationLoop(() => this._update()),
+      // Advance n fixed-dt frames while the loop is paused.
+      step: (n = 1) => {
+        for (let i = 0; i < n; i++) {
+          this.update(0, FIXED_MS)
+          this.physics.update(FIXED_MS)
+          this.physics.updateDebugger()
+        }
+        this.renderer.render(this.scene, this.camera)
+      },
+    }
   }
 
   log(a, b) {
