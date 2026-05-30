@@ -91,9 +91,7 @@ class Vehicle {
     this.decals = new THREE.Group()
     scene.add(this.decals)
 
-    this.smokeTexture = this.createSmokeTexture()
     this.smokeMaterial = new THREE.SpriteMaterial({
-      map: this.smokeTexture,
       color: 0xcccccc,
       transparent: true,
       opacity: 0.35,
@@ -105,20 +103,6 @@ class Vehicle {
     this.recorder = new ReplayRecorder()
     this.recorder.start()
     console.log('Vehicle: Auto-recording started on car load')
-  }
-
-  createSmokeTexture() {
-    const canvas = document.createElement('canvas')
-    canvas.width = 64
-    canvas.height = 64
-    const context = canvas.getContext('2d')
-    const gradient = context.createRadialGradient(32, 32, 4, 32, 32, 32)
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.55)')
-    gradient.addColorStop(0.45, 'rgba(190, 190, 190, 0.22)')
-    gradient.addColorStop(1, 'rgba(120, 120, 120, 0)')
-    context.fillStyle = gradient
-    context.fillRect(0, 0, 64, 64)
-    return new THREE.CanvasTexture(canvas)
   }
 
   applyPushForce() {
@@ -152,7 +136,9 @@ class Vehicle {
       q = tm.getRotation()
       this.wheelMeshes[i].position.set(p.x(), p.y(), p.z())
       this.wheelMeshes[i].quaternion.set(q.x(), q.y(), q.z(), q.w())
-      this.wheelMeshes[i].rotateX(-this.wheels[i].extraRotation)
+      if (i === this.BACK_LEFT || i === this.BACK_RIGHT) {
+        this.wheelMeshes[i].rotateX(-(this.wheels[i].rotation - this.wheels[i].wheelInfo.m_rotation))
+      }
       this.wheelMeshes[i].rotateY(Math.PI)
     }
 
@@ -235,19 +221,27 @@ class Vehicle {
     const particle = new THREE.Sprite(this.smokeMaterial.clone())
     const size = 0.25 + intensity * 0.35 + Math.random() * 0.1
     const chassisVelocity = this.chassis.body.ammo.getLinearVelocity()
+    const jitterRadius = 0.12 + intensity * 0.12
+    const shade = 0.55 + Math.random() * 0.25
 
-    particle.position.set(contactPoint.x(), contactPoint.y() + 0.08, contactPoint.z())
+    particle.position.set(
+      contactPoint.x() + (Math.random() - 0.5) * jitterRadius,
+      contactPoint.y() + 0.06 + Math.random() * 0.1,
+      contactPoint.z() + (Math.random() - 0.5) * jitterRadius
+    )
     particle.scale.set(size, size, size)
-    particle.material.opacity = 0.2 + intensity * 0.25
+    particle.material.color.setRGB(shade, shade, shade)
+    particle.material.rotation = Math.random() * Math.PI * 2
+    particle.material.opacity = 0.16 + intensity * 0.25 + Math.random() * 0.08
     particle.userData = {
       age: 0,
       life: 0.65 + intensity * 0.8 + Math.random() * 0.25,
       opacity: particle.material.opacity,
       startScale: size,
       velocity: new THREE.Vector3(
-        (Math.random() - 0.5) * 0.45 + chassisVelocity.x() * 0.02,
-        0.6 + Math.random() * 0.5,
-        (Math.random() - 0.5) * 0.45 + chassisVelocity.z() * 0.02
+        (Math.random() - 0.5) * (0.45 + intensity * 0.35) + chassisVelocity.x() * 0.02,
+        0.45 + Math.random() * 0.75,
+        (Math.random() - 0.5) * (0.45 + intensity * 0.35) + chassisVelocity.z() * 0.02
       ),
     }
 
@@ -302,16 +296,18 @@ class Vehicle {
     wheelInfo.set_m_wheelsDampingRelaxation(suspensionDampingRelaxation)
     wheelInfo.set_m_wheelsDampingCompression(suspensionDampingCompression)
 
-    wheelInfo.set_m_frictionSlip(1.5)
+    wheelInfo.set_m_frictionSlip(params.tireGrip)
     wheelInfo.set_m_rollInfluence(1)
-    // wheelInfo.set_m_wheelsSideFrictionStiffness(10)
-    // wheelInfo.set_m_frictionSlip(10)
 
     this.wheelMeshes.push(wheelMesh)
     this.scene.add(wheelMesh)
   }
 
   updateControls(inputs) {
+    for (const wheel of this.wheels) {
+      wheel.wheelInfo.set_m_frictionSlip(params.tireGrip)
+    }
+
     // Apply forces based on input controls
     this.engineForce = this.maxEngineForce * (inputs.throttle - inputs.brake);
     if (params.tractionControl && this.engineForce > 0 && this.wheels.length) {
@@ -340,16 +336,16 @@ class Vehicle {
     this.brakingForce = inputs.handbrake * this.maxBrakingForce;
 
     // Apply forces to wheels
-    this.vehicle.applyEngineForce(this.engineForce, this.BACK_LEFT);
-    this.vehicle.applyEngineForce(this.engineForce, this.BACK_RIGHT);
+    this.vehicle.applyEngineForce(0, this.BACK_LEFT);
+    this.vehicle.applyEngineForce(0, this.BACK_RIGHT);
 
     this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_LEFT);
     this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_RIGHT);
 
-    this.vehicle.setBrake(this.brakingForce, this.FRONT_LEFT);
-    this.vehicle.setBrake(this.brakingForce, this.FRONT_RIGHT);
-    this.vehicle.setBrake(this.brakingForce, this.BACK_LEFT);
-    this.vehicle.setBrake(this.brakingForce, this.BACK_RIGHT);
+    this.vehicle.setBrake(0, this.FRONT_LEFT);
+    this.vehicle.setBrake(0, this.FRONT_RIGHT);
+    this.vehicle.setBrake(0, this.BACK_LEFT);
+    this.vehicle.setBrake(0, this.BACK_RIGHT);
   }
 
   getSpeed() {

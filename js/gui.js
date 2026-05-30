@@ -80,11 +80,13 @@ const params = {
   tcSlipLimit: 0.25,
   tcStrength: 2,
   tcMaxCut: 0.75,
-  wheelSpinTorqueScale: 0.06,
-  wheelBrakeDrag: 0.08,
-  wheelSpinGrip: 4,
-  airWheelSpinGrip: 0.5,
-  maxExtraWheelAngularVelocity: 180,
+  wheelInertia: 1.2,
+  engineTorque: 700,
+  brakeTorque: 450,
+  tireLongitudinalStiffness: 12,
+  tireSlipDamping: 450,
+  maxWheelAngularVelocity: 220,
+  tireGrip: 0.8,
   smokeEnabled: true,
   smokeSlipThreshold: 0.25,
   smokeRate: 45,
@@ -110,6 +112,9 @@ const params = {
   })()
 }
 
+gui.useLocalStorage = true
+gui.remember(params)
+
 gui.add(params, 'offlinePlay').name('Offline Play')
 gui.add(params, 'updateCamera')
 
@@ -118,12 +123,17 @@ tractionFolder.add(params, 'tractionControl').name('Traction Control')
 tractionFolder.add(params, 'tcSlipLimit', 0.05, 1).step(0.01).name('TC Slip Limit')
 tractionFolder.add(params, 'tcStrength', 0, 8).step(0.1).name('TC Strength')
 tractionFolder.add(params, 'tcMaxCut', 0, 1).step(0.01).name('TC Max Cut')
-tractionFolder.add(params, 'wheelSpinTorqueScale', 0, 0.2).step(0.001).name('Spin Torque')
-tractionFolder.add(params, 'wheelSpinGrip', 0, 20).step(0.1).name('Spin Grip')
+tractionFolder.add(params, 'wheelInertia', 0.2, 5).step(0.1).name('Wheel Inertia')
+tractionFolder.add(params, 'engineTorque', 0, 3000).step(25).name('Engine Torque')
+tractionFolder.add(params, 'brakeTorque', 0, 2000).step(25).name('Brake Torque')
+tractionFolder.add(params, 'tireLongitudinalStiffness', 1, 30).step(0.5).name('Long Stiffness')
+tractionFolder.add(params, 'tireSlipDamping', 0, 2000).step(25).name('Slip Damping')
+tractionFolder.add(params, 'maxWheelAngularVelocity', 20, 500).step(10).name('Max Wheel Speed')
+tractionFolder.add(params, 'tireGrip', 0.1, 2).step(0.05).name('Tire Grip')
 tractionFolder.add(params, 'smokeEnabled').name('Smoke')
 tractionFolder.add(params, 'smokeSlipThreshold', 0.05, 1).step(0.01).name('Smoke Slip')
 tractionFolder.add(params, 'smokeRate', 0, 120).step(1).name('Smoke Rate')
-tractionFolder.close()
+
 
 // Add volume control
 const volumeController = gui.add(params, 'volume', 0, 1).name('Volume')
@@ -180,6 +190,7 @@ tiltSteeringController.onChange((value) => {
 const vehicleParams = {
   speed: 0, // Will be updated from code
   slipRatio: 0,
+  slipValue: 0,
   rearLeftSlipRatio: 0,
   slipAngle: 0,
   sideForceScalar: 0,
@@ -195,6 +206,8 @@ const vehicleParams = {
   volume: volumeControl.volume, // Initialize with the volume control value
   steeringSensitivity: 1.0, // Default sensitivity multiplier
 }
+
+tractionFolder.add(vehicleParams, 'slipValue', 0, 1).step(0.01).name('Slip').listen()
 
 const debugFolder = gui.addFolder('Debug')
 debugFolder.close()

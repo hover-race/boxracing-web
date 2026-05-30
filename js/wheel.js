@@ -1,20 +1,18 @@
 class Wheel {
-  constructor(vehicleRigidBody, wheelInfo, radius, inertia = 1.0) {
+  constructor(vehicleRigidBody, wheelInfo, radius) {
     this.vehicleRigidBody = vehicleRigidBody
     this.wheelInfo = wheelInfo;
     this.radius = radius;
-    this.inertia = inertia;  // Moment of inertia for the wheel
-    this.extraRotation = 0;  // models wheel spin since ammo/bullet doesn't support it
 
     // State variables
     this.angularVelocity = 0;  // rad/s
-    this.extraAngularVelocity = 0;
     this.rotation = 0;         // total rotation in radians
     this.torque = 0;          // Current torque applied to wheel
     this.brakeTorque = 0;     // Current braking torque
     this.slipRatio = 0;       // Current slip ratio
     this.skidInfo = 1;
     this.isSlipping = false;
+    this.forwardForceScalar = 0;
     this.smokeAccumulator = 0;
     this.debugForce = { x: 0, y: 0, z: 0 }; // Debug force components
     this.previousForce = { x: 0, y: 0, z: 0 }; // Previous frame's force
@@ -32,6 +30,14 @@ class Wheel {
       basis.getRow(2).z() 
     )
     return forward
+  }
+
+  crossProduct(vecA, vecB) {
+    return new Ammo.btVector3(
+      vecA.y() * vecB.z() - vecA.z() * vecB.y(),
+      vecA.z() * vecB.x() - vecA.x() * vecB.z(),
+      vecA.x() * vecB.y() - vecA.y() * vecB.x()
+    )
   }
  
   getRaycastInfo() {
@@ -56,42 +62,112 @@ class Wheel {
     return this.wheelInfo.m_deltaRotation / Math.max(dt, 0.0001)
   }
 
-  getForwardSpeed() {
-    const forward = this.getVehicleForward()
-    return this.vehicleRigidBody.getLinearVelocity().dot(forward)
+  getWheelForwardDirection() {
+    const raycastInfo = this.getRaycastInfo()
+    const axle = raycastInfo.get_m_wheelAxleWS ? raycastInfo.get_m_wheelAxleWS() : raycastInfo.m_wheelAxleWS
+    const direction = raycastInfo.get_m_wheelDirectionWS ? raycastInfo.get_m_wheelDirectionWS() : raycastInfo.m_wheelDirectionWS
+    const forward = this.crossProduct(axle, direction)
+    const vehicleForward = this.getVehicleForward()
+    if (forward.dot(vehicleForward) < 0) {
+      return new Ammo.btVector3(-forward.x(), -forward.y(), -forward.z())
+    }
+    return forward
   }
 
-  calculateSlipRatio(angularVelocity = this.angularVelocity) {
-    const forwardSpeed = this.getForwardSpeed()
-    const surfaceSpeed = angularVelocity * this.radius
-    const denominator = Math.max(Math.abs(surfaceSpeed), Math.abs(forwardSpeed), 1)
+  getContactRelativePosition() {
+    const contactPoint = this.getContactPoint()
+    const chassisPos = this.vehicleRigidBody.getWorldTransform().getOrigin()
+    return new Ammo.btVector3(
+      contactPoint.x() - chassisPos.x(),
+      contactPoint.y() - chassisPos.y(),
+      contactPoint.z() - chassisPos.z()
+    )
+  }
+
+  getContactForwardSpeed() {
+    const relativePos = this.getContactRelativePosition()
+    const angularVelocity = this.vehicleRigidBody.getAngularVelocity()
+    const linearVelocity = this.vehicleRigidBody.getLinearVelocity()
+    const angularPointVelocity = this.crossProduct(angularVelocity, relativePos)
+    const pointVelocity = new Ammo.btVector3(
+      linearVelocity.x() + angularPointVelocity.x(),
+      linearVelocity.y() + angularPointVelocity.y(),
+      linearVelocity.z() + angularPointVelocity.z()
+    )
+    return pointVelocity.dot(this.getWheelForwardDirection())
+  }
+
+  getLongitudinalForce(forwardSpeed) {
+    const slipVelocity = this.angularVelocity * this.radius - forwardSpeed
+    const suspensionForce = this.wheelInfo.get_m_wheelsSuspensionForce
+      ? this.wheelInfo.get_m_wheelsSuspensionForce()
+      : this.wheelInfo.m_wheelsSuspensionForce
+    const maxForce = suspensionForce * params.tireGrip
+    const springForce = Math.tanh(this.slipRatio * params.tireLongitudinalStiffness) * maxForce
+    const dampingForce = slipVelocity * params.tireSlipDamping
+    return this.clamp(springForce + dampingForce, -maxForce, maxForce)
+  }
+
+  applyLongitudinalForce(forceScalar) {
+    const forward = this.getWheelForwardDirection()
+    const force = new Ammo.btVector3(
+      forward.x() * forceScalar,
+      forward.y() * forceScalar,
+      forward.z() * forceScalar
+    )
+    this.vehicleRigidBody.applyForce(force, this.getContactRelativePosition())
+    this.forwardForceScalar = forceScalar
+    return forceScalar
+  }
+
+  calculateSlipRatio(forwardSpeed) {
+    const surfaceSpeed = this.angularVelocity * this.radius
+    const denominator = Math.max(Math.abs(forwardSpeed), 1)
     return this.clamp((surfaceSpeed - forwardSpeed) / denominator, -1, 1)
   }
 
-  updateExtraSpin(dt, engineForce, brakeForce) {
-    let driveForce = Math.max(0, engineForce)
+  getDriveTorque(engineForce) {
+    let driveTorque = Math.max(0, engineForce) / 3000 * params.engineTorque
     const slipOverLimit = Math.max(0, Math.abs(this.slipRatio) - params.tcSlipLimit)
     if (params.tractionControl && slipOverLimit > 0) {
-      driveForce *= Math.max(0, 1 - Math.min(params.tcMaxCut, slipOverLimit * params.tcStrength))
+      driveTorque *= Math.max(0, 1 - Math.min(params.tcMaxCut, slipOverLimit * params.tcStrength))
     }
+    return driveTorque
+  }
 
-    const brakeDrag = brakeForce * params.wheelBrakeDrag
-    const angularAcceleration = (driveForce * params.wheelSpinTorqueScale - brakeDrag) / this.inertia
-    this.extraAngularVelocity += angularAcceleration * dt
-
-    const grip = this.isInContact() ? params.wheelSpinGrip : params.airWheelSpinGrip
-    this.extraAngularVelocity += (0 - this.extraAngularVelocity) * Math.min(1, grip * dt)
-    this.extraAngularVelocity = this.clamp(this.extraAngularVelocity, -params.maxExtraWheelAngularVelocity, params.maxExtraWheelAngularVelocity)
-    this.extraRotation += this.extraAngularVelocity * dt
+  getBrakeTorque(brakeForce) {
+    if (brakeForce <= 0 || Math.abs(this.angularVelocity) < 0.01) return 0
+    return -Math.sign(this.angularVelocity) * (brakeForce / 100) * params.brakeTorque
   }
 
   update(dt, engineForce, brakeForce) {
-    const groundAngularVelocity = this.getGroundAngularVelocity(dt)
+    this.forwardForceScalar = 0
     this.skidInfo = this.getSkidInfo()
-    this.updateExtraSpin(dt, engineForce, brakeForce)
-    this.angularVelocity = groundAngularVelocity + this.extraAngularVelocity
-    this.slipRatio = this.calculateSlipRatio()
-    this.isSlipping = this.isInContact() && Math.abs(this.slipRatio) >= params.smokeSlipThreshold
+
+    if (!this.isInContact()) {
+      const torque = this.getDriveTorque(engineForce) + this.getBrakeTorque(brakeForce)
+      this.angularVelocity += torque / params.wheelInertia * dt
+      this.angularVelocity = this.clamp(this.angularVelocity, -params.maxWheelAngularVelocity, params.maxWheelAngularVelocity)
+      this.rotation += this.angularVelocity * dt
+      this.slipRatio = 0
+      this.isSlipping = false
+      return
+    }
+
+    const forwardSpeed = this.getContactForwardSpeed()
+    this.slipRatio = this.calculateSlipRatio(forwardSpeed)
+
+    const tireForce = this.getLongitudinalForce(forwardSpeed)
+    this.applyLongitudinalForce(tireForce)
+
+    const tireTorque = -tireForce * this.radius
+    const driveTorque = this.getDriveTorque(engineForce)
+    const brakeTorque = this.getBrakeTorque(brakeForce)
+    this.torque = driveTorque + brakeTorque + tireTorque
+    this.angularVelocity += this.torque / params.wheelInertia * dt
+    this.angularVelocity = this.clamp(this.angularVelocity, -params.maxWheelAngularVelocity, params.maxWheelAngularVelocity)
+    this.rotation += this.angularVelocity * dt
+    this.isSlipping = Math.abs(this.slipRatio) >= params.smokeSlipThreshold
   }
 
   getSmokeIntensity() {
@@ -103,11 +179,13 @@ class Wheel {
 
   gui() {
     vehicleParams.slipRatio = this.slipRatio
+    vehicleParams.slipValue = Math.abs(this.slipRatio)
     vehicleParams.rearLeftSlipRatio = this.slipRatio
     vehicleParams.isSlipping = this.isSlipping
     vehicleParams.skidInfo = this.skidInfo
-    vehicleParams.wheelSpinVelocity = this.extraAngularVelocity
-    vehicleParams.extraRotation = this.extraRotation
+    vehicleParams.wheelSpinVelocity = this.angularVelocity
+    vehicleParams.extraRotation = this.rotation
+    vehicleParams.forwardForceScalar = this.forwardForceScalar
     vehicleParams.speed = this.vehicleRigidBody.getLinearVelocity().length()
   }
 }
