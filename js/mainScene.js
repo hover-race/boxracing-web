@@ -161,21 +161,13 @@ export class MainScene extends Scene3D {
   }
 
   setupDebugStepper() {
-    const FIXED_MS = 1000 / 60
     window.__mainScene = this
-    window.__sim = {
-      pause: () => this.renderer.setAnimationLoop(null),
-      resume: () => this.renderer.setAnimationLoop(() => this._update()),
-      // Advance n fixed-dt frames while the loop is paused.
-      step: (n = 1) => {
-        for (let i = 0; i < n; i++) {
-          this.update(0, FIXED_MS)
-          this.physics.update(FIXED_MS)
-          this.physics.updateDebugger()
-        }
-        this.renderer.render(this.scene, this.camera)
-      },
-    }
+    params.runPhysics = true
+    const stopPhysics = () => { params.runPhysics = false }
+
+    const AUTO_STOP_SECONDS = 5
+
+    window.setTimeout(stopPhysics, AUTO_STOP_SECONDS * 1000)
   }
 
   log(a, b) {
@@ -233,6 +225,8 @@ export class MainScene extends Scene3D {
 
 
   update(time, deltaTime) {
+    if (!params.runPhysics) return
+
     this.car.update(inputControls);
     this.car.updateTireMarks();
     

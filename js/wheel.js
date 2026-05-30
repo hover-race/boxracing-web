@@ -232,13 +232,14 @@ class Wheel {
     if (this.wheelIndex === 0) {
       window.__wheelLog = window.__wheelLog || []
       window.__wheelLog.push({
-        steerDeg: +(this.getSteeringAngle() * 180 / Math.PI).toFixed(2),
-        latSpeed: +(this.lateralSpeed ?? 0).toFixed(3),
-        slipAngleDeg: +(this.slipAngle * 180 / Math.PI).toFixed(2),
-        normalForce: +(this.normalForce ?? 0).toFixed(1),
-        maxSide: +(this.maxSide ?? 0).toFixed(1),
+        gripFwd: params.gripForward,
+        slipRatio: +(this.slipRatio).toFixed(3),
+        fwdSpeed: +(this.forwardSpeed ?? 0).toFixed(3),
+        angVel: +(this.angularVelocity).toFixed(2),
+        surfSpeed: +(this.angularVelocity * this.radius).toFixed(3),
+        maxFwd: +((this.normalForce ?? 0) * params.gripForward).toFixed(1),
+        fwdForce: +(this.forwardForceScalar ?? 0).toFixed(1),
         sideForce: +(this.sideForceScalar ?? 0).toFixed(1),
-        yawRate: +(this.vehicleRigidBody.getAngularVelocity().y()).toFixed(3),
         inContact: this.isInContact(),
       })
       if (window.__wheelLog.length > 20) window.__wheelLog.shift()

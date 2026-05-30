@@ -47,6 +47,7 @@ const params = {
   maxWheelAngularVelocity: 220,
   gripForward: 2,
   gripSide: 2,
+  runPhysics: true,
   smokeEnabled: false,
   smokeSlipThreshold: 0.25,
   smokeRate: 45,
@@ -93,6 +94,7 @@ gui.remember(params)
 
 gui.add(params, 'gripForward', -2, 2).step(0.05)
 gui.add(params, 'gripSide', -2, 2).step(0.05)
+gui.add(params, 'runPhysics')
 gui.add(params, 'smokeEnabled')
 
 // One-wheel readouts
