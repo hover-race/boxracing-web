@@ -91,7 +91,7 @@ const vehicleParams = {
 gui.useLocalStorage = true
 gui.remember(params)
 
-gui.add(params, 'gripForward', 0, 5).step(0.05)
+gui.add(params, 'gripForward', -2, 2).step(0.05)
 gui.add(params, 'gripSide', -2, 2).step(0.05)
 gui.add(params, 'smokeEnabled')
 

@@ -63,49 +63,22 @@ class Wheel {
       : this.wheelInfo.m_steering
   }
 
-  getWheelAxleCS() {
-    const axle = this.wheelInfo.get_m_wheelAxleCS
-      ? this.wheelInfo.get_m_wheelAxleCS()
-      : this.wheelInfo.m_wheelAxleCS
-    return new Ammo.btVector3(axle.x(), axle.y(), axle.z())
-  }
-
-  getWheelDirectionCS() {
-    const dir = this.wheelInfo.get_m_wheelDirectionCS
-      ? this.wheelInfo.get_m_wheelDirectionCS()
-      : this.wheelInfo.m_wheelDirectionCS
+  getWheelDirectionWS() {
+    const raycastInfo = this.getRaycastInfo()
+    const dir = raycastInfo.get_m_wheelDirectionWS ? raycastInfo.get_m_wheelDirectionWS() : raycastInfo.m_wheelDirectionWS
     return new Ammo.btVector3(dir.x(), dir.y(), dir.z())
   }
 
-  chassisLocalToWorld(localVec) {
-    const basis = this.vehicleRigidBody.getWorldTransform().getBasis()
-    const lx = localVec.x()
-    const ly = localVec.y()
-    const lz = localVec.z()
-    return new Ammo.btVector3(
-      basis.getRow(0).x() * lx + basis.getRow(1).x() * ly + basis.getRow(2).x() * lz,
-      basis.getRow(0).y() * lx + basis.getRow(1).y() * ly + basis.getRow(2).y() * lz,
-      basis.getRow(0).z() * lx + basis.getRow(1).z() * ly + basis.getRow(2).z() * lz
-    )
-  }
-
-  rotateVectorAroundAxis(vec, axis, angle) {
-    // Ammo's btVector3.rotate takes (axis, angle) and returns a new vector.
-    return vec.rotate(axis, angle)
-  }
-
+  // Derive the wheel's world-space axes from Bullet's wheel transform (the same
+  // transform that orients the rendered wheel mesh), so forces match what is drawn.
+  // Column 0 of that basis is the steered axle (roll-invariant). Forward follows
+  // Bullet's own convention: up x right, with up = -suspensionDirection.
   getWheelAxes() {
-    const directionCS = this.getWheelDirectionCS()
-    let axleCS = this.getWheelAxleCS()
-    const steering = this.getSteeringAngle()
-    if (Math.abs(steering) > 1e-6) {
-      axleCS = this.rotateVectorAroundAxis(axleCS, directionCS, steering)
-    }
+    const basis = this.raycastVehicle.getWheelTransformWS(this.wheelIndex).getBasis()
+    const sideWS = new Ammo.btVector3(basis.getRow(0).x(), basis.getRow(1).x(), basis.getRow(2).x())
 
-    const directionWS = this.chassisLocalToWorld(directionCS)
-    const sideWS = this.chassisLocalToWorld(axleCS)
-    const fwd = this.crossProduct(sideWS, directionWS)
-    const forwardWS = new Ammo.btVector3(-fwd.x(), -fwd.y(), -fwd.z())
+    const directionWS = this.getWheelDirectionWS()
+    const forwardWS = this.crossProduct(directionWS, sideWS)
 
     return { forwardWS, sideWS }
   }
