@@ -39,8 +39,9 @@ class TireParticles {
 
   updateSmoke(dt) {
     if (params.smokeEnabled) {
-      this.emitSmoke(this.vehicle.wheels[this.vehicle.BACK_LEFT], dt)
-      this.emitSmoke(this.vehicle.wheels[this.vehicle.BACK_RIGHT], dt)
+      for (const wheel of this.vehicle.wheels) {
+        this.emitSmoke(wheel, dt)
+      }
     }
 
     for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
@@ -116,8 +117,9 @@ class TireParticles {
   }
 
   updateTireMarks() {
-    this.applyDecal(this.vehicle.wheels[this.vehicle.BACK_LEFT])
-    this.applyDecal(this.vehicle.wheels[this.vehicle.BACK_RIGHT])
+    for (const wheel of this.vehicle.wheels) {
+      this.applyDecal(wheel)
+    }
   }
 
   applyDecal(wheel) {
