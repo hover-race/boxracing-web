@@ -17,7 +17,16 @@ class ControlsManager {
   }
   
   setupKeyboardControls() {
+    const isEditable = (el) => {
+      if (!el) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+    };
+
     const keyEvent = (e, down) => {
+      // Don't drive the car while typing into a GUI field; let the input keep the event.
+      if (isEditable(e.target)) return;
+
       switch (e.code) {
         case 'KeyW':
         case 'ArrowUp':
@@ -38,7 +47,11 @@ class ControlsManager {
         case 'Space':
           inputControls.handbrake = down ? 1 : 0;
           break;
+        default:
+          return;
       }
+      // The game consumed this key; stop browser defaults (page scroll, etc.).
+      e.preventDefault();
     };
     
     document.addEventListener('keydown', e => keyEvent(e, true));
