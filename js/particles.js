@@ -22,6 +22,19 @@ class TireParticles {
       depthWrite: false,
     })
     this.smokeParticles = []
+
+    // Contact speed (m/s) below which effects are off; full strength above taperEnd.
+    this.motionMin = 0.5
+    this.motionTaperEnd = 5.0
+  }
+
+  wheelMotionFactor(wheel) {
+    const forward = Math.abs(wheel.forwardSpeed ?? 0)
+    const surface = Math.abs(wheel.angularVelocity * wheel.radius)
+    const speed = Math.max(forward, surface)
+    if (speed <= this.motionMin) return 0
+    if (speed >= this.motionTaperEnd) return 1
+    return (speed - this.motionMin) / (this.motionTaperEnd - this.motionMin)
   }
 
   updateSmoke(dt) {
@@ -51,7 +64,8 @@ class TireParticles {
   }
 
   emitSmoke(wheel, dt) {
-    const intensity = wheel.getSmokeIntensity()
+    const motion = this.wheelMotionFactor(wheel)
+    const intensity = wheel.getSmokeIntensity() * motion
     if (intensity <= 0) return
 
     wheel.smokeAccumulator += intensity * params.smokeRate * dt
@@ -107,11 +121,14 @@ class TireParticles {
   }
 
   applyDecal(wheel) {
-    const wheelInfo = wheel.wheelInfo
+    const motion = this.wheelMotionFactor(wheel)
+    if (motion <= 0) return
 
+    const wheelInfo = wheel.wheelInfo
     const slipping = Math.abs(wheel.slipRatio) > 0.1
 
     if (slipping && wheelInfo.get_m_raycastInfo().get_m_isInContact()) {
+      if (Math.random() > motion) return
       const contactPoint = wheelInfo.get_m_raycastInfo().get_m_contactPointWS()
       const position = new THREE.Vector3(contactPoint.x(), contactPoint.y(), contactPoint.z())
 
@@ -130,6 +147,7 @@ class TireParticles {
       decalGeometry.scale(wheelWidth, lengthScale, 1)
 
       const decal = new THREE.Mesh(decalGeometry, this.decalMaterial.clone())
+      decal.material.opacity = this.decalMaterial.opacity * motion
       decal.position.copy(position)
       decal.position.y += 0.01
 
