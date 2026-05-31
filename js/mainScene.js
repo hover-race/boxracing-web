@@ -165,7 +165,9 @@ export class MainScene extends Scene3D {
     params.runPhysics = true
 
     const AUTO_STOP_SECONDS = 3
-    window.setTimeout(() => { params.runPhysics = false }, AUTO_STOP_SECONDS * 1000)
+    if (params.autoStopPhysics) {
+      window.setTimeout(() => { params.runPhysics = false }, AUTO_STOP_SECONDS * 1000)
+    }
   }
 
   log(a, b) {
@@ -227,7 +229,7 @@ export class MainScene extends Scene3D {
 
     const vehicleInputs = {
       ...inputControls,
-      throttle: Math.max(0, Math.min(1, inputControls.throttle + params.throttleInput)),
+      throttle: Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput)),
     }
     this.car.update(vehicleInputs);
     this.car.updateTireMarks();
