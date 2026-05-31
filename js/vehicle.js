@@ -1,5 +1,6 @@
 import { Wheel } from './wheel.js';
 import { ReplayRecorder } from './replays.js';
+import { TireParticles } from './particles.js';
 
 class Vehicle {
   vehicle
@@ -80,27 +81,8 @@ class Vehicle {
       return new Wheel(this.chassis.body.ammo, wheelInfo, radius, this.vehicle, index);
     });
 
-    // Initialize decal system
-    this.decalMaterial = new THREE.MeshPhongMaterial({
-      color: 0x000000,
-      transparent: true,
-      opacity: 0.2,
-      depthWrite: false,
-      polygonOffset: true,
-      polygonOffsetFactor: -4,
-    })
+    this.particles = new TireParticles(scene, this)
 
-    this.decals = new THREE.Group()
-    scene.add(this.decals)
-
-    this.smokeMaterial = new THREE.SpriteMaterial({
-      color: 0xcccccc,
-      transparent: true,
-      opacity: 0.35,
-      depthWrite: false,
-    })
-    this.smokeParticles = []
-    
     // Initialize replay recorder and start recording immediately
     this.recorder = new ReplayRecorder()
     this.recorder.start()
@@ -159,7 +141,7 @@ class Vehicle {
     // Update speed display in dat.gui
     vehicleParams.speed = speed
 
-    this.updateSmoke(dt)
+    this.particles.updateSmoke(dt)
     this.updateSound()
   }
 
@@ -181,83 +163,6 @@ class Vehicle {
       const pitch = minPitch + (maxPitch - minPitch) * (speed / 100)
       this.chassis.engineSound.setPlaybackRate(Math.min(maxPitch, Math.max(minPitch, pitch)))
     }
-  }
-
-  updateSmoke(dt) {
-    if (params.smokeEnabled) {
-      this.emitSmoke(this.wheels[this.BACK_LEFT], dt)
-      this.emitSmoke(this.wheels[this.BACK_RIGHT], dt)
-    }
-
-    for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
-      const particle = this.smokeParticles[i]
-      particle.userData.age += dt
-      const progress = particle.userData.age / particle.userData.life
-      if (progress >= 1) {
-        this.removeSmokeParticle(i)
-        continue
-      }
-
-      particle.position.addScaledVector(particle.userData.velocity, dt)
-      particle.material.opacity = particle.userData.opacity * (1 - progress)
-      const scale = particle.userData.startScale * (1 + progress * 2.5)
-      particle.scale.set(scale, scale, scale)
-    }
-
-    while (this.smokeParticles.length > params.maxSmokeParticles) {
-      this.removeSmokeParticle(0)
-    }
-  }
-
-  emitSmoke(wheel, dt) {
-    const intensity = wheel.getSmokeIntensity()
-    if (intensity <= 0) return
-
-    wheel.smokeAccumulator += intensity * params.smokeRate * dt
-    while (wheel.smokeAccumulator >= 1) {
-      this.spawnSmokeParticle(wheel, intensity)
-      wheel.smokeAccumulator -= 1
-    }
-  }
-
-  spawnSmokeParticle(wheel, intensity) {
-    const contactPoint = wheel.getContactPoint()
-    const particle = new THREE.Sprite(this.smokeMaterial.clone())
-    const size = 0.25 + intensity * 0.35 + Math.random() * 0.1
-    const chassisVelocity = this.chassis.body.ammo.getLinearVelocity()
-    const jitterRadius = 0.12 + intensity * 0.12
-    const shade = 0.55 + Math.random() * 0.25
-
-    particle.position.set(
-      contactPoint.x() + (Math.random() - 0.5) * jitterRadius,
-      contactPoint.y() + 0.06 + Math.random() * 0.1,
-      contactPoint.z() + (Math.random() - 0.5) * jitterRadius
-    )
-    particle.scale.set(size, size, size)
-    particle.material.color.setRGB(shade, shade, shade)
-    particle.material.rotation = Math.random() * Math.PI * 2
-    particle.material.opacity = 0.16 + intensity * 0.25 + Math.random() * 0.08
-    particle.userData = {
-      age: 0,
-      life: 0.65 + intensity * 0.8 + Math.random() * 0.25,
-      opacity: particle.material.opacity,
-      startScale: size,
-      velocity: new THREE.Vector3(
-        (Math.random() - 0.5) * (0.45 + intensity * 0.35) + chassisVelocity.x() * 0.02,
-        0.45 + Math.random() * 0.75,
-        (Math.random() - 0.5) * (0.45 + intensity * 0.35) + chassisVelocity.z() * 0.02
-      ),
-    }
-
-    this.scene.add(particle)
-    this.smokeParticles.push(particle)
-  }
-
-  removeSmokeParticle(index) {
-    const particle = this.smokeParticles[index]
-    this.scene.remove(particle)
-    particle.material.dispose()
-    this.smokeParticles.splice(index, 1)
   }
 
   debugRaycast(start) {
@@ -479,55 +384,7 @@ class Vehicle {
   }
 
   updateTireMarks() {
-    this.applyDecal(this.wheels[this.BACK_LEFT])
-    this.applyDecal(this.wheels[this.BACK_RIGHT])
-  }
-
-  applyDecal(wheel) {
-    const wheelInfo = wheel.wheelInfo
-      
-    // Check if wheel is slipping and in contact
-    const slipping = Math.abs(wheel.slipRatio) > 0.1
-    
-    if (slipping && wheelInfo.get_m_raycastInfo().get_m_isInContact()) {
-      // Get wheel contact point and normal from raycast info
-      const contactPoint = wheelInfo.get_m_raycastInfo().get_m_contactPointWS()
-      const position = new THREE.Vector3(contactPoint.x(), contactPoint.y(), contactPoint.z())
-      
-      // Get chassis rotation and steering angle
-      const chassisRotation = this.chassis.quaternion
-      const steeringAngle = wheelInfo.get_m_steering()
-      const rotation = chassisRotation.clone()
-      rotation.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), steeringAngle))
-      
-      // Create decal
-      const wheelWidth = 0.45
-
-      const decalGeometry = new THREE.PlaneGeometry(wheelWidth, 0.6)
-      decalGeometry.rotateX(-Math.PI / 2) // Align with ground
-
-      // Scale decal length based on velocity and width based on wheel
-      const speed = Math.abs(this.vehicle.getCurrentSpeedKmHour())
-      const lengthScale = Math.min(1 + speed * 0.01, 10) // Scale up with speed
-      decalGeometry.scale(wheelWidth, lengthScale, 1) // Scale x by wheel width
-      
-      const decal = new THREE.Mesh(decalGeometry, this.decalMaterial.clone()) 
-      decal.position.copy(position)
-      decal.position.y += 0.01 // Slight offset to prevent z-fighting
-      
-      // Apply wheel rotation to decal
-      decal.quaternion.copy(rotation)
-      
-      this.decals.add(decal)
-
-      // Remove old decals if too many
-      if (this.decals.children.length > 1000) {
-        const oldDecal = this.decals.children[0]
-        this.decals.remove(oldDecal)
-        oldDecal.geometry.dispose()
-        oldDecal.material.dispose()
-      }
-    }
+    this.particles.updateTireMarks()
   }
 }
 
