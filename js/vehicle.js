@@ -317,7 +317,17 @@ class Vehicle {
     // Apply forces based on input controls
     // Throttle drives the rear tires independently of the brake so you can
     // hold the foot brake and gas at the same time (burnout / left-foot braking).
-    this.engineForce = this.maxEngineForce * inputs.throttle;
+    // The brake key doubles as reverse: it brakes while rolling forward, then
+    // drives backwards once the car has (nearly) stopped.
+    const rollingForward = this.wheels.length && this.wheels[this.BACK_LEFT].forwardSpeed > 0.5
+    let reverseThrottle = 0
+    let footBrakeInput = inputs.brake
+    if (inputs.brake > 0 && !rollingForward) {
+      reverseThrottle = -inputs.brake
+      footBrakeInput = 0
+    }
+
+    this.engineForce = this.maxEngineForce * (inputs.throttle + reverseThrottle);
     if (params.tractionControl && this.engineForce > 0 && this.wheels.length) {
       const rearSlip = (
         Math.abs(this.wheels[this.BACK_LEFT].slipRatio) +
@@ -342,7 +352,7 @@ class Vehicle {
 
     // Brakes are applied as brake torque inside the JS wheel model. Foot brake
     // hits all four wheels; handbrake adds extra torque to the rears only.
-    this.footBrake = inputs.brake * 100;
+    this.footBrake = footBrakeInput * 100;
     this.handBrake = inputs.handbrake * 100;
 
     // Bullet only provides steering geometry now; drive and brake are JS-side.
