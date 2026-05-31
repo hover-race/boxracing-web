@@ -49,7 +49,7 @@ const params = {
   gripSide: 2,
   throttleInput: 0,
   runPhysics: true,
-  autoStopPhysics: false,
+  autoStopPhysicsAfterSec: 0,
   smokeEnabled: false,
   smokeSlipThreshold: 0.25,
   smokeRate: 45,
@@ -98,7 +98,7 @@ gui.add(params, 'gripForward', -2, 2).step(0.05)
 gui.add(params, 'gripSide', -2, 2).step(0.05)
 gui.add(params, 'throttleInput', -1, 1).step(0.01)
 gui.add(params, 'runPhysics')
-gui.add(params, 'autoStopPhysics')
+gui.add(params, 'autoStopPhysicsAfterSec')
 gui.add(params, 'smokeEnabled')
 
 // One-wheel readouts

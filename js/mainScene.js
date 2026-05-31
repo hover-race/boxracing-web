@@ -164,9 +164,8 @@ export class MainScene extends Scene3D {
     window.__mainScene = this
     params.runPhysics = true
 
-    const AUTO_STOP_SECONDS = 3
-    if (params.autoStopPhysics) {
-      window.setTimeout(() => { params.runPhysics = false }, AUTO_STOP_SECONDS * 1000)
+    if (params.autoStopPhysicsAfterSec > 0) {
+      window.setTimeout(() => { params.runPhysics = false }, params.autoStopPhysicsAfterSec * 1000)
     }
   }
 
