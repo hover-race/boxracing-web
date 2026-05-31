@@ -37,6 +37,26 @@ class TireParticles {
     return (speed - this.motionMin) / (this.motionTaperEnd - this.motionMin)
   }
 
+  slipMagnitudeFactor(slip) {
+    const s = Math.abs(slip)
+    if (s <= params.smokeSlipThreshold) return 0
+    const slipRange = 1 - params.smokeSlipThreshold
+    return Math.min(1, (s - params.smokeSlipThreshold) / slipRange)
+  }
+
+  wheelSlipFactor(wheel) {
+    const longFactor = this.slipMagnitudeFactor(wheel.slipRatio)
+    const latSlip = Math.abs(wheel.lateralSpeed ?? 0) / Math.max(Math.abs(wheel.forwardSpeed ?? 0), 1)
+    const latFactor = this.slipMagnitudeFactor(latSlip)
+    return Math.max(longFactor, latFactor)
+  }
+
+  // Shared 0–1 intensity for smoke and decals: contact, slip taper, motion taper.
+  wheelEffectIntensity(wheel) {
+    if (!wheel.isInContact()) return 0
+    return this.wheelSlipFactor(wheel) * this.wheelMotionFactor(wheel)
+  }
+
   updateSmoke(dt) {
     if (params.smokeEnabled) {
       for (const wheel of this.vehicle.wheels) {
@@ -65,8 +85,7 @@ class TireParticles {
   }
 
   emitSmoke(wheel, dt) {
-    const motion = this.wheelMotionFactor(wheel)
-    const intensity = wheel.getSmokeIntensity() * motion
+    const intensity = this.wheelEffectIntensity(wheel)
     if (intensity <= 0) return
 
     wheel.smokeAccumulator += intensity * params.smokeRate * dt
@@ -123,46 +142,42 @@ class TireParticles {
   }
 
   applyDecal(wheel) {
-    const motion = this.wheelMotionFactor(wheel)
-    if (motion <= 0) return
+    const intensity = this.wheelEffectIntensity(wheel)
+    if (intensity <= 0) return
+    if (Math.random() > intensity) return
 
     const wheelInfo = wheel.wheelInfo
-    const slipping = Math.abs(wheel.slipRatio) > 0.1
+    const contactPoint = wheel.getContactPoint()
+    const position = new THREE.Vector3(contactPoint.x(), contactPoint.y(), contactPoint.z())
 
-    if (slipping && wheelInfo.get_m_raycastInfo().get_m_isInContact()) {
-      if (Math.random() > motion) return
-      const contactPoint = wheelInfo.get_m_raycastInfo().get_m_contactPointWS()
-      const position = new THREE.Vector3(contactPoint.x(), contactPoint.y(), contactPoint.z())
+    const chassisRotation = this.vehicle.chassis.quaternion
+    const steeringAngle = wheelInfo.get_m_steering()
+    const rotation = chassisRotation.clone()
+    rotation.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), steeringAngle))
 
-      const chassisRotation = this.vehicle.chassis.quaternion
-      const steeringAngle = wheelInfo.get_m_steering()
-      const rotation = chassisRotation.clone()
-      rotation.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), steeringAngle))
+    const wheelWidth = 0.45
 
-      const wheelWidth = 0.45
+    const decalGeometry = new THREE.PlaneGeometry(wheelWidth, 0.6)
+    decalGeometry.rotateX(-Math.PI / 2)
 
-      const decalGeometry = new THREE.PlaneGeometry(wheelWidth, 0.6)
-      decalGeometry.rotateX(-Math.PI / 2)
+    const speed = Math.abs(this.vehicle.vehicle.getCurrentSpeedKmHour())
+    const lengthScale = Math.min(1 + speed * 0.01, 10)
+    decalGeometry.scale(wheelWidth, lengthScale, 1)
 
-      const speed = Math.abs(this.vehicle.vehicle.getCurrentSpeedKmHour())
-      const lengthScale = Math.min(1 + speed * 0.01, 10)
-      decalGeometry.scale(wheelWidth, lengthScale, 1)
+    const decal = new THREE.Mesh(decalGeometry, this.decalMaterial.clone())
+    decal.material.opacity = this.decalMaterial.opacity * intensity
+    decal.position.copy(position)
+    decal.position.y += 0.01
 
-      const decal = new THREE.Mesh(decalGeometry, this.decalMaterial.clone())
-      decal.material.opacity = this.decalMaterial.opacity * motion
-      decal.position.copy(position)
-      decal.position.y += 0.01
+    decal.quaternion.copy(rotation)
 
-      decal.quaternion.copy(rotation)
+    this.decals.add(decal)
 
-      this.decals.add(decal)
-
-      if (this.decals.children.length > 1000) {
-        const oldDecal = this.decals.children[0]
-        this.decals.remove(oldDecal)
-        oldDecal.geometry.dispose()
-        oldDecal.material.dispose()
-      }
+    if (this.decals.children.length > 1000) {
+      const oldDecal = this.decals.children[0]
+      this.decals.remove(oldDecal)
+      oldDecal.geometry.dispose()
+      oldDecal.material.dispose()
     }
   }
 }

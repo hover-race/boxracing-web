@@ -232,7 +232,8 @@ class Wheel {
 
     this.applyTireForce(forwardDir, forwardForce, sideDir, sideForce)
     this.torque = driveTorque + brakeTorque - forwardForce * r
-    this.isSlipping = Math.abs(this.slipRatio) >= params.smokeSlipThreshold
+    const latSlip = Math.abs(lateralSpeed) / Math.max(Math.abs(forwardSpeed), 1)
+    this.isSlipping = Math.max(Math.abs(this.slipRatio), latSlip) >= params.smokeSlipThreshold
 
     if (this.wheelIndex === 2) {
       const basis = this.vehicleRigidBody.getWorldTransform().getBasis()
@@ -253,13 +254,6 @@ class Wheel {
       })
       if (window.__wheelLog.length > 60) window.__wheelLog.shift()
     }
-  }
-
-  getSmokeIntensity() {
-    if (!this.isSlipping) return 0
-
-    const slipRange = 1 - params.smokeSlipThreshold
-    return this.clamp((Math.abs(this.slipRatio) - params.smokeSlipThreshold) / slipRange, 0, 1)
   }
 
   gui() {
