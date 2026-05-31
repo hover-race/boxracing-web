@@ -189,6 +189,11 @@ class CameraOrbit {
     // Mouse drag sensitivity (radians per pixel)
     this.dragSensitivity = 0.005
 
+    // Vertical orbit (pitch) range, in radians above the horizon
+    this.currentElevation = 0.35
+    this.minElevation = -0.2
+    this.maxElevation = 1.4
+
     // Internal state
     this.currentAngle = 0
     this.selfHeight = 0
@@ -209,13 +214,19 @@ class CameraOrbit {
         this._dragActive = true
         this._dragDecayTimer = 0
         this._lastMouseX = e.clientX
+        this._lastMouseY = e.clientY
       }
     }
     this._onMouseMove = (e) => {
       if (!this._isDragging) return
       const dx = e.clientX - this._lastMouseX
+      const dy = e.clientY - this._lastMouseY
       this._lastMouseX = e.clientX
+      this._lastMouseY = e.clientY
       this.currentAngle += dx * this.dragSensitivity
+      // Drag up to raise the camera, down to lower it.
+      this.currentElevation -= dy * this.dragSensitivity
+      this.currentElevation = Math.max(this.minElevation, Math.min(this.maxElevation, this.currentElevation))
       this._dragDecayTimer = 0
     }
     this._onMouseUp = (e) => {
@@ -249,7 +260,10 @@ class CameraOrbit {
     const dx = camera.position.x - target.position.x
     const dz = camera.position.z - target.position.z
     this.currentAngle = Math.atan2(dx, dz)
-    this.selfHeight = camera.position.y
+    const horiz = Math.hypot(dx, dz)
+    const dy = camera.position.y - (target.position.y + this.height)
+    this.currentElevation = Math.max(this.minElevation, Math.min(this.maxElevation, Math.atan2(dy, horiz)))
+    this.selfHeight = target.position.y + this.height
     this.smoothLastPos.copy(target.position)
     this.smoothVelocity.set(0, 0, 0)
   }
@@ -281,16 +295,18 @@ class CameraOrbit {
       this.currentAngle += 0.05 * dt  // ~2 min per revolution
     }
 
-    // Smooth height tracking
+    // Smoothly track the vertical point we orbit around (the car).
     const wantedHeight = target.position.y + this.height
     const heightLerpFactor = Math.min(1.0, this.heightDamping * dt)
     this.selfHeight = this.selfHeight * (1 - heightLerpFactor) + wantedHeight * heightLerpFactor
 
-    // Position camera at current angle around the target
+    // Spherical placement: azimuth (drag left/right) + elevation (drag up/down).
+    const horizontalDist = this.distance * Math.cos(this.currentElevation)
+    const verticalOffset = this.distance * Math.sin(this.currentElevation)
     camera.position.set(
-      target.position.x + Math.sin(this.currentAngle) * this.distance,
-      this.selfHeight,
-      target.position.z + Math.cos(this.currentAngle) * this.distance
+      target.position.x + Math.sin(this.currentAngle) * horizontalDist,
+      this.selfHeight + verticalOffset,
+      target.position.z + Math.cos(this.currentAngle) * horizontalDist
     )
 
     // Always look straight at the car so it stays centered regardless of heading.
