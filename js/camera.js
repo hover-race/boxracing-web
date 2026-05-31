@@ -266,38 +266,19 @@ class CameraOrbit {
 
     const dt = Math.min(deltaTime, 0.1)
 
-    // Calculate car's travel direction from velocity
-    const currentPos = target.position.clone()
-    const velocity = currentPos.clone().sub(this.smoothLastPos).divideScalar(dt)
+    // Track only the car's SPEED magnitude (never its direction) so a spinning
+    // or drifting car can't swing the camera around.
+    const velocity = target.position.clone().sub(this.smoothLastPos).divideScalar(dt)
     this.smoothLastPos.copy(target.position)
     velocity.y = 0
+    this.smoothVelocity.lerp(velocity, Math.min(1.0, this.velocityDamping * dt))
+    const speed = this.smoothVelocity.length()
 
-    // Smooth the velocity to avoid jitter; decay toward zero when slow
-    if (velocity.length() > 0.5) {
-      this.smoothVelocity.lerp(velocity, this.velocityDamping * dt)
-    } else {
-      this.smoothVelocity.multiplyScalar(1.0 - 2.0 * dt)  // decay to zero at rest
-    }
-
-    // While dragging, don't auto-converge; after release, ease back gradually
-    if (!this._isDragging) {
-      this._dragDecayTimer += dt
-    }
-    const dragFadeIn = this._dragActive ? Math.min(1.0, this._dragDecayTimer / 2.0) : 1.0
-    if (this._dragDecayTimer > 3.0) {
-      this._dragActive = false  // fully back to auto after 3 seconds
-    }
-
-    const isMoving = this.smoothVelocity.length() > 0.5
-
-    if (isMoving) {
-      // Converge to trailing angle behind the car's travel direction
-      const travelAngle = Math.atan2(this.smoothVelocity.x, this.smoothVelocity.z)
-      const desiredAngle = travelAngle + this.trailAngleOffset
-      this.currentAngle = this.lerpAngle(this.currentAngle, desiredAngle, this.rotationDamping * dt * dragFadeIn)
-    } else if (!this._isDragging) {
-      // Gentle idle spin when stationary (0.05 rad/s, ~2 min per revolution)
-      this.currentAngle += 0.05 * dt
+    // Orbit angle is driven only by mouse drag, plus a gentle idle spin when
+    // stationary. While moving it holds steady, so the car stays framed no
+    // matter which way it is pointing.
+    if (!this._isDragging && speed < 0.5) {
+      this.currentAngle += 0.05 * dt  // ~2 min per revolution
     }
 
     // Smooth height tracking
@@ -312,14 +293,9 @@ class CameraOrbit {
       target.position.z + Math.cos(this.currentAngle) * this.distance
     )
 
-    // Look at a point ahead of the car in its travel direction
+    // Always look straight at the car so it stays centered regardless of heading.
     const lookAtPos = target.position.clone()
       .add(new THREE.Vector3(0, this.height * this.viewHeightRatio, 0))
-    if (this.smoothVelocity.length() > 0.5) {
-      const ahead = this.smoothVelocity.clone().normalize().multiplyScalar(this.lookAheadDistance)
-      lookAtPos.x += ahead.x
-      lookAtPos.z += ahead.z
-    }
     camera.lookAt(lookAtPos)
   }
 }
