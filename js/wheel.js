@@ -78,7 +78,7 @@ class Wheel {
     const sideWS = new Ammo.btVector3(basis.getRow(0).x(), basis.getRow(1).x(), basis.getRow(2).x())
 
     const directionWS = this.getWheelDirectionWS()
-    const forwardWS = this.crossProduct(directionWS, sideWS)
+    const forwardWS = this.crossProduct(sideWS, directionWS)
 
     return { forwardWS, sideWS }
   }
@@ -177,6 +177,10 @@ class Wheel {
     const forwardSpeed = pointVelocity.dot(forwardDir)
     const lateralSpeed = pointVelocity.dot(sideDir)
 
+    this.fwdWSx = forwardDir.x()
+    this.fwdWSy = forwardDir.y()
+    this.fwdWSz = forwardDir.z()
+
     this.slipRatio = this.calculateSlipRatio(forwardSpeed)
     this.slipAngle = Math.atan2(lateralSpeed, Math.abs(forwardSpeed) + 0.5)
 
@@ -229,6 +233,26 @@ class Wheel {
     this.applyTireForce(forwardDir, forwardForce, sideDir, sideForce)
     this.torque = driveTorque + brakeTorque - forwardForce * r
     this.isSlipping = Math.abs(this.slipRatio) >= params.smokeSlipThreshold
+
+    if (this.wheelIndex === 2) {
+      const basis = this.vehicleRigidBody.getWorldTransform().getBasis()
+      const noseX = basis.getRow(0).z(), noseY = basis.getRow(1).z(), noseZ = basis.getRow(2).z()
+      const fwdDotNose = forwardDir.x() * noseX + forwardDir.y() * noseY + forwardDir.z() * noseZ
+      const velDotNose = pointVelocity.x() * noseX + pointVelocity.y() * noseY + pointVelocity.z() * noseZ
+      window.__wheelLog = window.__wheelLog || []
+      window.__wheelLog.push({
+        engineForce: +engineForce.toFixed(1),
+        driveTorque: +driveTorque.toFixed(1),
+        omega: +this.angularVelocity.toFixed(2),
+        surfaceSpeed: +(this.angularVelocity * r).toFixed(3),
+        fwdSpeed: +forwardSpeed.toFixed(3),
+        slipRatio: +this.slipRatio.toFixed(3),
+        fwdForce: +forwardForce.toFixed(1),
+        fwdDotNose: +fwdDotNose.toFixed(3),
+        velDotNose: +velDotNose.toFixed(3),
+      })
+      if (window.__wheelLog.length > 60) window.__wheelLog.shift()
+    }
   }
 
   getSmokeIntensity() {
@@ -239,21 +263,6 @@ class Wheel {
   }
 
   gui() {
-    if (this.wheelIndex === 0) {
-      window.__wheelLog = window.__wheelLog || []
-      window.__wheelLog.push({
-        gripFwd: params.gripForward,
-        slipRatio: +(this.slipRatio).toFixed(3),
-        fwdSpeed: +(this.forwardSpeed ?? 0).toFixed(3),
-        angVel: +(this.angularVelocity).toFixed(2),
-        surfSpeed: +(this.angularVelocity * this.radius).toFixed(3),
-        maxFwd: +((this.normalForce ?? 0) * params.gripForward).toFixed(1),
-        fwdForce: +(this.forwardForceScalar ?? 0).toFixed(1),
-        sideForce: +(this.sideForceScalar ?? 0).toFixed(1),
-        inContact: this.isInContact(),
-      })
-      if (window.__wheelLog.length > 20) window.__wheelLog.shift()
-    }
     vehicleParams.slipRatio = this.slipRatio
     vehicleParams.slipValue = Math.abs(this.slipRatio)
     vehicleParams.rearLeftSlipRatio = this.slipRatio

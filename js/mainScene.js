@@ -163,11 +163,9 @@ export class MainScene extends Scene3D {
   setupDebugStepper() {
     window.__mainScene = this
     params.runPhysics = true
-    const stopPhysics = () => { params.runPhysics = false }
 
-    const AUTO_STOP_SECONDS = 5
-
-    window.setTimeout(stopPhysics, AUTO_STOP_SECONDS * 1000)
+    const AUTO_STOP_SECONDS = 3
+    window.setTimeout(() => { params.runPhysics = false }, AUTO_STOP_SECONDS * 1000)
   }
 
   log(a, b) {
