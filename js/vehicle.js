@@ -332,7 +332,7 @@ class Vehicle {
     const adjustedSteeringIncrement = this.steeringIncrement * this.steeringSensitivity;
     
     // Use adjusted increment in steering calculations
-    const targetSteering = this.steeringClamp * inputs.steering;
+    const targetSteering = -this.steeringClamp * inputs.steering;
     const steeringDiff = targetSteering - this.vehicleSteering;
     if (Math.abs(steeringDiff) > adjustedSteeringIncrement) {
       this.vehicleSteering += Math.sign(steeringDiff) * adjustedSteeringIncrement;
