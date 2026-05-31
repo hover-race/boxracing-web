@@ -109,6 +109,21 @@ gui.add(vehicleParams, 'forwardForceScalar', -8000, 8000).step(1).listen()
 gui.add(vehicleParams, 'sideForceScalar', -8000, 8000).step(1).listen()
 gui.add(vehicleParams, 'wheelSteerAngle', -35, 35).step(0.1).listen()
 
+// Debug overrides from URL query, e.g. ?throttleInput=1&engineTorque=900&autoStopPhysics=true
+// Applied after gui.remember/localStorage restore so the URL is authoritative.
+function applyUrlParamOverrides() {
+  const query = new URLSearchParams(window.location.search)
+  for (const [key, raw] of query) {
+    if (!(key in params)) continue
+    const current = params[key]
+    if (typeof current === 'boolean') params[key] = raw === 'true' || raw === '1'
+    else if (typeof current === 'number') params[key] = Number(raw)
+    else params[key] = raw
+  }
+  gui.__controllers.forEach((c) => c.updateDisplay())
+}
+applyUrlParamOverrides()
+
 gui.open()
 
 window.bindCameraSwitcherToGui = () => {}
