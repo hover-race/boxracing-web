@@ -39,7 +39,7 @@ const params = {
   tcStrength: 2,
   tcMaxCut: 0.75,
   spinPrevention: true,
-  spinAssist: 1.5,
+  spinAssist: 0.5,
   wheelInertia: 1.2,
   engineTorque: 700,
   brakeTorque: 450,
@@ -93,6 +93,8 @@ const vehicleParams = {
   yawRateError: 0,
   spinAssistCut: 0,
   spinAssistActive: false,
+  oversteerMetric: 0,
+  oversteerZone: 'stable',
   volume: !isNaN(savedEngineVolume) ? savedEngineVolume : 50,
   steeringSensitivity: 1.0,
   wheelSteerAngle: 0,
@@ -111,7 +113,7 @@ stabilityFolder.add(params, 'tcSlipLimit', 0, 1).step(0.01)
 stabilityFolder.add(params, 'tcStrength', 0, 10).step(0.1)
 stabilityFolder.add(params, 'tcMaxCut', 0, 1).step(0.01)
 stabilityFolder.add(params, 'spinPrevention')
-stabilityFolder.add(params, 'spinAssist', 0, 3).step(0.05)
+stabilityFolder.add(params, 'spinAssist', 0, 1).step(0.25)
 
 const debugFolder = gui.addFolder('Debug')
 debugFolder.add(params, 'throttleInput', -1, 1).step(0.01)
@@ -130,6 +132,8 @@ gui.add(vehicleParams, 'yawRateTarget', -2, 2).step(0.01).listen()
 gui.add(vehicleParams, 'yawRateError', -2, 2).step(0.01).listen()
 gui.add(vehicleParams, 'spinAssistCut', 0, 1).step(0.01).listen()
 gui.add(vehicleParams, 'spinAssistActive').listen()
+gui.add(vehicleParams, 'oversteerMetric', 0, 2).step(0.01).listen()
+gui.add(vehicleParams, 'oversteerZone').listen()
 
 // Debug overrides from URL query, e.g. ?throttleInput=1&engineTorque=900&autoStopPhysics=true
 // Applied after gui.remember/localStorage restore so the URL is authoritative.
