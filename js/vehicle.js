@@ -73,6 +73,7 @@ class Vehicle {
     )
 
     this.speedometer = document.getElementById('speedometer')
+    this.tcsIndicator = document.getElementById('tcs-indicator')
 
     // Initialize wheels array after adding wheels to vehicle
     this.wheels = this.wheelMeshes.map((mesh, index) => {
@@ -233,6 +234,7 @@ class Vehicle {
     }
 
     this.engineForce = this.maxEngineForce * (inputs.throttle + reverseThrottle);
+    let tcsActive = false
     if (params.tractionControl && this.engineForce > 0 && this.wheels.length) {
       const rearSlip = (
         Math.abs(this.wheels[this.BACK_LEFT].slipRatio) +
@@ -240,7 +242,11 @@ class Vehicle {
       ) * 0.5
       const slipOverLimit = Math.max(0, rearSlip - params.tcSlipLimit)
       const cut = Math.min(params.tcMaxCut, slipOverLimit * params.tcStrength)
+      tcsActive = cut > 0
       this.engineForce *= 1 - cut
+    }
+    if (this.tcsIndicator) {
+      this.tcsIndicator.classList.toggle('active', params.tractionControl && tcsActive)
     }
     
     // Apply steering with sensitivity adjustment

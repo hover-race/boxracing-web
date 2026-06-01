@@ -6,6 +6,7 @@ body {
     height: 100%;
     overflow: hidden;
     background: #000;
+    font-family: system-ui, -apple-system, sans-serif;
 }
 
 canvas {
@@ -33,6 +34,62 @@ canvas {
     font-family: monospace;
     font-size: 34px;
     z-index: 1;
+}
+
+#tcs-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid #ffb300;
+    background: transparent;
+    color: #ffb300;
+    font-family: monospace;
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    box-sizing: border-box;
+}
+
+#tcs-indicator.active {
+    opacity: 1;
+    visibility: visible;
+    animation: tcs-blink 0.5s steps(1, end) infinite;
+}
+
+@keyframes tcs-blink {
+    0% { opacity: 1; }
+    49.999% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 0.5; }
+}
+
+#controls {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    z-index: 1;
+}
+
+#controls input {
+    transform: scale(1.1);
 }
 
 .dg.ac {
