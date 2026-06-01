@@ -47,8 +47,6 @@ const params = {
   tireLateralStiffness: 2,
   tireSlipDamping: 450,
   maxWheelAngularVelocity: 220,
-  gripForward: 2,
-  gripSide: 2,
   throttleInput: 0,
   runPhysics: true,
   autoStopPhysicsAfterSec: 0,
@@ -105,8 +103,6 @@ const vehicleParams = {
 gui.useLocalStorage = true
 gui.remember(params)
 
-gui.add(params, 'gripForward', -2, 2).step(0.05)
-gui.add(params, 'gripSide', -2, 2).step(0.05)
 gui.add(params, 'smokeEnabled')
 
 const stabilityFolder = gui.addFolder('Stability Control')

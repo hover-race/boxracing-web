@@ -1,3 +1,5 @@
+import { Config } from './config.js'
+
 class Wheel {
   constructor(vehicleRigidBody, wheelInfo, radius, raycastVehicle, wheelIndex) {
     this.vehicleRigidBody = vehicleRigidBody
@@ -188,8 +190,8 @@ class Wheel {
     this.lateralSpeed = lateralSpeed
 
     const normalForce = this.getNormalForce()
-    const maxForward = normalForce * params.gripForward
-    const maxSide = normalForce * params.gripSide
+    const maxForward = normalForce * Config.gripForward
+    const maxSide = normalForce * Config.gripSide
     this.normalForce = normalForce
     this.maxSide = maxSide
 
