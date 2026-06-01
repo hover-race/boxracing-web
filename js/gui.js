@@ -55,7 +55,7 @@ const params = {
   smokeRate: 45,
   maxSmokeParticles: 160,
   playerName: playerControl.name,
-  volume: parseFloat(localStorage.getItem('volume')) || 1.0,
+  soundVolume: 50,
   explosionEnabled: true,
   explosionForceThreshold: 50,
   respawnDelay: 1000,
@@ -67,8 +67,6 @@ const params = {
     return savedValue !== null ? savedValue === 'true' : isMobile;
   })()
 }
-
-const savedEngineVolume = Number(localStorage.getItem('engineVolume'));
 
 const vehicleParams = {
   speed: 0,
@@ -95,7 +93,6 @@ const vehicleParams = {
   spinAssistActive: false,
   oversteerMetric: 0,
   oversteerZone: 'stable',
-  volume: !isNaN(savedEngineVolume) ? savedEngineVolume : 50,
   steeringSensitivity: 1.0,
   wheelSteerAngle: 0,
 }
@@ -104,6 +101,7 @@ gui.useLocalStorage = true
 gui.remember(params)
 
 gui.add(params, 'smokeEnabled')
+gui.add(params, 'soundVolume', 0, 100).step(1)
 
 const stabilityFolder = gui.addFolder('Stability Control')
 stabilityFolder.add(params, 'tractionControl')
