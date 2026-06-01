@@ -102,6 +102,7 @@ gui.remember(params)
 
 gui.add(params, 'smokeEnabled')
 gui.add(params, 'soundVolume', 0, 100).step(1)
+gui.add(vehicleParams, 'steeringSensitivity', 0.1, 2.0).step(0.1)
 
 const stabilityFolder = gui.addFolder('Stability Control')
 stabilityFolder.add(params, 'tractionControl')

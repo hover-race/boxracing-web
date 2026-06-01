@@ -374,7 +374,7 @@ class Vehicle {
     const rMeasured = oversteer.rMeasured
     const oversteerMetric = oversteer.metric
 
-    const gain = Math.max(0.01, params.spinAssist)
+    const gain = Math.max(0.01, params.spinAssist * 2)
     const T1 = 0.12 / gain
     const T2 = 0.28 / gain
     const T3 = 0.5 / gain
