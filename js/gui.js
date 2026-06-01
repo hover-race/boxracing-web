@@ -39,11 +39,7 @@ const params = {
   tcStrength: 2,
   tcMaxCut: 0.75,
   spinPrevention: true,
-  spinYawErrorOn: 0.35,
-  spinYawErrorOff: 0.2,
-  spinOutsideCutMax: 0.7,
-  spinAssistStrength: 1.5,
-  spinMinSpeedMph: 12,
+  spinAssist: 1.5,
   wheelInertia: 1.2,
   engineTorque: 700,
   brakeTorque: 450,
@@ -115,11 +111,7 @@ stabilityFolder.add(params, 'tcSlipLimit', 0, 1).step(0.01)
 stabilityFolder.add(params, 'tcStrength', 0, 10).step(0.1)
 stabilityFolder.add(params, 'tcMaxCut', 0, 1).step(0.01)
 stabilityFolder.add(params, 'spinPrevention')
-stabilityFolder.add(params, 'spinYawErrorOn', 0.05, 1.5).step(0.01)
-stabilityFolder.add(params, 'spinYawErrorOff', 0.01, 1.0).step(0.01)
-stabilityFolder.add(params, 'spinOutsideCutMax', 0, 1).step(0.01)
-stabilityFolder.add(params, 'spinAssistStrength', 0, 4).step(0.05)
-stabilityFolder.add(params, 'spinMinSpeedMph', 0, 40).step(0.5)
+stabilityFolder.add(params, 'spinAssist', 0, 3).step(0.05)
 
 const debugFolder = gui.addFolder('Debug')
 debugFolder.add(params, 'throttleInput', -1, 1).step(0.01)
