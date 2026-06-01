@@ -28,11 +28,11 @@ class Vehicle {
   wheels = []  // Array to store Wheel instances
   rearLeftEngineForce = 0
   rearRightEngineForce = 0
-  escBrakeFL = 0
-  escBrakeFR = 0
+  prevYawError = 0
+  escTorqueCutSmoothed = 0
+  escOuterRearBrakeSmoothed = 0
   escBrakeBL = 0
   escBrakeBR = 0
-  prevYawError = 0
   stabilityActuation = null
   tcsWasActive = false
   escWasActive = false
@@ -147,8 +147,8 @@ class Vehicle {
     const dt = 1/60;  // Assuming 60fps, ideally get this from the physics world
     const frontBrake = this.footBrake
     const rearBrake = this.footBrake + this.handBrake
-    this.wheels[this.FRONT_LEFT].update(dt, 0, frontBrake + this.escBrakeFL)
-    this.wheels[this.FRONT_RIGHT].update(dt, 0, frontBrake + this.escBrakeFR)
+    this.wheels[this.FRONT_LEFT].update(dt, 0, frontBrake)
+    this.wheels[this.FRONT_RIGHT].update(dt, 0, frontBrake)
     this.wheels[this.BACK_LEFT].update(dt, this.rearLeftEngineForce, rearBrake + this.escBrakeBL)
     this.wheels[this.BACK_RIGHT].update(dt, this.rearRightEngineForce, rearBrake + this.escBrakeBR)
     this.wheels[this.FRONT_LEFT].gui()
@@ -286,8 +286,6 @@ class Vehicle {
   applyStabilityActuation() {
     this.rearLeftEngineForce = this.engineForce
     this.rearRightEngineForce = this.engineForce
-    this.escBrakeFL = 0
-    this.escBrakeFR = 0
     this.escBrakeBL = 0
     this.escBrakeBR = 0
     const actuation = this.stabilityActuation
@@ -296,8 +294,6 @@ class Vehicle {
     this.engineForce *= 1 - actuation.torqueCut
     this.rearLeftEngineForce = this.engineForce
     this.rearRightEngineForce = this.engineForce
-    this.escBrakeFL = actuation.escBrakeFL
-    this.escBrakeFR = actuation.escBrakeFR
     this.escBrakeBL = actuation.escBrakeBL
     this.escBrakeBR = actuation.escBrakeBR
   }
@@ -347,10 +343,13 @@ class Vehicle {
     vehicleParams.oversteerZone = 'stable'
     vehicleParams.spinAssistActive = false
     vehicleParams.spinAssistCut = 0
+    vehicleParams.escBrake = 0
     this.stabilityActuation = null
 
     if (!params.spinPrevention || !this.wheels.length) {
       this.prevYawError = 0
+      this.escTorqueCutSmoothed = 0
+      this.escOuterRearBrakeSmoothed = 0
       return
     }
 
@@ -358,6 +357,8 @@ class Vehicle {
     const oversteer = this.getOversteer(dt)
     if (oversteer.v < minSpeedMps) {
       this.prevYawError = 0
+      this.escTorqueCutSmoothed = 0
+      this.escOuterRearBrakeSmoothed = 0
       return
     }
 
@@ -371,7 +372,7 @@ class Vehicle {
     const rMeasured = oversteer.rMeasured
     const oversteerMetric = oversteer.metric
 
-    const gain = Math.max(0.01, params.spinAssist * 0.25)
+    const gain = Math.max(0.01, params.spinAssist)
     const T1 = 0.12 / gain
     const T2 = 0.28 / gain
     const T3 = 0.5 / gain
@@ -379,49 +380,40 @@ class Vehicle {
     const speedFactor = Math.min(1, Math.max(0, (v - minSpeedMps) / (fullSpeedMps - minSpeedMps)))
 
     let zone = 'stable'
-    let torqueCut = 0
-    let brakeOuterRear = 0
-    let brakeFrontOuter = 0
+    if (oversteerMetric >= T3) zone = 'critical'
+    else if (oversteerMetric >= T2) zone = 'active'
+    else if (oversteerMetric >= T1) zone = 'warning'
 
-    if (oversteerMetric >= T3) {
-      zone = 'critical'
-      const t = Math.min(1, (oversteerMetric - T3) / T3)
-      torqueCut = 0.8 + 0.2 * t
-      brakeOuterRear = 35 + 25 * t
-      brakeFrontOuter = 50 + 30 * t
-    } else if (oversteerMetric >= T2) {
-      zone = 'active'
-      const t = (oversteerMetric - T2) / Math.max(0.001, T3 - T2)
-      torqueCut = 0.3 + 0.4 * t
-      brakeOuterRear = 15 + 35 * t
-    } else if (oversteerMetric >= T1) {
-      zone = 'warning'
-      const t = (oversteerMetric - T1) / Math.max(0.001, T2 - T1)
-      torqueCut = 0.1 + 0.2 * t
+    const maxCut = 0.45
+    let targetCut = 0
+    if (oversteerMetric > T1) {
+      targetCut = Math.min(maxCut, ((oversteerMetric - T1) / Math.max(0.001, T3 - T1)) * maxCut)
     }
+    targetCut *= 0.5 + 0.5 * speedFactor
 
-    torqueCut = Math.min(1, torqueCut * (0.5 + 0.5 * speedFactor))
+    const maxBrake = 30
+    let targetBrake = 0
+    if (oversteerMetric > T1) {
+      targetBrake = Math.min(maxBrake, ((oversteerMetric - T1) / Math.max(0.001, T3 - T1)) * maxBrake)
+    }
+    targetBrake *= 0.5 + 0.5 * speedFactor
+
+    const smoothRate = 6
+    this.escTorqueCutSmoothed += (targetCut - this.escTorqueCutSmoothed) * Math.min(1, smoothRate * dt)
+    this.escOuterRearBrakeSmoothed += (targetBrake - this.escOuterRearBrakeSmoothed) * Math.min(1, smoothRate * dt)
+    const torqueCut = this.escTorqueCutSmoothed
+    const outerRearBrake = this.escOuterRearBrakeSmoothed
+
     vehicleParams.oversteerZone = zone
     vehicleParams.spinAssistCut = torqueCut
-    vehicleParams.spinAssistActive = zone !== 'stable'
+    vehicleParams.escBrake = outerRearBrake
+    vehicleParams.spinAssistActive = torqueCut > 0.02 || outerRearBrake > 1
 
-    const actuation = {
-      torqueCut: 0,
-      escBrakeFL: 0,
-      escBrakeFR: 0,
-      escBrakeBL: 0,
-      escBrakeBR: 0,
-    }
-    if (zone !== 'stable') {
-      actuation.torqueCut = torqueCut
+    const actuation = { torqueCut, escBrakeBL: 0, escBrakeBR: 0 }
+    if (outerRearBrake > 0) {
       const yawSign = Math.abs(rExpected) > 0.02 ? Math.sign(rExpected) : Math.sign(rMeasured)
-      if (yawSign > 0) {
-        if (brakeOuterRear) actuation.escBrakeBR = brakeOuterRear
-        if (brakeFrontOuter) actuation.escBrakeFR = brakeFrontOuter
-      } else if (yawSign < 0) {
-        if (brakeOuterRear) actuation.escBrakeBL = brakeOuterRear
-        if (brakeFrontOuter) actuation.escBrakeFL = brakeFrontOuter
-      }
+      if (yawSign > 0) actuation.escBrakeBR = outerRearBrake
+      else if (yawSign < 0) actuation.escBrakeBL = outerRearBrake
     }
     this.stabilityActuation = actuation
   }
@@ -446,9 +438,11 @@ class Vehicle {
       footBrakeInput = 0
     }
 
-    this.engineForce = this.maxEngineForce * (inputs.throttle + reverseThrottle);
+    const throttleInput = inputs.throttle + reverseThrottle
+    this.engineForce = this.maxEngineForce * throttleInput;
     this.applyStabilityActuation()
     const tcsActive = this.applyTractionControl()
+    vehicleParams.curThrottle = this.maxEngineForce > 0 ? this.engineForce / this.maxEngineForce : 0
     this.updateIndicatorOnActivation(this.tcsIndicator, params.tractionControl, tcsActive, 'tcsWasActive', 'tcsLightOffTimeoutId')
     
     // Apply steering with sensitivity adjustment

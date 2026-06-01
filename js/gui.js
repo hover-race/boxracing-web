@@ -92,6 +92,8 @@ const vehicleParams = {
   yawRateTarget: 0,
   yawRateError: 0,
   spinAssistCut: 0,
+  escBrake: 0,
+  curThrottle: 0,
   spinAssistActive: false,
   oversteerMetric: 0,
   oversteerZone: 'stable',
@@ -129,6 +131,8 @@ debugFolder.add(vehicleParams, 'yawRate', -2, 2).step(0.01).listen()
 debugFolder.add(vehicleParams, 'yawRateTarget', -2, 2).step(0.01).listen()
 debugFolder.add(vehicleParams, 'yawRateError', -2, 2).step(0.01).listen()
 debugFolder.add(vehicleParams, 'spinAssistCut', 0, 1).step(0.01).listen()
+debugFolder.add(vehicleParams, 'escBrake', 0, 40).step(1).listen()
+debugFolder.add(vehicleParams, 'curThrottle', -1, 1).step(0.01).listen()
 debugFolder.add(vehicleParams, 'spinAssistActive').listen()
 debugFolder.add(vehicleParams, 'oversteerMetric', 0, 2).step(0.01).listen()
 debugFolder.add(vehicleParams, 'oversteerZone').listen()
