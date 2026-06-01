@@ -36,16 +36,14 @@ canvas {
     z-index: 1;
 }
 
-#tcs-indicator {
+#tcs-indicator,
+#esc-indicator {
     position: fixed;
     bottom: 20px;
-    right: 20px;
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    border: 3px solid #ffb300;
     background: transparent;
-    color: #ffb300;
     font-family: monospace;
     font-size: 16px;
     font-weight: 900;
@@ -60,7 +58,20 @@ canvas {
     box-sizing: border-box;
 }
 
-#tcs-indicator.active {
+#tcs-indicator {
+    right: 20px;
+    border: 3px solid #ffb300;
+    color: #ffb300;
+}
+
+#esc-indicator {
+    right: 68px;
+    border: 3px solid #ff3b30;
+    color: #ff3b30;
+}
+
+#tcs-indicator.active,
+#esc-indicator.active {
     opacity: 1;
     visibility: visible;
     animation: tcs-blink 0.5s steps(1, end) infinite;

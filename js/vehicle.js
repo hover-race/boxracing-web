@@ -26,6 +26,13 @@ class Vehicle {
   BACK_RIGHT = 3
 
   wheels = []  // Array to store Wheel instances
+  rearLeftEngineForce = 0
+  rearRightEngineForce = 0
+  spinAssistEngaged = false
+  tcsWasActive = false
+  escWasActive = false
+  tcsLightOffTimeoutId = null
+  escLightOffTimeoutId = null
 
   constructor(scene, physics, chassis, wheelMeshes) {
     this.scene = scene
@@ -74,6 +81,7 @@ class Vehicle {
 
     this.speedometer = document.getElementById('speedometer')
     this.tcsIndicator = document.getElementById('tcs-indicator')
+    this.escIndicator = document.getElementById('esc-indicator')
 
     // Initialize wheels array after adding wheels to vehicle
     this.wheels = this.wheelMeshes.map((mesh, index) => {
@@ -88,6 +96,29 @@ class Vehicle {
     this.recorder = new ReplayRecorder()
     this.recorder.start()
     console.log('Vehicle: Auto-recording started on car load')
+  }
+
+  updateIndicatorOnActivation(indicator, enabled, activeNow, wasActiveProp, timeoutProp) {
+    if (!indicator) return
+    if (!enabled) {
+      indicator.classList.remove('active')
+      if (this[timeoutProp]) {
+        clearTimeout(this[timeoutProp])
+        this[timeoutProp] = null
+      }
+      this[wasActiveProp] = false
+      return
+    }
+    if (activeNow && !this[wasActiveProp]) {
+      indicator.classList.add('active')
+      if (this[timeoutProp]) clearTimeout(this[timeoutProp])
+      this[timeoutProp] = setTimeout(() => {
+        indicator.classList.remove('active')
+        this[timeoutProp] = null
+      }, 2000)
+    }
+
+    this[wasActiveProp] = activeNow
   }
 
   applyPushForce() {
@@ -113,8 +144,8 @@ class Vehicle {
     const rearBrake = this.footBrake + this.handBrake
     this.wheels[this.FRONT_LEFT].update(dt, 0, frontBrake)
     this.wheels[this.FRONT_RIGHT].update(dt, 0, frontBrake)
-    this.wheels[this.BACK_LEFT].update(dt, this.engineForce, rearBrake)
-    this.wheels[this.BACK_RIGHT].update(dt, this.engineForce, rearBrake)
+    this.wheels[this.BACK_LEFT].update(dt, this.rearLeftEngineForce, rearBrake)
+    this.wheels[this.BACK_RIGHT].update(dt, this.rearRightEngineForce, rearBrake)
     this.wheels[this.FRONT_LEFT].gui()
 
     let tm, p, q, i
@@ -213,6 +244,92 @@ class Vehicle {
     this.scene.add(wheelMesh)
   }
 
+  applyTractionControl() {
+    if (!params.tractionControl || this.engineForce <= 0 || !this.wheels.length) {
+      return false
+    }
+
+    const rearSlip = (
+      Math.abs(this.wheels[this.BACK_LEFT].slipRatio) +
+      Math.abs(this.wheels[this.BACK_RIGHT].slipRatio)
+    ) * 0.5
+    const slipOverLimit = Math.max(0, rearSlip - params.tcSlipLimit)
+    const baseCut = Math.min(params.tcMaxCut, slipOverLimit * params.tcStrength)
+
+    // Fade TC in with speed so launches aren't overly torque-limited.
+    // Use rear contact-patch forward speed (m/s) as the best proxy for "vehicle moving".
+    const rearSpeedMps = Math.abs(
+      (this.wheels[this.BACK_LEFT].forwardSpeed + this.wheels[this.BACK_RIGHT].forwardSpeed) * 0.5
+    )
+    const tcFullEffectMps = 20 * 0.44704
+    const speedFactor = Math.min(1, rearSpeedMps / tcFullEffectMps)
+    const cut = baseCut * speedFactor
+
+    this.engineForce *= 1 - cut
+    return cut > 0
+  }
+
+  applySpinPrevention() {
+    this.rearLeftEngineForce = this.engineForce
+    this.rearRightEngineForce = this.engineForce
+    vehicleParams.yawRate = 0
+    vehicleParams.yawRateTarget = 0
+    vehicleParams.yawRateError = 0
+    vehicleParams.spinAssistActive = false
+    vehicleParams.spinAssistCut = 0
+
+    if (!params.spinPrevention || this.engineForce <= 0 || !this.wheels.length) {
+      this.spinAssistEngaged = false
+      return
+    }
+
+    const rearSpeedMps = Math.abs(
+      (this.wheels[this.BACK_LEFT].forwardSpeed + this.wheels[this.BACK_RIGHT].forwardSpeed) * 0.5
+    )
+    const minSpeedMps = params.spinMinSpeedMph * 0.44704
+    if (rearSpeedMps < minSpeedMps) {
+      this.spinAssistEngaged = false
+      return
+    }
+
+    const yawRate = this.chassis.body.ammo.getAngularVelocity().y()
+    const wheelbaseM = 2.6
+    const yawRateTarget = rearSpeedMps * Math.tan(this.vehicleSteering) / wheelbaseM
+    const yawRateError = yawRate - yawRateTarget
+
+    vehicleParams.yawRate = yawRate
+    vehicleParams.yawRateTarget = yawRateTarget
+    vehicleParams.yawRateError = yawRateError
+
+    const oversteerError = yawRateError * yawRateTarget > 0 ? Math.abs(yawRateError) : 0
+    const yawOn = Math.max(params.spinYawErrorOn, params.spinYawErrorOff)
+    const yawOff = Math.min(params.spinYawErrorOn, params.spinYawErrorOff)
+
+    if (this.spinAssistEngaged) {
+      this.spinAssistEngaged = oversteerError > yawOff
+    } else if (oversteerError > yawOn) {
+      this.spinAssistEngaged = true
+    }
+    if (!this.spinAssistEngaged || Math.abs(yawRateTarget) < 0.02) {
+      return
+    }
+
+    const normalizedError = Math.max(0, (oversteerError - yawOff) / Math.max(0.001, yawOn - yawOff))
+    const outsideCut = Math.min(
+      params.spinOutsideCutMax,
+      normalizedError * params.spinAssistStrength * params.spinOutsideCutMax
+    )
+
+    if (yawRateTarget > 0) {
+      this.rearRightEngineForce *= 1 - outsideCut
+    } else {
+      this.rearLeftEngineForce *= 1 - outsideCut
+    }
+
+    vehicleParams.spinAssistCut = outsideCut
+    vehicleParams.spinAssistActive = outsideCut > 0
+  }
+
   updateControls(inputs) {
     // The JS tire model handles all longitudinal and lateral grip, so Bullet
     // contributes no wheel friction of its own (suspension + raycast only).
@@ -234,20 +351,8 @@ class Vehicle {
     }
 
     this.engineForce = this.maxEngineForce * (inputs.throttle + reverseThrottle);
-    let tcsActive = false
-    if (params.tractionControl && this.engineForce > 0 && this.wheels.length) {
-      const rearSlip = (
-        Math.abs(this.wheels[this.BACK_LEFT].slipRatio) +
-        Math.abs(this.wheels[this.BACK_RIGHT].slipRatio)
-      ) * 0.5
-      const slipOverLimit = Math.max(0, rearSlip - params.tcSlipLimit)
-      const cut = Math.min(params.tcMaxCut, slipOverLimit * params.tcStrength)
-      tcsActive = cut > 0
-      this.engineForce *= 1 - cut
-    }
-    if (this.tcsIndicator) {
-      this.tcsIndicator.classList.toggle('active', params.tractionControl && tcsActive)
-    }
+    const tcsActive = this.applyTractionControl()
+    this.updateIndicatorOnActivation(this.tcsIndicator, params.tractionControl, tcsActive, 'tcsWasActive', 'tcsLightOffTimeoutId')
     
     // Apply steering with sensitivity adjustment
     const adjustedSteeringIncrement = this.steeringIncrement * this.steeringSensitivity;
@@ -265,6 +370,8 @@ class Vehicle {
     // hits all four wheels; handbrake adds extra torque to the rears only.
     this.footBrake = footBrakeInput * 100;
     this.handBrake = inputs.handbrake * 100;
+    this.applySpinPrevention()
+    this.updateIndicatorOnActivation(this.escIndicator, params.spinPrevention, vehicleParams.spinAssistActive, 'escWasActive', 'escLightOffTimeoutId')
 
     // Bullet only provides steering geometry now; drive and brake are JS-side.
     this.vehicle.applyEngineForce(0, this.BACK_LEFT);

@@ -38,6 +38,12 @@ const params = {
   tcSlipLimit: 0.25,
   tcStrength: 2,
   tcMaxCut: 0.75,
+  spinPrevention: true,
+  spinYawErrorOn: 0.35,
+  spinYawErrorOff: 0.2,
+  spinOutsideCutMax: 0.7,
+  spinAssistStrength: 1.5,
+  spinMinSpeedMph: 12,
   wheelInertia: 1.2,
   engineTorque: 700,
   brakeTorque: 450,
@@ -86,6 +92,11 @@ const vehicleParams = {
   forceDirX: 0,
   forceDirY: 0,
   forceDirZ: 0,
+  yawRate: 0,
+  yawRateTarget: 0,
+  yawRateError: 0,
+  spinAssistCut: 0,
+  spinAssistActive: false,
   volume: !isNaN(savedEngineVolume) ? savedEngineVolume : 50,
   steeringSensitivity: 1.0,
   wheelSteerAngle: 0,
@@ -96,14 +107,24 @@ gui.remember(params)
 
 gui.add(params, 'gripForward', -2, 2).step(0.05)
 gui.add(params, 'gripSide', -2, 2).step(0.05)
-gui.add(params, 'tractionControl')
-gui.add(params, 'tcSlipLimit', 0, 1).step(0.01)
-gui.add(params, 'tcStrength', 0, 10).step(0.1)
-gui.add(params, 'tcMaxCut', 0, 1).step(0.01)
-gui.add(params, 'throttleInput', -1, 1).step(0.01)
-gui.add(params, 'runPhysics')
-gui.add(params, 'autoStopPhysicsAfterSec')
 gui.add(params, 'smokeEnabled')
+
+const stabilityFolder = gui.addFolder('Stability Control')
+stabilityFolder.add(params, 'tractionControl')
+stabilityFolder.add(params, 'tcSlipLimit', 0, 1).step(0.01)
+stabilityFolder.add(params, 'tcStrength', 0, 10).step(0.1)
+stabilityFolder.add(params, 'tcMaxCut', 0, 1).step(0.01)
+stabilityFolder.add(params, 'spinPrevention')
+stabilityFolder.add(params, 'spinYawErrorOn', 0.05, 1.5).step(0.01)
+stabilityFolder.add(params, 'spinYawErrorOff', 0.01, 1.0).step(0.01)
+stabilityFolder.add(params, 'spinOutsideCutMax', 0, 1).step(0.01)
+stabilityFolder.add(params, 'spinAssistStrength', 0, 4).step(0.05)
+stabilityFolder.add(params, 'spinMinSpeedMph', 0, 40).step(0.5)
+
+const debugFolder = gui.addFolder('Debug')
+debugFolder.add(params, 'throttleInput', -1, 1).step(0.01)
+debugFolder.add(params, 'runPhysics')
+debugFolder.add(params, 'autoStopPhysicsAfterSec')
 
 // One-wheel readouts
 gui.add(vehicleParams, 'wheelSpeed', -50, 50).step(0.1).listen()
@@ -112,6 +133,11 @@ gui.add(vehicleParams, 'slipAngle', -90, 90).step(0.1).listen()
 gui.add(vehicleParams, 'forwardForceScalar', -8000, 8000).step(1).listen()
 gui.add(vehicleParams, 'sideForceScalar', -8000, 8000).step(1).listen()
 gui.add(vehicleParams, 'wheelSteerAngle', -35, 35).step(0.1).listen()
+gui.add(vehicleParams, 'yawRate', -2, 2).step(0.01).listen()
+gui.add(vehicleParams, 'yawRateTarget', -2, 2).step(0.01).listen()
+gui.add(vehicleParams, 'yawRateError', -2, 2).step(0.01).listen()
+gui.add(vehicleParams, 'spinAssistCut', 0, 1).step(0.01).listen()
+gui.add(vehicleParams, 'spinAssistActive').listen()
 
 // Debug overrides from URL query, e.g. ?throttleInput=1&engineTorque=900&autoStopPhysics=true
 // Applied after gui.remember/localStorage restore so the URL is authoritative.
@@ -128,6 +154,6 @@ function applyUrlParamOverrides() {
 }
 applyUrlParamOverrides()
 
-gui.open()
+gui.close()
 
 window.bindCameraSwitcherToGui = () => {}
