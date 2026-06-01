@@ -39,7 +39,7 @@ class Vehicle {
   tcsLightOffTimeoutId = null
   escLightOffTimeoutId = null
 
-  constructor(scene, physics, chassis, wheelMeshes) {
+  constructor(scene, physics, chassis, wheelMeshes, audioListener) {
     this.scene = scene
     this.physics = physics
     this.chassis = chassis
@@ -95,7 +95,7 @@ class Vehicle {
       return new Wheel(this.chassis.body.ammo, wheelInfo, radius, this.vehicle, index);
     });
 
-    this.particles = new TireParticles(scene, this)
+    this.particles = new TireParticles(scene, this, audioListener)
 
     // Initialize replay recorder and start recording immediately
     this.recorder = new ReplayRecorder()
@@ -191,15 +191,6 @@ class Vehicle {
     this.updateSound()
   }
 
-  applyTorqueSteering() {
-    const normalizedSteering = this.vehicleSteering / this.steeringClamp
-    
-    // Apply torque around up axis when steering
-    const upAxis = new Ammo.btVector3(0, 1, 0);
-    const torque = upAxis.op_mul(normalizedSteering * 1000)
-    this.chassis.body.ammo.applyLocalTorque(torque);
-  }
-
   updateSound() {
     if (this.chassis.engineSound) {
       const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
@@ -209,6 +200,15 @@ class Vehicle {
       const pitch = minPitch + (maxPitch - minPitch) * (speed / 100)
       this.chassis.engineSound.setPlaybackRate(Math.min(maxPitch, Math.max(minPitch, pitch)))
     }
+  }
+
+  applyTorqueSteering() {
+    const normalizedSteering = this.vehicleSteering / this.steeringClamp
+    
+    // Apply torque around up axis when steering
+    const upAxis = new Ammo.btVector3(0, 1, 0);
+    const torque = upAxis.op_mul(normalizedSteering * 1000)
+    this.chassis.body.ammo.applyLocalTorque(torque);
   }
 
   debugRaycast(start) {
@@ -529,18 +529,15 @@ class Vehicle {
     scene.physics.add.existing(chassis, { shape: 'convex', mass: 800 })
     chassis.body.setDamping(0.1, 0.1)
 
-    // Add engine sound
-    const engineSound = new THREE.Audio(scene.listener) // Get the audio listener from camera
+    const engineSound = new THREE.Audio(scene.listener)
     const audioLoader = new THREE.AudioLoader()
-    
-    audioLoader.load('assets/winston_high.wav', function(buffer) {
+    audioLoader.load('assets/winston_high.wav', (buffer) => {
       engineSound.setBuffer(buffer)
       engineSound.setLoop(true)
       engineSound.setVolume(params.soundVolume / 100)
-      chassis.engineSound = engineSound // Attach to chassis for easy access
+      chassis.engineSound = engineSound
     })
 
-    // Add gesture detection for sound
     let hasInteracted = false
     const playSound = () => {
       if (!hasInteracted && chassis.engineSound) {
@@ -548,8 +545,6 @@ class Vehicle {
         hasInteracted = true
       }
     }
-
-    // Listen for first interaction via mouse, touch or keyboard
     document.addEventListener('mousedown', playSound, { once: true })
     document.addEventListener('touchstart', playSound, { once: true })
     document.addEventListener('keydown', playSound, { once: true })
@@ -560,7 +555,9 @@ class Vehicle {
     // centerOfMassTransform.setOrigin(new Ammo.btVector3(centerOfMass.position.x, centerOfMass.position.y, centerOfMass.position.z))
     // chassis.body.ammo.setCenterOfMassTransform(centerOfMassTransform)
 
-    return new Vehicle(scene.scene, scene.physics, chassis, wheels)
+    const vehicle = new Vehicle(scene.scene, scene.physics, chassis, wheels, scene.listener)
+    vehicle.particles.enableAudioOnFirstGesture()
+    return vehicle
   }
 
   serialize() {

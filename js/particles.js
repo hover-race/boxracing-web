@@ -1,5 +1,7 @@
+import { TireScreechSound } from './sound.js'
+
 class TireParticles {
-  constructor(scene, vehicle) {
+  constructor(scene, vehicle, audioListener) {
     this.scene = scene
     this.vehicle = vehicle
 
@@ -23,9 +25,27 @@ class TireParticles {
     })
     this.smokeParticles = []
 
+    this.tireSound = audioListener ? new TireScreechSound(audioListener) : null
+
     // Contact speed (m/s) below which effects are off; full strength above taperEnd.
     this.motionMin = 0.5
     this.motionTaperEnd = 5.0
+  }
+
+  enableAudioOnFirstGesture() {
+    this.tireSound?.enableOnFirstGesture()
+  }
+
+  maxWheelEffectIntensity() {
+    let maxIntensity = 0
+    for (const wheel of this.vehicle.wheels) {
+      maxIntensity = Math.max(maxIntensity, this.wheelEffectIntensity(wheel))
+    }
+    return maxIntensity
+  }
+
+  updateTireAudio(dt) {
+    this.tireSound?.update(this.maxWheelEffectIntensity(), dt)
   }
 
   wheelMotionFactor(wheel) {
@@ -58,6 +78,8 @@ class TireParticles {
   }
 
   updateSmoke(dt) {
+    this.updateTireAudio(dt)
+
     if (params.smokeEnabled) {
       for (const wheel of this.vehicle.wheels) {
         this.emitSmoke(wheel, dt)

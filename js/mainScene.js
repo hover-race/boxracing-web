@@ -46,8 +46,8 @@ export class MainScene extends Scene3D {
     this.camera.fov = 70
     this.camera.updateProjectionMatrix()
 
-    // Add audio listener to camera
     this.listener = new THREE.AudioListener()
+    this.camera.add(this.listener)
 
     // Initialize checkpoint manager
     this.checkpointManager = new CheckpointManager(this)
