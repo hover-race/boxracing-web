@@ -193,7 +193,10 @@ class Vehicle {
 
   updateSound() {
     if (this.chassis.engineSound) {
-      const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
+      const rearMps = Math.abs(
+        (this.wheels[this.BACK_LEFT].forwardSpeed + this.wheels[this.BACK_RIGHT].forwardSpeed) * 0.5
+      )
+      const speed = rearMps * 2.23694
       this.chassis.engineSound.setVolume(Math.min(1, speed / 100) * (params.soundVolume / 100))
       const minPitch = 0.5
       const maxPitch = 2.0
