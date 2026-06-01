@@ -146,11 +146,10 @@ class Vehicle {
     
     const dt = 1/60;  // Assuming 60fps, ideally get this from the physics world
     const frontBrake = this.footBrake
-    const rearBrake = this.footBrake + this.handBrake
     this.wheels[this.FRONT_LEFT].update(dt, 0, frontBrake)
     this.wheels[this.FRONT_RIGHT].update(dt, 0, frontBrake)
-    this.wheels[this.BACK_LEFT].update(dt, this.rearLeftEngineForce, rearBrake + this.escBrakeBL)
-    this.wheels[this.BACK_RIGHT].update(dt, this.rearRightEngineForce, rearBrake + this.escBrakeBR)
+    this.wheels[this.BACK_LEFT].update(dt, this.rearLeftEngineForce, frontBrake + this.escBrakeBL, this.handBrake)
+    this.wheels[this.BACK_RIGHT].update(dt, this.rearRightEngineForce, frontBrake + this.escBrakeBR, this.handBrake)
     this.wheels[this.FRONT_LEFT].gui()
 
     this.applyStabilityControl(dt)
@@ -463,7 +462,7 @@ class Vehicle {
     // Brakes are applied as brake torque inside the JS wheel model. Foot brake
     // hits all four wheels; handbrake adds extra torque to the rears only.
     this.footBrake = footBrakeInput * 100;
-    this.handBrake = inputs.handbrake * 100;
+    this.handBrake = inputs.handbrake * 150;
 
     // Bullet only provides steering geometry now; drive and brake are JS-side.
     this.vehicle.applyEngineForce(0, this.BACK_LEFT);

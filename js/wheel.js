@@ -151,18 +151,27 @@ class Wheel {
     return driveTorque
   }
 
-  getBrakeTorque(brakeForce) {
-    if (brakeForce <= 0 || Math.abs(this.angularVelocity) < 0.01) return 0
+  getBrakeTorque(footBrake, handBrake = 0) {
+    const brakeForce = footBrake + handBrake * 4
+    if (brakeForce <= 0 || (Math.abs(this.angularVelocity) < 0.01 && handBrake <= 0)) return 0
     return -Math.sign(this.angularVelocity) * (brakeForce / 100) * params.brakeTorque
   }
 
-  update(dt, engineForce, brakeForce) {
+  applyHandbrakeLock(handBrake, dt) {
+    if (handBrake <= 0 || !this.isInContact()) return
+    const lock = Math.min(1, handBrake / 150)
+    this.angularVelocity *= 1 - Math.min(1, lock * 35 * dt)
+    if (lock >= 0.75) this.angularVelocity = 0
+  }
+
+  update(dt, engineForce, footBrake, handBrake = 0) {
+    const brakeForce = footBrake + handBrake
     this.forwardForceScalar = 0
     this.sideForceScalar = 0
     this.skidInfo = this.getSkidInfo()
 
     if (!this.isInContact()) {
-      const torque = this.getDriveTorque(engineForce) + this.getBrakeTorque(brakeForce)
+      const torque = this.getDriveTorque(engineForce) + this.getBrakeTorque(footBrake, handBrake)
       this.angularVelocity += torque / params.wheelInertia * dt
       this.angularVelocity = this.clamp(this.angularVelocity, -params.maxWheelAngularVelocity, params.maxWheelAngularVelocity)
       this.rotation += this.angularVelocity * dt
@@ -196,7 +205,7 @@ class Wheel {
     this.maxSide = maxSide
 
     const driveTorque = this.getDriveTorque(engineForce)
-    const brakeTorque = this.getBrakeTorque(brakeForce)
+    const brakeTorque = this.getBrakeTorque(footBrake, handBrake)
     const c = params.tireSlipDamping
     const r = this.radius
     const I = params.wheelInertia
@@ -216,6 +225,7 @@ class Wheel {
       omegaNext = this.angularVelocity + dt / I * (driveTorque + brakeTorque - forwardForce * r)
     }
     this.angularVelocity = this.clamp(omegaNext, -params.maxWheelAngularVelocity, params.maxWheelAngularVelocity)
+    this.applyHandbrakeLock(handBrake, dt)
     this.rotation += this.angularVelocity * dt
 
     // Side: opposes slip along the steered axle, bounded by the side grip ceiling.
