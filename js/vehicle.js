@@ -420,6 +420,23 @@ class Vehicle {
     this.stabilityActuation = actuation
   }
 
+  applySteering(inputs) {
+    // Apply steering with sensitivity adjustment
+    const adjustedSteeringIncrement = this.steeringIncrement * this.steeringSensitivity;
+
+    // Use adjusted increment in steering calculations
+    const targetSteering = -this.steeringClamp * inputs.steering;
+    const steeringDiff = targetSteering - this.vehicleSteering;
+    if (Math.abs(steeringDiff) > adjustedSteeringIncrement) {
+      this.vehicleSteering += Math.sign(steeringDiff) * adjustedSteeringIncrement;
+    } else {
+      this.vehicleSteering = targetSteering;
+    }
+
+    this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_LEFT);
+    this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_RIGHT);
+  }
+
   updateControls(inputs) {
     // The JS tire model handles all longitudinal and lateral grip, so Bullet
     // contributes no wheel friction of its own (suspension + raycast only).
@@ -446,18 +463,8 @@ class Vehicle {
     const tcsActive = this.applyTractionControl()
     vehicleParams.curThrottle = this.maxEngineForce > 0 ? this.engineForce / this.maxEngineForce : 0
     this.updateIndicatorOnActivation(this.tcsIndicator, params.tractionControl, tcsActive, 'tcsWasActive', 'tcsLightOffTimeoutId')
-    
-    // Apply steering with sensitivity adjustment
-    const adjustedSteeringIncrement = this.steeringIncrement * this.steeringSensitivity;
-    
-    // Use adjusted increment in steering calculations
-    const targetSteering = -this.steeringClamp * inputs.steering;
-    const steeringDiff = targetSteering - this.vehicleSteering;
-    if (Math.abs(steeringDiff) > adjustedSteeringIncrement) {
-      this.vehicleSteering += Math.sign(steeringDiff) * adjustedSteeringIncrement;
-    } else {
-      this.vehicleSteering = targetSteering;
-    }
+
+    this.applySteering(inputs)
 
     // Brakes are applied as brake torque inside the JS wheel model. Foot brake
     // hits all four wheels; handbrake adds extra torque to the rears only.
@@ -467,9 +474,6 @@ class Vehicle {
     // Bullet only provides steering geometry now; drive and brake are JS-side.
     this.vehicle.applyEngineForce(0, this.BACK_LEFT);
     this.vehicle.applyEngineForce(0, this.BACK_RIGHT);
-
-    this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_LEFT);
-    this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_RIGHT);
 
     this.vehicle.setBrake(0, this.FRONT_LEFT);
     this.vehicle.setBrake(0, this.FRONT_RIGHT);
