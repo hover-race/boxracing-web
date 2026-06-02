@@ -40,6 +40,9 @@ const params = {
   tcMaxCut: 0.75,
   spinPrevention: true,
   spinAssist: 0.5,
+  steeringAssist: true,
+  steerAssistGain: 0.6,
+  steerAssistSlipLimitDeg: 10,
   wheelInertia: 1.2,
   engineTorque: 700,
   brakeTorque: 450,
@@ -95,6 +98,9 @@ const vehicleParams = {
   oversteerZone: 'stable',
   steeringSensitivity: 1.0,
   wheelSteerAngle: 0,
+  frontSlipAngle: 0,
+  steerAssistActive: false,
+  steerAssistCorrection: 0,
 }
 
 gui.useLocalStorage = true
@@ -111,6 +117,9 @@ stabilityFolder.add(params, 'tcStrength', 0, 10).step(0.1)
 stabilityFolder.add(params, 'tcMaxCut', 0, 1).step(0.01)
 stabilityFolder.add(params, 'spinPrevention')
 stabilityFolder.add(params, 'spinAssist', 0, 1).step(0.25)
+stabilityFolder.add(params, 'steeringAssist')
+stabilityFolder.add(params, 'steerAssistSlipLimitDeg', 2, 25).step(0.5)
+stabilityFolder.add(params, 'steerAssistGain', 0, 2).step(0.05)
 
 const debugFolder = gui.addFolder('Debug')
 debugFolder.add(params, 'throttleInput', -1, 1).step(0.01)
@@ -119,6 +128,9 @@ debugFolder.add(params, 'autoStopPhysicsAfterSec')
 debugFolder.add(vehicleParams, 'wheelSpeed', -50, 50).step(0.1).listen()
 debugFolder.add(vehicleParams, 'slipRatio', -1, 1).step(0.01).listen()
 debugFolder.add(vehicleParams, 'slipAngle', -90, 90).step(0.1).listen()
+debugFolder.add(vehicleParams, 'frontSlipAngle', 0, 25).step(0.1).listen()
+debugFolder.add(vehicleParams, 'steerAssistCorrection', -0.3, 0.3).step(0.01).listen()
+debugFolder.add(vehicleParams, 'steerAssistActive').listen()
 debugFolder.add(vehicleParams, 'forwardForceScalar', -8000, 8000).step(1).listen()
 debugFolder.add(vehicleParams, 'sideForceScalar', -8000, 8000).step(1).listen()
 debugFolder.add(vehicleParams, 'wheelSteerAngle', -35, 35).step(0.1).listen()

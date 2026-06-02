@@ -10,6 +10,7 @@ class Vehicle {
 
   engineForce = 0
   vehicleSteering = 0
+  driverSteering = 0
   breakingForce = 0
   footBrake = 0
   handBrake = 0
@@ -151,6 +152,10 @@ class Vehicle {
     this.wheels[this.BACK_LEFT].update(dt, this.rearLeftEngineForce, frontBrake + this.escBrakeBL, this.handBrake)
     this.wheels[this.BACK_RIGHT].update(dt, this.rearRightEngineForce, frontBrake + this.escBrakeBR, this.handBrake)
     this.wheels[this.FRONT_LEFT].gui()
+    vehicleParams.frontSlipAngle = Math.max(
+      Math.abs(this.wheels[this.FRONT_LEFT].slipAngle),
+      Math.abs(this.wheels[this.FRONT_RIGHT].slipAngle),
+    ) * (180 / Math.PI)
 
     this.applyStabilityControl(dt)
     this.updateIndicatorOnActivation(
@@ -422,19 +427,53 @@ class Vehicle {
 
   applySteering(inputs) {
     // Apply steering with sensitivity adjustment
-    const adjustedSteeringIncrement = this.steeringIncrement * this.steeringSensitivity;
+    this.driverSteering = -this.steeringClamp * inputs.steering
+    this.smoothSteeringToward(this.driverSteering)
+    this.applySteeringToWheels()
+  }
 
-    // Use adjusted increment in steering calculations
-    const targetSteering = -this.steeringClamp * inputs.steering;
-    const steeringDiff = targetSteering - this.vehicleSteering;
-    if (Math.abs(steeringDiff) > adjustedSteeringIncrement) {
-      this.vehicleSteering += Math.sign(steeringDiff) * adjustedSteeringIncrement;
-    } else {
-      this.vehicleSteering = targetSteering;
+  applySteeringAssist() {
+    if (!params.steeringAssist) {
+      vehicleParams.steerAssistActive = false
+      vehicleParams.steerAssistCorrection = 0
+      return
     }
 
-    this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_LEFT);
-    this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_RIGHT);
+    const slip = (this.wheels[this.FRONT_LEFT].slipAngle + this.wheels[this.FRONT_RIGHT].slipAngle) * 0.5
+    const limitRad = params.steerAssistSlipLimitDeg * (Math.PI / 180)
+
+    if (Math.abs(slip) <= limitRad) {
+      vehicleParams.steerAssistActive = false
+      vehicleParams.steerAssistCorrection = 0
+      return
+    }
+
+    const excess = slip - Math.sign(slip) * limitRad
+    const correction = -params.steerAssistGain * excess
+    vehicleParams.steerAssistCorrection = correction
+    vehicleParams.steerAssistActive = true
+
+    const clamp = this.steeringClamp * this.steeringSensitivity
+    const targetSteering = Math.max(-clamp, Math.min(clamp, this.driverSteering + correction))
+    this.smoothSteeringToward(targetSteering)
+    this.applySteeringToWheels()
+  }
+
+  smoothSteeringToward(targetSteering) {
+    const adjustedSteeringIncrement = this.steeringIncrement * this.steeringSensitivity
+
+    // Use adjusted increment in steering calculations
+    const steeringDiff = targetSteering - this.vehicleSteering
+    if (Math.abs(steeringDiff) > adjustedSteeringIncrement) {
+      this.vehicleSteering += Math.sign(steeringDiff) * adjustedSteeringIncrement
+    } else {
+      this.vehicleSteering = targetSteering
+    }
+  }
+
+  applySteeringToWheels() {
+    this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_LEFT)
+    this.vehicle.setSteeringValue(this.vehicleSteering, this.FRONT_RIGHT)
   }
 
   updateControls(inputs) {
@@ -465,6 +504,7 @@ class Vehicle {
     this.updateIndicatorOnActivation(this.tcsIndicator, params.tractionControl, tcsActive, 'tcsWasActive', 'tcsLightOffTimeoutId')
 
     this.applySteering(inputs)
+    this.applySteeringAssist()
 
     // Brakes are applied as brake torque inside the JS wheel model. Foot brake
     // hits all four wheels; handbrake adds extra torque to the rears only.

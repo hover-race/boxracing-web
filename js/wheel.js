@@ -272,7 +272,9 @@ class Wheel {
     vehicleParams.slipRatio = this.slipRatio
     vehicleParams.slipValue = Math.abs(this.slipRatio)
     vehicleParams.rearLeftSlipRatio = this.slipRatio
-    vehicleParams.slipAngle = this.slipAngle * 180 / Math.PI
+    if (this.wheelIndex <= 1) {
+      vehicleParams.slipAngle = this.slipAngle * 180 / Math.PI
+    }
     vehicleParams.wheelSpeed = this.forwardSpeed
     vehicleParams.wheelSteerAngle = this.getSteeringAngle() * 180 / Math.PI
     vehicleParams.isSlipping = this.isSlipping
