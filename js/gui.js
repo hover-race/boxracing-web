@@ -64,6 +64,7 @@ const params = {
   respawnDelay: 1000,
   particleCount: 100,
   portalEnabled: true,
+  recordLaps: true,
   tiltSteering: (() => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const savedValue = localStorage.getItem('tiltSteering');
@@ -122,6 +123,7 @@ stabilityFolder.add(params, 'steerAssistSlipLimitDeg', 2, 25).step(0.5)
 stabilityFolder.add(params, 'steerAssistGain', 0, 2).step(0.05)
 
 const debugFolder = gui.addFolder('Debug')
+debugFolder.add(params, 'recordLaps')
 debugFolder.add(params, 'throttleInput', -1, 1).step(0.01)
 debugFolder.add(params, 'runPhysics')
 debugFolder.add(params, 'autoStopPhysicsAfterSec')

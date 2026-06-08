@@ -7,6 +7,7 @@ import { ControlsManager } from './controls.js';
 import { CheckpointManager } from './checkpointManager.js';
 import { UIController } from './ui.js';
 import { ReplayPlayer, ReplayUI } from './replays.js';
+import { LapPathRecorder } from './lapPath.js';
 
 export class MainScene extends Scene3D {
   car
@@ -51,6 +52,10 @@ export class MainScene extends Scene3D {
 
     // Initialize checkpoint manager
     this.checkpointManager = new CheckpointManager(this)
+
+    // Records the racing line per lap and downloads it on lap completion
+    this.lapPathRecorder = new LapPathRecorder()
+    this.checkpointManager.lapPathRecorder = this.lapPathRecorder
 
     // Preload car model once
     console.log("Preloading car model...");
@@ -236,6 +241,11 @@ export class MainScene extends Scene3D {
     // Record replay data
     if (this.car.recorder) {
       this.car.recorder.recordFrame(this.car);
+    }
+
+    // Record the racing line for the current lap
+    if (this.lapPathRecorder) {
+      this.lapPathRecorder.recordFrame(this.car.chassis.position);
     }
     
     // Update replay player if playing

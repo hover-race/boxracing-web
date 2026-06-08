@@ -21,6 +21,7 @@ class CheckpointManager {
     this.lastCheckpoint = null;
     this.lastCheckpointTime = 0;
     this.lastLapTime = 0;
+    this.lapPathRecorder = null;
     
     // UI elements
     this.lapCountElement = document.getElementById('lap-count');
@@ -301,12 +302,14 @@ class CheckpointManager {
             console.log('TRIGGER: Car crossed the start line!');
             self.checkpointProgress = 1;
             self.startLapTimer();
+            if (self.lapPathRecorder) self.lapPathRecorder.startLap();
           } else if (self.checkpointProgress === 2) {
             // Completed a lap (crossed finish after checkpoint)
             self.lapCount++;
             console.log(`TRIGGER: Lap ${self.lapCount} completed!`);
             self.checkpointProgress = 1; // Reset to 1 to start next lap
             self.completeLap();
+            if (self.lapPathRecorder) self.lapPathRecorder.finishLap();
           } else {
             console.log('Finish line crossed but not in sequence - must cross checkpoint first');
           }

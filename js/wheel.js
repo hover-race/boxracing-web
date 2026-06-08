@@ -215,7 +215,7 @@ class Wheel {
     // (omega*r == forwardSpeed). Solve it implicitly so it is unconditionally stable
     // (an explicit step with this stiffness overshoots and bang-bangs at the grip
     // limit). If the required force exceeds the friction limit the tire is sliding,
-    // so clamp the force and integrate the wheel spin explicitly under the net torque.
+    // so clamp the force and integrate the wheel sp`in explicitly under the net torque.
     let omegaNext =
       (this.angularVelocity + dt / I * (driveTorque + brakeTorque + c * r * forwardSpeed)) /
       (1 + dt * c * r * r / I)
