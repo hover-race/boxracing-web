@@ -6,6 +6,12 @@ class RacingLine {
   constructor(points) {
     this.points = points;
     this.count = points.length;
+    this.length = 0;
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1];
+      const b = points[i];
+      this.length += Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    }
   }
 
   static async load(url) {

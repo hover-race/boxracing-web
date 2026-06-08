@@ -8,6 +8,8 @@ import { CheckpointManager } from './checkpointManager.js';
 import { UIController } from './ui.js';
 import { ReplayPlayer, ReplayUI } from './replays.js';
 import { LapPathRecorder } from './lapPath.js';
+import { RacingLine } from './racingLine.js';
+import { Bot } from './bot.js';
 
 export class MainScene extends Scene3D {
   car
@@ -129,6 +131,14 @@ export class MainScene extends Scene3D {
     // Initialize checkpoint manager with the car
     this.checkpointManager.init(this.car)
 
+    // Load the recorded racing lines and create a debug bot that can drive the
+    // player car, following whichever lap is closest (switchable mid-lap).
+    this.racingLines = await Promise.all([
+      RacingLine.load('laps/lap-2.json'),
+      RacingLine.load('laps/lap-3.json'),
+    ])
+    this.bot = new Bot(this.racingLines)
+
     // Initialize replay system
     console.log('Initializing replay system...')
     this.replayPlayer = new ReplayPlayer()
@@ -230,6 +240,10 @@ export class MainScene extends Scene3D {
 
   update(time, deltaTime) {
     if (!params.runPhysics) return
+
+    if (params.botDrive && this.bot) {
+      this.bot.drive(this.car)
+    }
 
     const vehicleInputs = {
       ...inputControls,

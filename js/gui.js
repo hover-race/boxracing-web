@@ -65,6 +65,16 @@ const params = {
   particleCount: 100,
   portalEnabled: true,
   recordLaps: true,
+  botDrive: false,
+  botLookahead: 8,
+  botLookaheadTime: 0.45,
+  botSteerGain: 1.2,
+  botMaxSteer: 1,
+  botSteerRate: 0.15,
+  botMaxOffset: 10,
+  botMaxSpeed: 180,
+  botMaxLatAccel: 12,
+  botCurvatureSpacing: 10,
   tiltSteering: (() => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const savedValue = localStorage.getItem('tiltSteering');
@@ -121,6 +131,18 @@ stabilityFolder.add(params, 'spinAssist', 0, 1).step(0.25)
 stabilityFolder.add(params, 'steeringAssist')
 stabilityFolder.add(params, 'steerAssistSlipLimitDeg', 2, 25).step(0.5)
 stabilityFolder.add(params, 'steerAssistGain', 0, 2).step(0.05)
+
+const botFolder = gui.addFolder('Bot')
+botFolder.add(params, 'botDrive')
+botFolder.add(params, 'botLookahead', 1, 40).step(0.5)
+botFolder.add(params, 'botLookaheadTime', 0, 1).step(0.05)
+botFolder.add(params, 'botSteerGain', 0, 5).step(0.1)
+botFolder.add(params, 'botMaxSteer', 0.1, 1).step(0.05)
+botFolder.add(params, 'botSteerRate', 0.01, 0.5).step(0.01)
+botFolder.add(params, 'botMaxOffset', 1, 30).step(1)
+botFolder.add(params, 'botMaxSpeed', 50, 250).step(5)
+botFolder.add(params, 'botMaxLatAccel', 4, 25).step(0.5)
+botFolder.add(params, 'botCurvatureSpacing', 3, 25).step(1)
 
 const debugFolder = gui.addFolder('Debug')
 debugFolder.add(params, 'recordLaps')
