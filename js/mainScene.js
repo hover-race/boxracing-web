@@ -152,8 +152,25 @@ export class MainScene extends Scene3D {
       RacingLine.load('laps/lap-2.json'),
       RacingLine.load('laps/lap-3.json'),
     ])
-    this.bot = new Bot(this.racingLines)
-    this.botCar = await Vehicle.setupCarMustang(this, this.botStartTransform, carModel.clone(), { recordReplay: false })
+
+    this.bots = []
+    const gridBot = new Bot(this.racingLines)
+    this.bots.push({
+      car: await Vehicle.setupCarMustang(this, this.botStartTransform, carModel.clone(), { recordReplay: false }),
+      bot: gridBot,
+    })
+
+    const spawnLine = this.racingLines[0]
+    for (let i = 0; i < 5; i++) {
+      const u = 0.05 + Math.random() * 0.9
+      const transform = MainScene.transformOnLine(spawnLine, u)
+      const bot = new Bot(this.racingLines)
+      for (const lap of bot.laps) lap.u = u
+      this.bots.push({
+        car: await Vehicle.setupCarMustang(this, transform, carModel.clone(), { recordReplay: false }),
+        bot,
+      })
+    }
 
     // Initialize replay system
     console.log('Initializing replay system...')
@@ -257,11 +274,16 @@ export class MainScene extends Scene3D {
   update(time, deltaTime) {
     if (!params.runPhysics) return
 
-    if (params.botDrive && this.bot && this.botCar) {
-      this.botCar.update(this.bot.drive(this.botCar))
-      this.botCar.updateTireMarks()
-    } else if (this.botCar) {
-      this.botCar.update({ steering: 0, throttle: 0, brake: 0, handbrake: 0 })
+    if (params.botDrive && this.bots.length) {
+      for (const { car, bot } of this.bots) {
+        car.update(bot.drive(car))
+        car.updateTireMarks()
+      }
+    } else {
+      const idle = { steering: 0, throttle: 0, brake: 0, handbrake: 0 }
+      for (const { car } of this.bots) {
+        car.update(idle)
+      }
     }
 
     const vehicleInputs = {
@@ -311,6 +333,18 @@ export class MainScene extends Scene3D {
     if (this.cameraSwitcher) {
       this.cameraSwitcher.update(this.camera, this.car.chassis, deltaTime);
     }
+  }
+
+  static transformOnLine(line, u) {
+    const pos = line.sample(u)
+    const ahead = line.sample(u + 5 / line.length)
+    const transform = new THREE.Object3D()
+    transform.position.set(pos.x, pos.y, pos.z)
+    transform.quaternion.setFromAxisAngle(
+      new THREE.Vector3(0, 1, 0),
+      Math.atan2(ahead.x - pos.x, ahead.z - pos.z)
+    )
+    return transform
   }
 
   cleanup() {
