@@ -40,7 +40,7 @@ class Vehicle {
   tcsLightOffTimeoutId = null
   escLightOffTimeoutId = null
 
-  constructor(scene, physics, chassis, wheelMeshes, audioListener) {
+  constructor(scene, physics, chassis, wheelMeshes, audioListener, { recordReplay = true } = {}) {
     this.scene = scene
     this.physics = physics
     this.chassis = chassis
@@ -98,10 +98,11 @@ class Vehicle {
 
     this.particles = new TireParticles(scene, this, audioListener)
 
-    // Initialize replay recorder and start recording immediately
     this.recorder = new ReplayRecorder()
-    this.recorder.start()
-    console.log('Vehicle: Auto-recording started on car load')
+    if (recordReplay) {
+      this.recorder.start()
+      console.log('Vehicle: Auto-recording started on car load')
+    }
   }
 
   updateIndicatorOnActivation(indicator, enabled, activeNow, wasActiveProp, timeoutProp) {
@@ -526,7 +527,7 @@ class Vehicle {
   }
 
 
-  static async setupCarMustang(scene, transform, preloadedModel) {
+  static async setupCarMustang(scene, transform, preloadedModel, { recordReplay = true } = {}) {
     let wheels = {
       frontRight: null,
       frontLeft: null, 
@@ -601,7 +602,7 @@ class Vehicle {
     // centerOfMassTransform.setOrigin(new Ammo.btVector3(centerOfMass.position.x, centerOfMass.position.y, centerOfMass.position.z))
     // chassis.body.ammo.setCenterOfMassTransform(centerOfMassTransform)
 
-    const vehicle = new Vehicle(scene.scene, scene.physics, chassis, wheels, scene.listener)
+    const vehicle = new Vehicle(scene.scene, scene.physics, chassis, wheels, scene.listener, { recordReplay })
     vehicle.particles.enableAudioOnFirstGesture()
     return vehicle
   }

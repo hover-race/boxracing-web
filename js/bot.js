@@ -93,10 +93,7 @@ class Bot {
     let brake = dv < 0 ? Math.min(1, -dv * 0.15) : 0;
     if (brake > 0) throttle = 0;
 
-    inputControls.steering = steer;
-    inputControls.throttle = throttle;
-    inputControls.brake = brake;
-    inputControls.handbrake = 0;
+    return { steering: steer, throttle, brake, handbrake: 0 };
   }
 }
 

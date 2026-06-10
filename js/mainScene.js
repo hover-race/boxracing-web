@@ -97,6 +97,8 @@ export class MainScene extends Scene3D {
     this.physics.add.existing(track, { collisionFlags: 1, mass: 0, shape: 'concave' })
     this.track = track
     this.startTransform = new THREE.Object3D()
+    this.botStartTransform = new THREE.Object3D()
+    let hasBotStart = false
     this.track.traverse(child => {
       if (child.name === 'StartPos1') {
         const worldPosition = child.position.clone()
@@ -104,6 +106,12 @@ export class MainScene extends Scene3D {
         this.startTransform.position.copy(worldPosition)
         this.startTransform.quaternion.copy(child.quaternion)
         console.log('startTransform (world pos):', this.startTransform.position)
+      }
+      if (child.name === 'StartPos2') {
+        console.log('Found StartPos2 (world pos):', child.position)
+        this.botStartTransform.position.copy(child.position)
+        this.botStartTransform.quaternion.copy(child.quaternion)
+        hasBotStart = true
       }
       if (child.name === 'FinishLineVolume') {
         this.checkpointManager.setupFinishLine(child)
@@ -120,6 +128,13 @@ export class MainScene extends Scene3D {
         this.portalTransform.scale.copy(child.scale);
       }
     })
+
+    if (!hasBotStart) {
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.startTransform.quaternion)
+      this.botStartTransform.position.copy(this.startTransform.position).addScaledVector(right, 4)
+      this.botStartTransform.quaternion.copy(this.startTransform.quaternion)
+      console.log('StartPos2 not found in track; bot spawned 4m right of StartPos1')
+    }
 
     this.car = await Vehicle.setupCarMustang(this, this.startTransform, carModel.clone())
     
@@ -138,6 +153,7 @@ export class MainScene extends Scene3D {
       RacingLine.load('laps/lap-3.json'),
     ])
     this.bot = new Bot(this.racingLines)
+    this.botCar = await Vehicle.setupCarMustang(this, this.botStartTransform, carModel.clone(), { recordReplay: false })
 
     // Initialize replay system
     console.log('Initializing replay system...')
@@ -241,8 +257,11 @@ export class MainScene extends Scene3D {
   update(time, deltaTime) {
     if (!params.runPhysics) return
 
-    if (params.botDrive && this.bot) {
-      this.bot.drive(this.car)
+    if (params.botDrive && this.bot && this.botCar) {
+      this.botCar.update(this.bot.drive(this.botCar))
+      this.botCar.updateTireMarks()
+    } else if (this.botCar) {
+      this.botCar.update({ steering: 0, throttle: 0, brake: 0, handbrake: 0 })
     }
 
     const vehicleInputs = {
