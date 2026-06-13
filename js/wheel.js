@@ -23,18 +23,22 @@ class Wheel {
     this.smokeAccumulator = 0;
     this.debugForce = { x: 0, y: 0, z: 0 }; // Debug force components
     this.previousForce = { x: 0, y: 0, z: 0 }; // Previous frame's force
+    this._forward = { x: 0, y: 0, z: 0 }
+    this._side = { x: 0, y: 0, z: 0 }
+    this._velocity = { x: 0, y: 0, z: 0 }
+    this._btForce = new Ammo.btVector3(0, 0, 0)
+    this._btRelPos = new Ammo.btVector3(0, 0, 0)
   }
 
   clamp(value, min, max) {
     return Math.max(min, Math.min(max, value))
   }
 
-  crossProduct(vecA, vecB) {
-    return new Ammo.btVector3(
-      vecA.y() * vecB.z() - vecA.z() * vecB.y(),
-      vecA.z() * vecB.x() - vecA.x() * vecB.z(),
-      vecA.x() * vecB.y() - vecA.y() * vecB.x()
-    )
+  cross(a, b, out) {
+    out.x = a.y * b.z - a.z * b.y
+    out.y = a.z * b.x - a.x * b.z
+    out.z = a.x * b.y - a.y * b.x
+    return out
   }
  
   getRaycastInfo() {
@@ -65,58 +69,47 @@ class Wheel {
       : this.wheelInfo.m_steering
   }
 
-  getWheelDirectionWS() {
-    const raycastInfo = this.getRaycastInfo()
-    const dir = raycastInfo.get_m_wheelDirectionWS ? raycastInfo.get_m_wheelDirectionWS() : raycastInfo.m_wheelDirectionWS
-    return new Ammo.btVector3(dir.x(), dir.y(), dir.z())
-  }
-
   // Derive the wheel's world-space axes from Bullet's wheel transform (the same
   // transform that orients the rendered wheel mesh), so forces match what is drawn.
   // Column 0 of that basis is the steered axle (roll-invariant). Forward follows
   // Bullet's own convention: up x right, with up = -suspensionDirection.
   getWheelAxes() {
     const basis = this.raycastVehicle.getWheelTransformWS(this.wheelIndex).getBasis()
-    const sideWS = new Ammo.btVector3(basis.getRow(0).x(), basis.getRow(1).x(), basis.getRow(2).x())
+    const side = this._side
+    side.x = basis.getRow(0).x()
+    side.y = basis.getRow(1).x()
+    side.z = basis.getRow(2).x()
 
-    const directionWS = this.getWheelDirectionWS()
-    const forwardWS = this.crossProduct(sideWS, directionWS)
+    const dir = this.getRaycastInfo().get_m_wheelDirectionWS
+      ? this.getRaycastInfo().get_m_wheelDirectionWS()
+      : this.getRaycastInfo().m_wheelDirectionWS
+    const direction = { x: dir.x(), y: dir.y(), z: dir.z() }
+    this.cross(side, direction, this._forward)
 
-    return { forwardWS, sideWS }
+    return { forward: this._forward, side }
   }
 
   getWheelForwardDirection() {
-    return this.getWheelAxes().forwardWS
-  }
-
-  getContactRelativePosition() {
-    const contactPoint = this.getContactPoint()
-    const chassisPos = this.vehicleRigidBody.getWorldTransform().getOrigin()
-    return new Ammo.btVector3(
-      contactPoint.x() - chassisPos.x(),
-      contactPoint.y() - chassisPos.y(),
-      contactPoint.z() - chassisPos.z()
-    )
+    return this.getWheelAxes().forward
   }
 
   getContactPointVelocity() {
-    const relativePos = this.getContactRelativePosition()
-    const angularVelocity = this.vehicleRigidBody.getAngularVelocity()
-    const linearVelocity = this.vehicleRigidBody.getLinearVelocity()
-    const angularPointVelocity = this.crossProduct(angularVelocity, relativePos)
-    return new Ammo.btVector3(
-      linearVelocity.x() + angularPointVelocity.x(),
-      linearVelocity.y() + angularPointVelocity.y(),
-      linearVelocity.z() + angularPointVelocity.z()
-    )
-  }
-
-  getContactForwardSpeed() {
-    return this.getContactPointVelocity().dot(this.getWheelForwardDirection())
+    const contactPoint = this.getContactPoint()
+    const chassisPos = this.vehicleRigidBody.getWorldTransform().getOrigin()
+    const rx = contactPoint.x() - chassisPos.x()
+    const ry = contactPoint.y() - chassisPos.y()
+    const rz = contactPoint.z() - chassisPos.z()
+    const av = this.vehicleRigidBody.getAngularVelocity()
+    const lv = this.vehicleRigidBody.getLinearVelocity()
+    const vel = this._velocity
+    vel.x = lv.x() + av.y() * rz - av.z() * ry
+    vel.y = lv.y() + av.z() * rx - av.x() * rz
+    vel.z = lv.z() + av.x() * ry - av.y() * rx
+    return vel
   }
 
   getWheelSideDirection() {
-    return this.getWheelAxes().sideWS
+    return this.getWheelAxes().side
   }
 
   getNormalForce() {
@@ -126,12 +119,19 @@ class Wheel {
   }
 
   applyTireForce(forwardDir, longForce, sideDir, latForce) {
-    const force = new Ammo.btVector3(
-      forwardDir.x() * longForce + sideDir.x() * latForce,
-      forwardDir.y() * longForce + sideDir.y() * latForce,
-      forwardDir.z() * longForce + sideDir.z() * latForce
+    this._btForce.setValue(
+      forwardDir.x * longForce + sideDir.x * latForce,
+      forwardDir.y * longForce + sideDir.y * latForce,
+      forwardDir.z * longForce + sideDir.z * latForce
     )
-    this.vehicleRigidBody.applyForce(force, this.getContactRelativePosition())
+    const contactPoint = this.getContactPoint()
+    const chassisPos = this.vehicleRigidBody.getWorldTransform().getOrigin()
+    this._btRelPos.setValue(
+      contactPoint.x() - chassisPos.x(),
+      contactPoint.y() - chassisPos.y(),
+      contactPoint.z() - chassisPos.z()
+    )
+    this.vehicleRigidBody.applyForce(this._btForce, this._btRelPos)
     this.forwardForceScalar = longForce
     this.sideForceScalar = latForce
   }
@@ -183,14 +183,15 @@ class Wheel {
     }
 
     const pointVelocity = this.getContactPointVelocity()
-    const forwardDir = this.getWheelForwardDirection()
-    const sideDir = this.getWheelSideDirection()
-    const forwardSpeed = pointVelocity.dot(forwardDir)
-    const lateralSpeed = pointVelocity.dot(sideDir)
+    const axes = this.getWheelAxes()
+    const forwardDir = axes.forward
+    const sideDir = axes.side
+    const forwardSpeed = pointVelocity.x * forwardDir.x + pointVelocity.y * forwardDir.y + pointVelocity.z * forwardDir.z
+    const lateralSpeed = pointVelocity.x * sideDir.x + pointVelocity.y * sideDir.y + pointVelocity.z * sideDir.z
 
-    this.fwdWSx = forwardDir.x()
-    this.fwdWSy = forwardDir.y()
-    this.fwdWSz = forwardDir.z()
+    this.fwdWSx = forwardDir.x
+    this.fwdWSy = forwardDir.y
+    this.fwdWSz = forwardDir.z
 
     this.slipRatio = this.calculateSlipRatio(forwardSpeed)
     this.slipAngle = Math.atan2(lateralSpeed, Math.abs(forwardSpeed) + 0.5)
@@ -250,8 +251,8 @@ class Wheel {
     if (this.wheelIndex === 2) {
       const basis = this.vehicleRigidBody.getWorldTransform().getBasis()
       const noseX = basis.getRow(0).z(), noseY = basis.getRow(1).z(), noseZ = basis.getRow(2).z()
-      const fwdDotNose = forwardDir.x() * noseX + forwardDir.y() * noseY + forwardDir.z() * noseZ
-      const velDotNose = pointVelocity.x() * noseX + pointVelocity.y() * noseY + pointVelocity.z() * noseZ
+      const fwdDotNose = forwardDir.x * noseX + forwardDir.y * noseY + forwardDir.z * noseZ
+      const velDotNose = pointVelocity.x * noseX + pointVelocity.y * noseY + pointVelocity.z * noseZ
       window.__wheelLog = window.__wheelLog || []
       window.__wheelLog.push({
         engineForce: +engineForce.toFixed(1),
