@@ -12,6 +12,7 @@ import { LapPathRecorder } from './lapPath.js';
 import { RacingLine } from './racingLine.js';
 import { Bot } from './bot.js';
 import { AutoSteer } from './autoSteer.js';
+import { centerlineFromTrack } from './trackCenterline.js';
 
 export class MainScene extends Scene3D {
   car
@@ -153,7 +154,10 @@ export class MainScene extends Scene3D {
       RacingLine.load('laps/lap-2.json'),
       RacingLine.load('laps/lap-3.json'),
     ])
-    this.autoSteer = new AutoSteer(this.racingLines)
+    this.trackCenterline = centerlineFromTrack(track)
+    if (!this.trackCenterline) throw new Error('Failed to extract track centerline')
+    console.log('Track centerline:', this.trackCenterline.count, 'points,', this.trackCenterline.length.toFixed(0), 'm')
+    this.autoSteer = new AutoSteer([this.trackCenterline])
 
     this.bots = []
     const botCount = 6

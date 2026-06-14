@@ -1,5 +1,6 @@
-// Player autosteer: project onto recorded laps (same as bot) and steer so the
-// car's heading matches the line tangent at the closest point.
+// Player autosteer: project onto the track centerline. In bends, feedforward
+// from path curvature holds steer roughly constant; heading trim + smoothing
+// keep it stable on straights and noisy centerline segments.
 class AutoSteer {
   constructor(lines) {
     this.laps = lines.map((line) => ({ line, u: 0 }));
@@ -15,6 +16,19 @@ class AutoSteer {
   _setAssist(amount) {
     this.assist = amount;
     vehicleParams.autoSteerAssist = amount;
+  }
+
+  curvatureAt(line, u, spacing) {
+    const du = spacing / line.length;
+    const a = line.sample(u - du);
+    const b = line.sample(u);
+    const c = line.sample(u + du);
+    const dAB = Math.hypot(b.x - a.x, b.z - a.z);
+    const dBC = Math.hypot(c.x - b.x, c.z - b.z);
+    const dAC = Math.hypot(c.x - a.x, c.z - a.z);
+    if (dAB * dBC * dAC < 1e-6) return 0;
+    const area2 = (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);
+    return (2 * area2) / (dAB * dBC * dAC);
   }
 
   steeringFor(car, manualSteering = 0, deltaTime = 0) {
@@ -44,9 +58,11 @@ class AutoSteer {
       return 0;
     }
 
-    const du = 5 / best.line.length;
+    const speedMps = Math.abs(car.vehicle.getCurrentSpeedKmHour()) / 3.6;
+    const lookahead = params.autoSteerLookahead + speedMps * params.autoSteerLookaheadTime;
+    const aheadU = best.u + lookahead / best.line.length;
     const here = best.line.sample(best.u);
-    const ahead = best.line.sample(best.u + du);
+    const ahead = best.line.sample(aheadU);
     const tangentX = ahead.x - here.x;
     const tangentZ = ahead.z - here.z;
     const headingErr = Math.atan2(
@@ -54,13 +70,15 @@ class AutoSteer {
       fwd.x * tangentX + fwd.z * tangentZ
     );
 
-    let steer = -params.botSteerGain * headingErr;
-    steer = Math.max(-params.botMaxSteer, Math.min(params.botMaxSteer, steer));
-    const delta = steer - this.steering;
-    if (Math.abs(delta) > params.botSteerRate) {
-      steer = this.steering + Math.sign(delta) * params.botSteerRate;
-    }
-    this.steering = steer;
+    const kappa = this.curvatureAt(best.line, best.u, params.autoSteerCurvatureSpacing);
+    const kappaSteer = params.botSteerGain * kappa * 4.5;
+    const headingSteer = -params.botSteerGain * headingErr;
+    const turnBlend = Math.min(1, Math.abs(kappa) / 0.015);
+    let target = turnBlend * kappaSteer + (1 - turnBlend) * headingSteer;
+    target = Math.max(-params.botMaxSteer, Math.min(params.botMaxSteer, target));
+
+    const smooth = 1 - Math.exp(-dt / 0.3);
+    this.steering += smooth * (target - this.steering);
 
     if (inputMag > 0) {
       this.holdRemaining = 0;
@@ -68,7 +86,7 @@ class AutoSteer {
       this.needsBlendIn = false;
       this._setAssist(1 - inputMag);
       this.prevInputMag = inputMag;
-      return Math.max(-1, Math.min(1, steer * this.assist + manualSteering * inputMag));
+      return Math.max(-1, Math.min(1, this.steering * this.assist + manualSteering * inputMag));
     }
 
     if (this.prevInputMag > 0) {
@@ -88,12 +106,12 @@ class AutoSteer {
       this.blendElapsed = Math.min(blendSec, this.blendElapsed + dt);
       this._setAssist(this.blendElapsed / blendSec);
       if (this.blendElapsed >= blendSec) this.needsBlendIn = false;
-      return Math.max(-1, Math.min(1, steer * this.assist));
+      return Math.max(-1, Math.min(1, this.steering * this.assist));
     }
 
     this.needsBlendIn = false;
     this._setAssist(1);
-    return Math.max(-1, Math.min(1, steer));
+    return Math.max(-1, Math.min(1, this.steering));
   }
 }
 

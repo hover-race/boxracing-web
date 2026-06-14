@@ -71,6 +71,9 @@ const params = {
   autoSteer: false,
   autoSteerHoldSec: 0.5,
   autoSteerBlendSec: 0.5,
+  autoSteerLookahead: 3,
+  autoSteerLookaheadTime: 0.1,
+  autoSteerCurvatureSpacing: 6,
   botLookahead: 8,
   botLookaheadTime: 0.45,
   botSteerGain: 1.2,
@@ -142,6 +145,9 @@ stabilityFolder.add(params, 'steerAssistGain', 0, 2).step(0.05)
 stabilityFolder.add(params, 'autoSteer')
 stabilityFolder.add(params, 'autoSteerHoldSec', 0, 2).step(0.05)
 stabilityFolder.add(params, 'autoSteerBlendSec', 0, 2).step(0.05)
+stabilityFolder.add(params, 'autoSteerLookahead', 1, 20).step(0.5)
+stabilityFolder.add(params, 'autoSteerLookaheadTime', 0, 0.5).step(0.01)
+stabilityFolder.add(params, 'autoSteerCurvatureSpacing', 3, 20).step(1)
 stabilityFolder.add(vehicleParams, 'autoSteerAssist', 0, 1).step(0.01).listen()
 
 const botFolder = gui.addFolder('Bot')
