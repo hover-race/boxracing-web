@@ -142,6 +142,50 @@ function trimTailPastLastMark(chunk, spacing) {
   return chunk;
 }
 
+function trimHeadFromMark(chunk, skipMarks, spacing) {
+  let dist = 0;
+  let nextMark = 0;
+  let markIdx = 0;
+  for (let i = 0; i < chunk.length; i++) {
+    if (i > 0) dist += Math.hypot(chunk[i].x - chunk[i - 1].x, chunk[i].z - chunk[i - 1].z);
+    while (dist >= nextMark) {
+      if (markIdx === skipMarks) return chunk.slice(i);
+      markIdx++;
+      nextMark += spacing;
+    }
+  }
+  return chunk;
+}
+
+function trimTailExtraMarks(chunk, spacing, dropCount = 1) {
+  if (chunk.length < 2) return chunk;
+  let dist = 0;
+  let nextMark = 0;
+  const marks = [];
+  for (let i = 0; i < chunk.length; i++) {
+    if (i > 0) dist += Math.hypot(chunk[i].x - chunk[i - 1].x, chunk[i].z - chunk[i - 1].z);
+    while (dist >= nextMark) {
+      marks.push({ i, nextMark });
+      nextMark += spacing;
+    }
+  }
+  if (marks.length <= dropCount + 1) return chunk;
+  const last = marks[marks.length - 1];
+  const remainder = dist - last.nextMark;
+  if (remainder > 0 && remainder < spacing) {
+    return chunk.slice(0, marks[marks.length - dropCount - 1].i + 1);
+  }
+  return chunk;
+}
+
+function trimLoopEnds(points, spacing = 12, maxGap = 25) {
+  const chunks = splitAtGaps(trimGapTails(points, spacing, maxGap), maxGap);
+  if (chunks.length === 0) return points;
+  chunks[0] = trimHeadFromMark(chunks[0], 1, spacing);
+  chunks[chunks.length - 1] = trimTailExtraMarks(chunks[chunks.length - 1], spacing, 2);
+  return chunks.flat();
+}
+
 function trimGapTails(points, spacing = 12, maxGap = 25) {
   const chunks = splitAtGaps(points, maxGap);
   if (chunks.length <= 1) return points;
@@ -187,7 +231,7 @@ function extractCenterline(track, meshName = '1TARMAC_oval') {
   );
   const loop = segmentsToPoints(segments);
   if (loop.length < 8) return null;
-  return normalizeLoop(trimGapTails(loop.slice().reverse()));
+  return normalizeLoop(trimLoopEnds(loop.slice().reverse()));
 }
 
 function centerlineFromTrack(track, meshName = '1TARMAC_oval') {
@@ -222,6 +266,21 @@ function resampleChunk(chunk, spacing = 2) {
   return out;
 }
 
+function addStraightBridge(group, a, b, mat, yOffset) {
+  const bridge = new THREE.CatmullRomCurve3(
+    [
+      new THREE.Vector3(a.x, a.y + yOffset, a.z),
+      new THREE.Vector3(b.x, b.y + yOffset, b.z),
+    ],
+    false,
+  );
+  const span = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+  group.add(new THREE.Mesh(
+    new THREE.TubeGeometry(bridge, Math.max(4, Math.ceil(span / 2)), 0.35, 6, false),
+    mat,
+  ));
+}
+
 function showCenterlinePath(scene, line, yOffset = 2, maxGap = 25) {
   const group = new THREE.Group();
   group.name = 'centerline-path';
@@ -244,21 +303,12 @@ function showCenterlinePath(scene, line, yOffset = 2, maxGap = 25) {
       group.add(tube);
     }
     if (ci < chunks.length - 1) {
-      const a = chunk[chunk.length - 1];
-      const b = chunks[ci + 1][0];
-      const bridge = new THREE.CatmullRomCurve3(
-        [
-          new THREE.Vector3(a.x, a.y + yOffset, a.z),
-          new THREE.Vector3(b.x, b.y + yOffset, b.z),
-        ],
-        false,
-      );
-      const span = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
-      group.add(new THREE.Mesh(
-        new THREE.TubeGeometry(bridge, Math.max(4, Math.ceil(span / 2)), 0.35, 6, false),
-        mat,
-      ));
+      addStraightBridge(group, chunk[chunk.length - 1], chunks[ci + 1][0], mat, yOffset);
     }
+  }
+  const pts = line.points;
+  if (pts.length >= 2) {
+    addStraightBridge(group, pts[pts.length - 1], pts[0], mat, yOffset);
   }
   scene.add(group);
   return group;
