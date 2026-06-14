@@ -34,6 +34,7 @@ export class CenterlineScene extends Scene3D {
       showCenterlineMarkers(this.scene, line, 12);
       console.log('Centerline:', line.count, 'points,', line.length.toFixed(0), 'm');
       window.__trackCenterline = line;
+      window.__centerlinePoints = line.points;
     }
 
     this.camera.position.set(0, 120, -160);

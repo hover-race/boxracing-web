@@ -13,7 +13,7 @@ function meshWorldPoints(mesh) {
   return out;
 }
 
-function polarCenterline(points, bins = 360, minPerBin = 8) {
+function polarCenterline(points, bins = 720, minPerBin = 6) {
   let cx = 0;
   let cz = 0;
   for (const p of points) {
@@ -54,7 +54,7 @@ function polarCenterline(points, bins = 360, minPerBin = 8) {
   return active;
 }
 
-function mainSegment(active, bins = 360, maxGap = 10, minSegLen = 10) {
+function splitActiveSegments(active, bins = 720, maxGap = 10, minSegLen = 5) {
   if (active.length === 0) return [];
   active.sort((a, b) => a.bin - b.bin);
 
@@ -76,12 +76,52 @@ function mainSegment(active, bins = 360, maxGap = 10, minSegLen = 10) {
   big.sort((a, b) => a[0].bin - b[0].bin);
   const pivot = big.reduce((best, s) => (s[0].bin > best[0].bin ? s : best), big[0]);
   const start = big.indexOf(pivot);
-  const ordered = big.slice(start).concat(big.slice(0, start));
-
-  return ordered.flat().map((p) => ({ x: p.x, y: p.y, z: p.z }));
+  return big.slice(start).concat(big.slice(0, start));
 }
 
-function normalizeLoop(points) {
+function smoothSegment(points, passes = 5, alpha = 0.45) {
+  if (points.length < 3) return points.map((p) => ({ x: p.x, y: p.y, z: p.z }));
+  let pts = points.map((p) => ({ x: p.x, y: p.y, z: p.z }));
+  for (let pass = 0; pass < passes; pass++) {
+    const next = pts.map((p, i) => {
+      const prev = pts[Math.max(0, i - 1)];
+      const succ = pts[Math.min(pts.length - 1, i + 1)];
+      const w = i === 0 || i === pts.length - 1 ? alpha * 0.5 : alpha;
+      return {
+        x: p.x * (1 - w) + (prev.x + succ.x) * 0.5 * w,
+        y: p.y * (1 - w) + (prev.y + succ.y) * 0.5 * w,
+        z: p.z * (1 - w) + (prev.z + succ.z) * 0.5 * w,
+      };
+    });
+    pts = next;
+  }
+  return pts;
+}
+
+function dropSpuriousSegments(segments, minLen = 20) {
+  return segments.filter((seg) => seg.length >= minLen);
+}
+
+function segmentsToPoints(segments) {
+  return segments
+    .map((seg) => smoothSegment(seg.map((p) => ({ x: p.x, y: p.y, z: p.z }))))
+    .flat();
+}
+
+function splitAtGaps(points, maxGap = 25) {
+  if (points.length === 0) return [];
+  const chunks = [[points[0]]];
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const cur = points[i];
+    const d = Math.hypot(cur.x - prev.x, cur.z - prev.z);
+    if (d > maxGap) chunks.push([]);
+    chunks[chunks.length - 1].push(cur);
+  }
+  return chunks.filter((c) => c.length >= 2);
+}
+
+function normalizeLoop(points, closeMaxGap = 25) {
   const cumulative = [0];
   for (let i = 1; i < points.length; i++) {
     cumulative[i] = cumulative[i - 1] + Math.hypot(
@@ -92,7 +132,7 @@ function normalizeLoop(points) {
   }
   const last = points[points.length - 1];
   const close = Math.hypot(last.x - points[0].x, last.y - points[0].y, last.z - points[0].z);
-  const total = cumulative[cumulative.length - 1] + close;
+  const total = cumulative[cumulative.length - 1] + (close <= closeMaxGap ? close : 0);
   return points.map((p, i) => ({
     u: Number((total > 0 ? cumulative[i] / total : 0).toFixed(5)),
     x: Number(p.x.toFixed(3)),
@@ -108,10 +148,12 @@ function extractCenterline(track, meshName = '1TARMAC_oval') {
   });
   if (!mesh) return null;
 
-  const active = polarCenterline(meshWorldPoints(mesh));
-  const loop = mainSegment(active);
+  const segments = dropSpuriousSegments(
+    splitActiveSegments(polarCenterline(meshWorldPoints(mesh))),
+  );
+  const loop = segmentsToPoints(segments);
   if (loop.length < 8) return null;
-  return normalizeLoop(loop);
+  return normalizeLoop(loop.slice().reverse());
 }
 
 function centerlineFromTrack(track, meshName = '1TARMAC_oval') {
@@ -120,36 +162,117 @@ function centerlineFromTrack(track, meshName = '1TARMAC_oval') {
   return new RacingLine(points);
 }
 
-function showCenterlinePath(scene, line, yOffset = 0.5) {
-  const pts = line.points;
-  const positions = new Float32Array(pts.length * 3);
-  for (let i = 0; i < pts.length; i++) {
-    positions[i * 3] = pts[i].x;
-    positions[i * 3 + 1] = pts[i].y + yOffset;
-    positions[i * 3 + 2] = pts[i].z;
+function resampleChunk(chunk, spacing = 2) {
+  if (chunk.length < 2) return chunk;
+  const out = [{ x: chunk[0].x, y: chunk[0].y, z: chunk[0].z }];
+  let carry = 0;
+  for (let i = 1; i < chunk.length; i++) {
+    const a = chunk[i - 1];
+    const b = chunk[i];
+    const segLen = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    let t = spacing - carry;
+    while (t < segLen) {
+      const f = t / segLen;
+      out.push({
+        x: a.x + (b.x - a.x) * f,
+        y: a.y + (b.y - a.y) * f,
+        z: a.z + (b.z - a.z) * f,
+      });
+      t += spacing;
+    }
+    carry = (carry + segLen) % spacing;
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const path = new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color: 0xff00ff }));
-  path.name = 'centerline-path';
-  scene.add(path);
-  return path;
+  const last = chunk[chunk.length - 1];
+  const tail = out[out.length - 1];
+  if (Math.hypot(last.x - tail.x, last.z - tail.z) > 0.1) out.push({ x: last.x, y: last.y, z: last.z });
+  return out;
 }
 
-function showCenterlineMarkers(scene, line, spacing = 8) {
+function showCenterlinePath(scene, line, yOffset = 2, maxGap = 25) {
   const group = new THREE.Group();
-  group.name = 'centerline-debug';
-  const mat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
-  const geo = new THREE.BoxGeometry(1.5, 3, 1.5);
-  const n = Math.max(1, Math.ceil(line.length / spacing));
-  for (let i = 0; i < n; i++) {
-    const p = line.sample(i / n);
-    const cube = new THREE.Mesh(geo, mat);
-    cube.position.set(p.x, p.y + 1.5, p.z);
-    group.add(cube);
+  group.name = 'centerline-path';
+  const mat = new THREE.MeshBasicMaterial({ color: 0xff00ff, depthTest: false });
+  for (const chunk of splitAtGaps(line.points, maxGap)) {
+    const resampled = resampleChunk(chunk, 2);
+    if (resampled.length < 2) continue;
+    const curve = new THREE.CatmullRomCurve3(
+      resampled.map((p) => new THREE.Vector3(p.x, p.y + yOffset, p.z)),
+      false,
+      'catmullrom',
+      0.15,
+    );
+    const tube = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, resampled.length * 4, 0.35, 6, false),
+      mat,
+    );
+    group.add(tube);
   }
   scene.add(group);
   return group;
 }
 
-export { extractCenterline, centerlineFromTrack, showCenterlinePath, showCenterlineMarkers };
+function labelSprite(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+  ctx.fillRect(0, 0, 64, 32);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 32, 16);
+  const map = new THREE.CanvasTexture(
+    canvas,
+    THREE.UVMapping,
+    THREE.ClampToEdgeWrapping,
+    THREE.ClampToEdgeWrapping,
+    THREE.NearestFilter,
+    THREE.NearestFilter,
+  );
+  map.generateMipmaps = false;
+  map.anisotropy = 1;
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map, depthTest: false }),
+  );
+  sprite.scale.set(5, 2.5, 1);
+  return sprite;
+}
+
+function showCenterlineMarkers(scene, line, spacing = 8, maxGap = 25, labelYOffset = 5) {
+  const group = new THREE.Group();
+  group.name = 'centerline-debug';
+  const mat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+  const geo = new THREE.BoxGeometry(1.5, 3, 1.5);
+  let index = 0;
+  for (const chunk of splitAtGaps(line.points, maxGap)) {
+    let dist = 0;
+    let nextMark = 0;
+    for (let i = 0; i < chunk.length; i++) {
+      if (i > 0) dist += Math.hypot(chunk[i].x - chunk[i - 1].x, chunk[i].z - chunk[i - 1].z);
+      while (dist >= nextMark) {
+        const cube = new THREE.Mesh(geo, mat);
+        cube.position.set(chunk[i].x, chunk[i].y + 3, chunk[i].z);
+        group.add(cube);
+        const sprite = labelSprite(String(index));
+        sprite.position.set(chunk[i].x, chunk[i].y + labelYOffset, chunk[i].z);
+        group.add(sprite);
+        index++;
+        nextMark += spacing;
+      }
+    }
+  }
+  scene.add(group);
+  return group;
+}
+
+export {
+  extractCenterline,
+  centerlineFromTrack,
+  showCenterlinePath,
+  showCenterlineMarkers,
+  splitAtGaps,
+  smoothSegment,
+};
