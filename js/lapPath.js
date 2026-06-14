@@ -1,15 +1,29 @@
-// Records the car's {x, y, z} position every frame for one lap, then on lap
-// completion computes cumulative distance, normalizes it to u = dist / lapLength,
-// and downloads the racing line as lap-N.json (array of {u, x, y, z}).
+// Records the car's {x, y, z} every frame into memory. Lap boundaries and
+// normalized racing lines are stored on finish-line cross. Export manually via
+// window.downloadTrackTrace() or window.downloadLap(n).
 class LapPathRecorder {
   constructor() {
     this.recording = false;
     this.points = [];
+    this.lapStarts = [0];
+    this.laps = [];
     this.lapNumber = 0;
   }
 
-  startLap() {
+  startSession() {
     this.points = [];
+    this.lapStarts = [0];
+    this.laps = [];
+    this.lapNumber = 0;
+    this.recording = true;
+    window.__trackTrace = this;
+  }
+
+  startLap() {
+    if (!params.recordLaps) return;
+    if (this.points.length > 0 && this.lapStarts[this.lapStarts.length - 1] !== this.points.length) {
+      this.lapStarts.push(this.points.length);
+    }
     this.recording = true;
   }
 
@@ -19,12 +33,35 @@ class LapPathRecorder {
   }
 
   finishLap() {
-    if (this.recording && params.recordLaps && this.points.length >= 2) {
-      this.lapNumber++;
-      const normalized = this.normalize(this.points);
-      this.download(normalized, `lap-${this.lapNumber}.json`);
-    }
-    this.startLap();
+    if (!params.recordLaps || this.points.length < 2) return;
+    const start = this.lapStarts[this.lapStarts.length - 1];
+    const lapPoints = this.points.slice(start);
+    if (lapPoints.length < 2) return;
+    this.lapNumber++;
+    this.laps.push({
+      lapNumber: this.lapNumber,
+      start,
+      end: this.points.length,
+      normalized: this.normalize(lapPoints),
+    });
+  }
+
+  downloadTrace(filename = 'track-trace.json') {
+    this.download({
+      lapCount: this.lapNumber,
+      lapStarts: this.lapStarts,
+      points: this.points.map((p) => ({
+        x: Number(p.x.toFixed(3)),
+        y: Number(p.y.toFixed(3)),
+        z: Number(p.z.toFixed(3)),
+      })),
+    }, filename);
+  }
+
+  downloadLap(n, filename = null) {
+    const lap = this.laps[n - 1];
+    if (!lap) return;
+    this.download(lap.normalized, filename || `lap-${n}.json`);
   }
 
   normalize(points) {

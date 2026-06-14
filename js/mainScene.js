@@ -57,7 +57,6 @@ export class MainScene extends Scene3D {
     // Initialize checkpoint manager
     this.checkpointManager = new CheckpointManager(this)
 
-    // Records the racing line per lap and downloads it on lap completion
     this.lapPathRecorder = new LapPathRecorder()
     this.checkpointManager.lapPathRecorder = this.lapPathRecorder
 
@@ -216,6 +215,15 @@ export class MainScene extends Scene3D {
     window.__mainScene = this
     window.refreshBotShader = () => refreshAllBotShaders(this)
     params.runPhysics = true
+
+    if (params.recordLaps) this.lapPathRecorder.startSession()
+    window.downloadTrackTrace = () => this.lapPathRecorder.downloadTrace()
+    window.downloadLap = (n) => this.lapPathRecorder.downloadLap(n)
+    document.getElementById('export-trace-btn')?.addEventListener('click', () => window.downloadTrackTrace())
+    document.getElementById('export-lap-btn')?.addEventListener('click', () => {
+      const n = this.lapPathRecorder.lapNumber
+      if (n > 0) window.downloadLap(n)
+    })
 
     if (params.autoStopPhysicsAfterSec > 0) {
       window.setTimeout(() => { params.runPhysics = false }, params.autoStopPhysicsAfterSec * 1000)

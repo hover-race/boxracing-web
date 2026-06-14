@@ -141,6 +141,32 @@ canvas {
     display: block !important;
 }
 
+#export-trace-btn,
+#export-lap-btn {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 14px;
+    background: #1976d2;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-height: 36px;
+    display: block !important;
+}
+
+#export-trace-btn:hover,
+#export-lap-btn:hover {
+    background: #1565c0;
+    transform: translateY(-1px);
+}
+
+#export-trace-btn:active,
+#export-lap-btn:active {
+    transform: scale(0.95) translateY(0);
+}
+
 #create-server-btn:hover {
     background: #388E3C;
     transform: translateY(-1px);
