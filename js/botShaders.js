@@ -12,7 +12,7 @@
 //   fresnel – rim/Fresnel emissive injected into the standard material; lights up the
 //             silhouette edge regardless of scene lighting.
 //   solid   – flat unlit bright color (max contrast, ignores lighting).
-//   xray    – crossfade: normal lit car up close, flat bot-colored shell at distance.
+//   xray    – crossfade: normal lit car (depth-tested) + flat shell that draws through walls.
 //
 // THREE and params are globals (see index2.html / gui.js).
 
@@ -113,6 +113,8 @@ function makeDistanceShellMaterial(color) {
     color: new THREE.Color(color),
     transparent: true,
     opacity: XRAY_SHELL_MIN,
+    depthTest: false,
+    depthWrite: false,
   })
 }
 
@@ -144,7 +146,7 @@ function applyBotShader(car, shader, color) {
       mesh.material = mesh.userData.botMaterial = makeXrayNormalMaterial(base)
       const shell = new THREE.Mesh(mesh.geometry, makeDistanceShellMaterial(color))
       shell.name = '__bot_inside'
-      shell.renderOrder = mesh.renderOrder + 1
+      shell.renderOrder = 999
       mesh.add(shell)
     }
   }
