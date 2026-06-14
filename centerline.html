@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Centerline Viewer</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="lib/enable3d.framework.0.25.4.min.js"></script>
+  </head>
+  <body>
+    <div id="top-left-controls">
+      <div style="padding: 8px 16px; border-radius: 4px; font-family: monospace; font-size: 14px; background: rgba(0,0,0,0.5); color: white;">
+        Centerline viewer — drag to orbit, scroll to zoom
+      </div>
+    </div>
+    <script>
+      const { Project, Scene3D, PhysicsLoader, THREE } = ENABLE3D;
+      window.THREE = THREE;
+      window.Scene3D = Scene3D;
+      window.Project = Project;
+      window.PhysicsLoader = PhysicsLoader;
+    </script>
+    <script type="module">
+      import { CenterlineScene } from './js/centerlineScene.js';
+      PhysicsLoader('lib/ammo/kripken', () => new Project({ scenes: [CenterlineScene], antialias: true }));
+    </script>
+  </body>
+</html>

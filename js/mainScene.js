@@ -12,6 +12,7 @@ import { LapPathRecorder } from './lapPath.js';
 import { RacingLine } from './racingLine.js';
 import { Bot } from './bot.js';
 import { AutoSteer } from './autoSteer.js';
+import { centerlineFromTrack, showCenterlineMarkers } from './trackCenterline.js';
 
 export class MainScene extends Scene3D {
   car
@@ -97,6 +98,11 @@ export class MainScene extends Scene3D {
     var track = await this.loadGltf('assets/glb/rcc-oval.glb')
     this.physics.add.existing(track, { collisionFlags: 1, mass: 0, shape: 'concave' })
     this.track = track
+    this.trackCenterline = centerlineFromTrack(track)
+    if (this.trackCenterline) {
+      this.centerlineDebug = showCenterlineMarkers(this.scene, this.trackCenterline, 8)
+      console.log('Track centerline:', this.trackCenterline.count, 'points,', this.trackCenterline.length.toFixed(0), 'm')
+    }
     this.startTransform = new THREE.Object3D()
     this.botStartTransform = new THREE.Object3D()
     let hasBotStart = false
