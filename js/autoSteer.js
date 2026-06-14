@@ -21,6 +21,7 @@ class AutoSteer {
     this.laps = lines.map((line) => ({ line, u: 0 }));
     this.steering = 0;
     this.filtLat = 0;
+    this.filtCrossVel = 0;
     this.assist = 0;
     this.prevInputMag = 0;
     this.holdRemaining = 0;
@@ -116,6 +117,7 @@ class AutoSteer {
       lap.err = Math.hypot(pos.x - here.x, pos.z - here.z);
       lap.lateral = this.signedLateral(lap.line, lap.u, pos.x, pos.z);
       this.filtLat = lap.lateral;
+      this.filtCrossVel = 0;
     }
   }
 
@@ -208,26 +210,32 @@ class AutoSteer {
     const nz = tangentX / tLen;
     const vel = car.chassis.body.ammo.getLinearVelocity();
     const crossVel = vel.x() * nx + vel.z() * nz;
+    const crossSmooth = 1 - Math.exp(-dt / 0.15);
+    this.filtCrossVel += crossSmooth * (crossVel - this.filtCrossVel);
 
-    const latSteer = Math.atan(STANLEY_K * lateralErr / (speedMps + STANLEY_SOFT));
+    const lineBlend = Math.min(1, Math.abs(lateralErr));
+    const soft = STANLEY_SOFT + speedMps * (0.3 - 0.2 * lineBlend);
+    const latSteer = Math.atan(STANLEY_K * lateralErr / (speedMps + soft));
     const headWeight = straight ? 0.5 : 1;
     const headGain = HEADING_GAIN * (straight ? 0.4 : 1);
-    const velGain = VEL_GAIN * (straight ? 0.75 : 1);
+    const speedDamp = 1 / (1 + (speedMps / 25) ** 2);
+    const crossDamp = speedDamp + (0.35 - speedDamp) * lineBlend;
+    const velGain = VEL_GAIN * (straight ? 0.75 : 1) * crossDamp;
     let target = strength * (
       -latSteer
       - headGain * headingErr * headWeight
-    ) - velGain * crossVel;
+    ) - velGain * this.filtCrossVel;
     target = Math.max(-params.botMaxSteer, Math.min(params.botMaxSteer, target));
 
-    const logExtras = { headingErr, crossVel, curveBlend, latSteer, target };
+    const logExtras = { headingErr, crossVel: this.filtCrossVel, curveBlend, latSteer, target };
 
-    const reversing = target * this.steering < 0;
+    const reversing = target * this.steering < 0 && Math.abs(target) > 0.06;
     const steerRate = reversing ? STEER_RATE_REVERSE : STEER_RATE;
     const delta = target - this.steering;
     if (Math.abs(delta) > steerRate) {
       target = this.steering + Math.sign(delta) * steerRate;
     }
-    const smoothTau = reversing ? STEER_SMOOTH_REVERSE : STEER_SMOOTH;
+    const smoothTau = (reversing ? STEER_SMOOTH_REVERSE : STEER_SMOOTH) * (1 + (1 - lineBlend) * speedMps / 30);
     const outSmooth = 1 - Math.exp(-dt / smoothTau);
     this.steering += outSmooth * (target - this.steering);
 

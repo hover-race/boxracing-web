@@ -1,3 +1,5 @@
+// Dont use .name - keep variables searchable.
+
 dat.GUI.TEXT_OPEN = 'Options'
 dat.GUI.TEXT_CLOSED = 'Options'
 const gui = new dat.GUI({ width: 400 })
@@ -147,7 +149,7 @@ stabilityFolder.add(params, 'steerAssistGain', 0, 2).step(0.05)
 stabilityFolder.add(params, 'autoSteer')
 stabilityFolder.add(params, 'autoSteerStrength', 0, 1).step(0.05)
 stabilityFolder.add(vehicleParams, 'autoSteerAssist', 0, 1).step(0.01).listen()
-stabilityFolder.add(vehicleParams, 'autoSteerLateral', -15, 15).step(0.1).listen().name('Centerline Dist m')
+stabilityFolder.add(vehicleParams, 'autoSteerLateral', -15, 15).step(0.1).listen()
 
 const botFolder = gui.addFolder('Bot')
 botFolder.add(params, 'numBots', 0, 20).step(1)
