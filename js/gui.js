@@ -53,6 +53,8 @@ const params = {
   throttleInput: 0,
   runPhysics: true,
   autoStopPhysicsAfterSec: 0,
+  botShader: 'xray',
+  botOutlineThickness: 0.02,
   smokeEnabled: false,
   smokeSlipThreshold: 0.25,
   smokeRate: 45,
@@ -117,6 +119,8 @@ const vehicleParams = {
 gui.useLocalStorage = true
 gui.remember(params)
 
+gui.add(params, 'botShader', ['none', 'outline', 'fresnel', 'solid', 'xray']).onChange(() => window.refreshBotShader?.())
+gui.add(params, 'botOutlineThickness', 0.005, 0.06).step(0.001).onChange(() => window.refreshBotShader?.())
 gui.add(params, 'smokeEnabled')
 gui.add(params, 'soundVolume', 0, 100).step(1)
 gui.add(vehicleParams, 'steeringSensitivity', 0.1, 2.0).step(0.1)

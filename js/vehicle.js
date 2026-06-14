@@ -1,6 +1,7 @@
 import { Wheel } from './wheel.js';
 import { ReplayRecorder } from './replays.js';
 import { TireParticles } from './particles.js';
+import { applyBotShader } from './botShaders.js';
 
 class Vehicle {
   vehicle
@@ -527,7 +528,7 @@ class Vehicle {
   }
 
 
-  static async setupCarMustang(scene, transform, preloadedModel, { recordReplay = true } = {}) {
+  static async setupCarMustang(scene, transform, preloadedModel, { recordReplay = true, isBot = false, botColor = null } = {}) {
     let wheels = {
       frontRight: null,
       frontLeft: null, 
@@ -603,6 +604,7 @@ class Vehicle {
     // chassis.body.ammo.setCenterOfMassTransform(centerOfMassTransform)
 
     const vehicle = new Vehicle(scene.scene, scene.physics, chassis, wheels, scene.listener, { recordReplay })
+    if (isBot) applyBotShader(vehicle, params.botShader, botColor)
     vehicle.particles.enableAudioOnFirstGesture()
     return vehicle
   }

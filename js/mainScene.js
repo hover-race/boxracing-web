@@ -1,4 +1,5 @@
 import { Vehicle } from './vehicle.js';
+import { refreshAllBotShaders, botColorForIndex, updateBotFade } from './botShaders.js';
 import { RemoteObjectManager } from './remote-objects.js';
 import { NetworkSender, NetworkManager } from './network-classes.js';
 import { SignalingManager } from './firestore-signaling.js';
@@ -154,9 +155,10 @@ export class MainScene extends Scene3D {
     ])
 
     this.bots = []
+    const botCount = 6
     const gridBot = new Bot(this.racingLines)
     this.bots.push({
-      car: await Vehicle.setupCarMustang(this, this.botStartTransform, carModel.clone(), { recordReplay: false }),
+      car: await Vehicle.setupCarMustang(this, this.botStartTransform, carModel.clone(), { recordReplay: false, isBot: true, botColor: botColorForIndex(0, botCount) }),
       bot: gridBot,
     })
 
@@ -167,7 +169,7 @@ export class MainScene extends Scene3D {
       const bot = new Bot(this.racingLines)
       for (const lap of bot.laps) lap.u = u
       this.bots.push({
-        car: await Vehicle.setupCarMustang(this, transform, carModel.clone(), { recordReplay: false }),
+        car: await Vehicle.setupCarMustang(this, transform, carModel.clone(), { recordReplay: false, isBot: true, botColor: botColorForIndex(i + 1, botCount) }),
         bot,
       })
     }
@@ -210,6 +212,7 @@ export class MainScene extends Scene3D {
 
   setupDebugStepper() {
     window.__mainScene = this
+    window.refreshBotShader = () => refreshAllBotShaders(this)
     params.runPhysics = true
 
     if (params.autoStopPhysicsAfterSec > 0) {
@@ -323,6 +326,8 @@ export class MainScene extends Scene3D {
     if (!params.offlinePlay && this.remoteManager) {
       this.remoteManager.update();
     }
+
+    updateBotFade(this);
   }
 
   preRender() {
