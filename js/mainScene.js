@@ -296,7 +296,9 @@ export class MainScene extends Scene3D {
       throttle: Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput)),
     }
     if (params.autoSteer) {
-      vehicleInputs.steering = this.autoSteer.steeringFor(this.car);
+      vehicleInputs.steering = this.autoSteer.steeringFor(this.car, inputControls.steering, deltaTime);
+    } else {
+      vehicleParams.autoSteerAssist = 0;
     }
     this.car.update(vehicleInputs);
     this.car.updateTireMarks();

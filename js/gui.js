@@ -69,6 +69,8 @@ const params = {
   recordLaps: true,
   botDrive: false,
   autoSteer: false,
+  autoSteerHoldSec: 0.5,
+  autoSteerBlendSec: 0.5,
   botLookahead: 8,
   botLookaheadTime: 0.45,
   botSteerGain: 1.2,
@@ -115,6 +117,7 @@ const vehicleParams = {
   frontSlipAngle: 0,
   steerAssistActive: false,
   steerAssistCorrection: 0,
+  autoSteerAssist: 0,
 }
 
 gui.useLocalStorage = true
@@ -137,6 +140,9 @@ stabilityFolder.add(params, 'steeringAssist')
 stabilityFolder.add(params, 'steerAssistSlipLimitDeg', 2, 25).step(0.5)
 stabilityFolder.add(params, 'steerAssistGain', 0, 2).step(0.05)
 stabilityFolder.add(params, 'autoSteer')
+stabilityFolder.add(params, 'autoSteerHoldSec', 0, 2).step(0.05)
+stabilityFolder.add(params, 'autoSteerBlendSec', 0, 2).step(0.05)
+stabilityFolder.add(vehicleParams, 'autoSteerAssist', 0, 1).step(0.01).listen()
 
 const botFolder = gui.addFolder('Bot')
 botFolder.add(params, 'botDrive')
