@@ -234,10 +234,56 @@ function extractCenterline(track, meshName = '1TARMAC_oval') {
   return normalizeLoop(trimLoopEnds(loop.slice().reverse()));
 }
 
+function interpolateCenterline(points, sampleSpacing = 2, maxGap = 25) {
+  const chunks = splitAtGaps(points, maxGap);
+  const out = [];
+
+  function appendStraight(a, b) {
+    const span = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    if (span < 0.1) return;
+    let d = sampleSpacing;
+    while (d < span) {
+      const f = d / span;
+      out.push({
+        x: a.x + (b.x - a.x) * f,
+        y: a.y + (b.y - a.y) * f,
+        z: a.z + (b.z - a.z) * f,
+      });
+      d += sampleSpacing;
+    }
+  }
+
+  for (let ci = 0; ci < chunks.length; ci++) {
+    const chunk = chunks[ci];
+    if (chunk.length < 2) continue;
+    if (out.length) appendStraight(out[out.length - 1], chunk[0]);
+    const curve = new THREE.CatmullRomCurve3(
+      chunk.map((p) => new THREE.Vector3(p.x, p.y, p.z)),
+      false,
+      'catmullrom',
+      0.15,
+    );
+    const steps = Math.max(1, Math.ceil(curve.getLength() / sampleSpacing));
+    for (let i = 0; i <= steps; i++) {
+      const p = curve.getPointAt(i / steps);
+      const pt = { x: p.x, y: p.y, z: p.z };
+      if (out.length) {
+        const prev = out[out.length - 1];
+        if (Math.hypot(pt.x - prev.x, pt.z - prev.z) < 0.05) continue;
+      }
+      out.push(pt);
+    }
+  }
+
+  if (out.length >= 2) appendStraight(out[out.length - 1], out[0]);
+  return out;
+}
+
 function centerlineFromTrack(track, meshName = '1TARMAC_oval') {
   const points = extractCenterline(track, meshName);
   if (!points) return null;
-  return new RacingLine(points);
+  const smooth = interpolateCenterline(points);
+  return new RacingLine(normalizeLoop(smooth));
 }
 
 function resampleChunk(chunk, spacing = 2) {
