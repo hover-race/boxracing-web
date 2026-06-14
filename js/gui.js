@@ -51,8 +51,12 @@ const params = {
   tireSlipDamping: 450,
   maxWheelAngularVelocity: 220,
   throttleInput: 0,
+  autoThrottle: 0,
   runPhysics: true,
   autoStopPhysicsAfterSec: 0,
+  debugSpawnU: -1,
+  debugSpawnBackM: 30,
+  spawnAngle: 0,
   botShader: 'xray',
   botOutlineThickness: 0.02,
   smokeEnabled: false,
@@ -68,6 +72,7 @@ const params = {
   portalEnabled: true,
   recordLaps: true,
   botDrive: false,
+  numBots: 6,
   autoSteer: false,
   autoSteerStrength: 1,
   botLookahead: 8,
@@ -145,6 +150,7 @@ stabilityFolder.add(vehicleParams, 'autoSteerAssist', 0, 1).step(0.01).listen()
 stabilityFolder.add(vehicleParams, 'autoSteerLateral', -15, 15).step(0.1).listen().name('Centerline Dist m')
 
 const botFolder = gui.addFolder('Bot')
+botFolder.add(params, 'numBots', 0, 20).step(1)
 botFolder.add(params, 'botDrive')
 botFolder.add(params, 'botLookahead', 1, 40).step(0.5)
 botFolder.add(params, 'botLookaheadTime', 0, 1).step(0.05)
@@ -159,8 +165,12 @@ botFolder.add(params, 'botCurvatureSpacing', 3, 25).step(1)
 const debugFolder = gui.addFolder('Debug')
 debugFolder.add(params, 'recordLaps')
 debugFolder.add(params, 'throttleInput', -1, 1).step(0.01)
+debugFolder.add(params, 'autoThrottle', 0, 1).step(0.05)
 debugFolder.add(params, 'runPhysics')
 debugFolder.add(params, 'autoStopPhysicsAfterSec')
+debugFolder.add(params, 'debugSpawnU', -1, 1).step(0.01).name('Spawn u (-1=start)')
+debugFolder.add(params, 'debugSpawnBackM', 0, 150).step(5).name('Spawn back m')
+debugFolder.add(params, 'spawnAngle', -180, 180).step(1).name('Spawn angle °')
 debugFolder.add(vehicleParams, 'wheelSpeed', -50, 50).step(0.1).listen()
 debugFolder.add(vehicleParams, 'slipRatio', -1, 1).step(0.01).listen()
 debugFolder.add(vehicleParams, 'slipAngle', -90, 90).step(0.1).listen()

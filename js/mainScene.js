@@ -158,25 +158,41 @@ export class MainScene extends Scene3D {
     if (!this.trackCenterline) throw new Error('Failed to extract track centerline')
     console.log('Track centerline:', this.trackCenterline.count, 'points,', this.trackCenterline.length.toFixed(0), 'm')
     this.autoSteer = new AutoSteer([this.trackCenterline])
+    if (params.debugSpawnU >= 0) {
+      const backU = params.debugSpawnBackM / this.trackCenterline.length;
+      let u = params.debugSpawnU - backU;
+      if (u < 0) u += 1;
+      this.teleportCar(MainScene.transformOnLine(this.trackCenterline, u, params.spawnAngle));
+      this.autoSteer.seedAtCar(this.car);
+      this.autoSteer.resetLatLog();
+      console.log('Debug spawn on centerline u=', this.autoSteer.laps[0].u, `(target ${params.debugSpawnU}, back ${params.debugSpawnBackM}m, angle ${params.spawnAngle}°)`);
+    } else {
+      this.autoSteer.seedAtCar(this.car);
+      if (params.spawnAngle !== 0) {
+        this.teleportCar(MainScene.yawOffsetTransform(this.car.chassis, params.spawnAngle));
+      }
+    }
 
     this.bots = []
-    const botCount = 6
-    const gridBot = new Bot(this.racingLines)
-    this.bots.push({
-      car: await Vehicle.setupCarMustang(this, this.botStartTransform, carModel.clone(), { recordReplay: false, isBot: true, botColor: botColorForIndex(0, botCount) }),
-      bot: gridBot,
-    })
-
-    const spawnLine = this.racingLines[0]
-    for (let i = 0; i < 5; i++) {
-      const u = 0.05 + Math.random() * 0.9
-      const transform = MainScene.transformOnLine(spawnLine, u)
-      const bot = new Bot(this.racingLines)
-      for (const lap of bot.laps) lap.u = u
+    const botCount = params.numBots
+    if (botCount > 0) {
+      const gridBot = new Bot(this.racingLines)
       this.bots.push({
-        car: await Vehicle.setupCarMustang(this, transform, carModel.clone(), { recordReplay: false, isBot: true, botColor: botColorForIndex(i + 1, botCount) }),
-        bot,
+        car: await Vehicle.setupCarMustang(this, this.botStartTransform, carModel.clone(), { recordReplay: false, isBot: true, botColor: botColorForIndex(0, botCount) }),
+        bot: gridBot,
       })
+
+      const spawnLine = this.racingLines[0]
+      for (let i = 0; i < botCount - 1; i++) {
+        const u = 0.05 + Math.random() * 0.9
+        const transform = MainScene.transformOnLine(spawnLine, u)
+        const bot = new Bot(this.racingLines)
+        for (const lap of bot.laps) lap.u = u
+        this.bots.push({
+          car: await Vehicle.setupCarMustang(this, transform, carModel.clone(), { recordReplay: false, isBot: true, botColor: botColorForIndex(i + 1, botCount) }),
+          bot,
+        })
+      }
     }
 
     // Initialize replay system
@@ -219,6 +235,8 @@ export class MainScene extends Scene3D {
     window.__mainScene = this
     window.refreshBotShader = () => refreshAllBotShaders(this)
     params.runPhysics = true
+    this._physicsElapsed = 0
+    this._physicsTimer = document.getElementById('physics-timer')
 
     if (params.recordLaps) this.lapPathRecorder.startSession()
     window.downloadTrackTrace = () => this.lapPathRecorder.downloadTrace()
@@ -230,8 +248,45 @@ export class MainScene extends Scene3D {
     })
 
     if (params.autoStopPhysicsAfterSec > 0) {
-      window.setTimeout(() => { params.runPhysics = false }, params.autoStopPhysicsAfterSec * 1000)
+      this._autoStopAt = null;
     }
+  }
+
+  _scheduleAutoStop() {
+    if (this._autoStopScheduled || params.autoStopPhysicsAfterSec <= 0) return;
+    this._autoStopScheduled = true;
+    this._autoStopAt = performance.now() + params.autoStopPhysicsAfterSec * 1000;
+  }
+
+  _checkAutoStop() {
+    if (!this._autoStopAt || performance.now() < this._autoStopAt) return;
+    this._autoStopAt = null;
+    params.runPhysics = false;
+    this.dumpLatLog();
+  }
+
+  dumpLatLog() {
+    if (!this.autoSteer?.latLog.length) return;
+    const summary = AutoSteer.summarizeLatLog(this.autoSteer.latLog);
+    window.__latLogSummary = summary;
+    window.dumpLatLog = () => this.dumpLatLog();
+    console.log('__latLogSummary', summary);
+    console.table(summary.buckets);
+  }
+
+  teleportCar(transform) {
+    const pos = transform.position;
+    const rot = transform.quaternion;
+    this.car.chassis.position.copy(pos);
+    this.car.chassis.quaternion.copy(rot);
+    const body = this.car.chassis.body;
+    body.setVelocity(0, 0, 0);
+    body.setAngularVelocity(0, 0, 0);
+    const tf = body.ammo.getWorldTransform();
+    tf.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
+    tf.setRotation(new Ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
+    body.ammo.setWorldTransform(tf);
+    body.ammo.activate();
   }
 
   log(a, b) {
@@ -290,6 +345,9 @@ export class MainScene extends Scene3D {
 
   update(time, deltaTime) {
     if (!params.runPhysics) return
+    this._physicsElapsed += deltaTime / 1000
+    if (this._physicsTimer) this._physicsTimer.textContent = this._physicsElapsed.toFixed(1)
+    this._scheduleAutoStop();
 
     if (params.botDrive && this.bots.length) {
       for (const { car, bot } of this.bots) {
@@ -305,19 +363,23 @@ export class MainScene extends Scene3D {
 
     const vehicleInputs = {
       ...inputControls,
-      throttle: Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput)),
+      throttle: Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput + params.autoThrottle)),
     }
     if (this.autoSteer) {
       if (params.autoSteer) {
         vehicleInputs.steering = this.autoSteer.steeringFor(this.car, inputControls.steering, deltaTime);
       } else {
-        this.autoSteer.measureLateral(this.car);
+        const lap = this.autoSteer.measureLateral(this.car);
+        this.autoSteer._logFrame(this.car, lap);
         vehicleParams.autoSteerAssist = 0;
       }
     } else {
       vehicleParams.autoSteerLateral = 0;
     }
     this.car.update(vehicleInputs);
+    if (this.autoSteer?.latLog.length) {
+      this.autoSteer.latLog[this.autoSteer.latLog.length - 1].wheelSteer = vehicleParams.wheelSteerAngle;
+    }
     this.car.updateTireMarks();
     
     // Record replay data
@@ -352,6 +414,7 @@ export class MainScene extends Scene3D {
     }
 
     updateBotFade(this);
+    this._checkAutoStop();
   }
 
   preRender() {
@@ -364,15 +427,24 @@ export class MainScene extends Scene3D {
     }
   }
 
-  static transformOnLine(line, u) {
+  static transformOnLine(line, u, angleDeg = 0) {
     const pos = line.sample(u)
     const ahead = line.sample(u + 5 / line.length)
     const transform = new THREE.Object3D()
     transform.position.set(pos.x, pos.y, pos.z)
-    transform.quaternion.setFromAxisAngle(
+    const yaw = Math.atan2(ahead.x - pos.x, ahead.z - pos.z) + angleDeg * Math.PI / 180
+    transform.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw)
+    return transform
+  }
+
+  static yawOffsetTransform(object, angleDeg) {
+    const transform = new THREE.Object3D()
+    transform.position.copy(object.position)
+    const offset = new THREE.Quaternion().setFromAxisAngle(
       new THREE.Vector3(0, 1, 0),
-      Math.atan2(ahead.x - pos.x, ahead.z - pos.z)
+      angleDeg * Math.PI / 180
     )
+    transform.quaternion.copy(object.quaternion).multiply(offset)
     return transform
   }
 
