@@ -68,6 +68,7 @@ const params = {
   portalEnabled: true,
   recordLaps: true,
   botDrive: false,
+  autoSteer: false,
   botLookahead: 8,
   botLookaheadTime: 0.45,
   botSteerGain: 1.2,
@@ -125,7 +126,7 @@ gui.add(params, 'smokeEnabled')
 gui.add(params, 'soundVolume', 0, 100).step(1)
 gui.add(vehicleParams, 'steeringSensitivity', 0.1, 2.0).step(0.1)
 
-const stabilityFolder = gui.addFolder('Stability Control')
+const stabilityFolder = gui.addFolder('Driving Assist')
 stabilityFolder.add(params, 'tractionControl')
 stabilityFolder.add(params, 'tcSlipLimit', 0, 1).step(0.01)
 stabilityFolder.add(params, 'tcStrength', 0, 10).step(0.1)
@@ -135,6 +136,7 @@ stabilityFolder.add(params, 'spinAssist', 0, 1).step(0.25)
 stabilityFolder.add(params, 'steeringAssist')
 stabilityFolder.add(params, 'steerAssistSlipLimitDeg', 2, 25).step(0.5)
 stabilityFolder.add(params, 'steerAssistGain', 0, 2).step(0.05)
+stabilityFolder.add(params, 'autoSteer')
 
 const botFolder = gui.addFolder('Bot')
 botFolder.add(params, 'botDrive')

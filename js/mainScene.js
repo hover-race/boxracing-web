@@ -11,6 +11,7 @@ import { ReplayPlayer, ReplayUI } from './replays.js';
 import { LapPathRecorder } from './lapPath.js';
 import { RacingLine } from './racingLine.js';
 import { Bot } from './bot.js';
+import { AutoSteer } from './autoSteer.js';
 
 export class MainScene extends Scene3D {
   car
@@ -153,6 +154,7 @@ export class MainScene extends Scene3D {
       RacingLine.load('laps/lap-2.json'),
       RacingLine.load('laps/lap-3.json'),
     ])
+    this.autoSteer = new AutoSteer(this.racingLines)
 
     this.bots = []
     const botCount = 6
@@ -292,6 +294,9 @@ export class MainScene extends Scene3D {
     const vehicleInputs = {
       ...inputControls,
       throttle: Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput)),
+    }
+    if (params.autoSteer) {
+      vehicleInputs.steering = this.autoSteer.steeringFor(this.car);
     }
     this.car.update(vehicleInputs);
     this.car.updateTireMarks();
