@@ -93,6 +93,30 @@ class AutoSteer {
     };
   }
 
+  drive(car, manualSteering, deltaTime) {
+    if (params.autoSteer) {
+      return this.steeringFor(car, manualSteering, deltaTime);
+    }
+    const lap = this.measureLateral(car);
+    this._logFrame(car, lap);
+    vehicleParams.autoSteerAssist = 0;
+    return manualSteering;
+  }
+
+  patchWheelLog(wheelSteer) {
+    if (!this.latLog.length) return;
+    this.latLog[this.latLog.length - 1].wheelSteer = wheelSteer;
+  }
+
+  dumpLog() {
+    if (!this.latLog.length) return;
+    const summary = AutoSteer.summarizeLatLog(this.latLog);
+    window.__latLogSummary = summary;
+    window.dumpLatLog = () => this.dumpLog();
+    console.log('__latLogSummary', summary);
+    console.table(summary.buckets);
+  }
+
   _setAssist(amount) {
     this.assist = amount;
     vehicleParams.autoSteerAssist = amount;
