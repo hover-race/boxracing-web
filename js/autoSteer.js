@@ -98,14 +98,27 @@ class AutoSteer {
     vehicleParams.autoSteerAssist = amount;
   }
 
-  signedLateral(line, u, x, z, tangentDist = 3) {
+  lookaheadM(speedMps) {
+    return LOOKAHEAD + speedMps * LOOKAHEAD_TIME;
+  }
+
+  tangentFrame(line, u, distM) {
     const here = line.sample(u);
-    const ahead = line.sample(u + tangentDist / line.length);
-    const tx = ahead.x - here.x;
-    const tz = ahead.z - here.z;
-    const tLen = Math.hypot(tx, tz) || 1;
-    const nx = -tz / tLen;
-    const nz = tx / tLen;
+    const ahead = line.sample(u + distM / line.length);
+    const tangentX = ahead.x - here.x;
+    const tangentZ = ahead.z - here.z;
+    const tLen = Math.hypot(tangentX, tangentZ) || 1;
+    return {
+      here,
+      tangentX,
+      tangentZ,
+      nx: -tangentZ / tLen,
+      nz: tangentX / tLen,
+    };
+  }
+
+  signedLateralAt(line, u, x, z, distM) {
+    const { here, nx, nz } = this.tangentFrame(line, u, distM);
     return (x - here.x) * nx + (z - here.z) * nz;
   }
 
@@ -115,7 +128,7 @@ class AutoSteer {
       lap.u = lap.line.project(pos.x, pos.z, null);
       const here = lap.line.sample(lap.u);
       lap.err = Math.hypot(pos.x - here.x, pos.z - here.z);
-      lap.lateral = this.signedLateral(lap.line, lap.u, pos.x, pos.z);
+      lap.lateral = this.signedLateralAt(lap.line, lap.u, pos.x, pos.z, LOOKAHEAD);
       this.filtLat = lap.lateral;
       this.filtCrossVel = 0;
     }
@@ -137,6 +150,7 @@ class AutoSteer {
   measureLateral(car, dt = 1 / 60) {
     const pos = car.chassis.position;
     const speedMps = Math.abs(car.vehicle.getCurrentSpeedKmHour()) / 3.6;
+    const tangentM = this.lookaheadM(speedMps);
     let best = null;
     for (const lap of this.laps) {
       const hint = lap.u + speedMps * dt / lap.line.length;
@@ -156,7 +170,7 @@ class AutoSteer {
           lap.err = globalErr;
         }
       }
-      lap.lateral = this.signedLateral(lap.line, lap.u, pos.x, pos.z);
+      lap.lateral = this.signedLateralAt(lap.line, lap.u, pos.x, pos.z, tangentM);
       if (!best || lap.err < best.err) best = lap;
     }
     vehicleParams.autoSteerLateral = best.lateral;
@@ -188,39 +202,34 @@ class AutoSteer {
 
     const curv = this.curvatureAt(best.line, best.u);
     const curveBlend = Math.min(1, curv / STRAIGHT_CURV);
-    const straight = curveBlend < 0.35;
-    const deadband = straight ? 0.12 : LAT_DEADBAND;
+    const straightBlend = Math.max(0, Math.min(1, 1 - curveBlend / 0.35));
+    const deadband = LAT_DEADBAND + straightBlend * (0.12 - LAT_DEADBAND);
     let lateralErr = this.filtLat;
     if (Math.abs(lateralErr) < deadband) lateralErr = 0;
     else lateralErr -= Math.sign(lateralErr) * deadband;
 
     const speedMps = Math.abs(car.vehicle.getCurrentSpeedKmHour()) / 3.6;
-    const lookahead = LOOKAHEAD + speedMps * LOOKAHEAD_TIME;
-    const here = best.line.sample(best.u);
-    const ahead = best.line.sample(best.u + lookahead / best.line.length);
-    const tangentX = ahead.x - here.x;
-    const tangentZ = ahead.z - here.z;
+    const tangentM = this.lookaheadM(speedMps);
+    const { tangentX, tangentZ, nx, nz } = this.tangentFrame(best.line, best.u, tangentM);
     const headingErr = Math.atan2(
       fwd.z * tangentX - fwd.x * tangentZ,
       fwd.x * tangentX + fwd.z * tangentZ
     );
 
-    const tLen = Math.hypot(tangentX, tangentZ) || 1;
-    const nx = -tangentZ / tLen;
-    const nz = tangentX / tLen;
     const vel = car.chassis.body.ammo.getLinearVelocity();
     const crossVel = vel.x() * nx + vel.z() * nz;
     const crossSmooth = 1 - Math.exp(-dt / 0.15);
     this.filtCrossVel += crossSmooth * (crossVel - this.filtCrossVel);
 
     const lineBlend = Math.min(1, Math.abs(lateralErr));
-    const soft = STANLEY_SOFT + speedMps * (0.3 - 0.2 * lineBlend);
-    const latSteer = Math.atan(STANLEY_K * lateralErr / (speedMps + soft));
-    const headWeight = straight ? 0.5 : 1;
-    const headGain = HEADING_GAIN * (straight ? 0.4 : 1);
+    const soft = STANLEY_SOFT + speedMps * (0.3 - 0.2 * lineBlend) + straightBlend * speedMps * 0.2;
+    const latSteer = Math.atan(STANLEY_K * (1 - 0.3 * straightBlend) * lateralErr / (speedMps + soft));
+    const headWeight = 1 - 0.5 * straightBlend;
+    const headGain = HEADING_GAIN * (1 - 0.6 * straightBlend);
     const speedDamp = 1 / (1 + (speedMps / 25) ** 2);
     const crossDamp = speedDamp + (0.35 - speedDamp) * lineBlend;
-    const velGain = VEL_GAIN * (straight ? 0.75 : 1) * crossDamp;
+    const crossScale = 1 - 0.75 * straightBlend;
+    const velGain = VEL_GAIN * (1 - 0.25 * straightBlend) * crossDamp * crossScale;
     let target = strength * (
       -latSteer
       - headGain * headingErr * headWeight
@@ -229,13 +238,15 @@ class AutoSteer {
 
     const logExtras = { headingErr, crossVel: this.filtCrossVel, curveBlend, latSteer, target };
 
-    const reversing = target * this.steering < 0 && Math.abs(target) > 0.06;
+    const reversing = target * this.steering < 0 && Math.abs(target) > 0.06 + straightBlend * 0.06;
     const steerRate = reversing ? STEER_RATE_REVERSE : STEER_RATE;
     const delta = target - this.steering;
     if (Math.abs(delta) > steerRate) {
       target = this.steering + Math.sign(delta) * steerRate;
     }
-    const smoothTau = (reversing ? STEER_SMOOTH_REVERSE : STEER_SMOOTH) * (1 + (1 - lineBlend) * speedMps / 30);
+    const smoothTau = (reversing ? STEER_SMOOTH_REVERSE : STEER_SMOOTH)
+      * (1 + (1 - lineBlend) * speedMps / 30)
+      * (1 + straightBlend * speedMps / 35);
     const outSmooth = 1 - Math.exp(-dt / smoothTau);
     this.steering += outSmooth * (target - this.steering);
 
