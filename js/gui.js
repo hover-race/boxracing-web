@@ -125,6 +125,7 @@ const vehicleParams = {
   steerAssistCorrection: 0,
   autoSteerAssist: 0,
   autoSteerLateral: 0,
+  autoSteerHeadingDeg: 0,
 }
 
 gui.useLocalStorage = true
@@ -150,6 +151,7 @@ stabilityFolder.add(params, 'autoSteer')
 stabilityFolder.add(params, 'autoSteerStrength', 0, 1).step(0.05)
 stabilityFolder.add(vehicleParams, 'autoSteerAssist', 0, 1).step(0.01).listen()
 stabilityFolder.add(vehicleParams, 'autoSteerLateral', -15, 15).step(0.1).listen()
+stabilityFolder.add(vehicleParams, 'autoSteerHeadingDeg', -45, 45).step(0.1).listen()
 
 const botFolder = gui.addFolder('Bot')
 botFolder.add(params, 'numBots', 0, 20).step(1)
