@@ -2,8 +2,6 @@
 // for GUI / too-far cutout (botMaxOffset), not for steering.
 const HOLD_SEC = 0.5;
 const BLEND_SEC = 0.5;
-const LOOKAHEAD = 6;
-const LOOKAHEAD_TIME = 0.15;
 
 class AutoSteer {
   constructor(lines) {
@@ -106,15 +104,14 @@ class AutoSteer {
     vehicleParams.autoSteerAssist = amount;
   }
 
-  lookaheadM(speedMps) {
-    return LOOKAHEAD + speedMps * LOOKAHEAD_TIME;
-  }
-
-  tangentFrame(line, u, distM) {
+  // Tangent/normal at u from three curve samples spaced `spacingM` apart (chord prev→next).
+  tangentFrame(line, u, spacingM) {
+    const du = spacingM / line.length;
+    const prev = line.sample(u - du);
     const here = line.sample(u);
-    const ahead = line.sample(u + distM / line.length);
-    const tangentX = ahead.x - here.x;
-    const tangentZ = ahead.z - here.z;
+    const next = line.sample(u + du);
+    const tangentX = next.x - prev.x;
+    const tangentZ = next.z - prev.z;
     const tLen = Math.hypot(tangentX, tangentZ) || 1;
     return {
       here,
@@ -130,9 +127,10 @@ class AutoSteer {
     return (x - here.x) * nx + (z - here.z) * nz;
   }
 
-  headingErrRad(car, line, u, tangentM) {
+  headingErrRad(car, line, u, spacingM, lookaheadM) {
+    const uRef = u + lookaheadM / line.length;
     const fwd = this._fwd.set(0, 0, 1).applyQuaternion(car.chassis.quaternion);
-    const { tangentX, tangentZ } = this.tangentFrame(line, u, tangentM);
+    const { tangentX, tangentZ } = this.tangentFrame(line, uRef, spacingM);
     return Math.atan2(
       fwd.z * tangentX - fwd.x * tangentZ,
       fwd.x * tangentX + fwd.z * tangentZ
@@ -145,14 +143,13 @@ class AutoSteer {
       lap.u = lap.line.project(pos.x, pos.z, null);
       const here = lap.line.sample(lap.u);
       lap.err = Math.hypot(pos.x - here.x, pos.z - here.z);
-      lap.lateral = this.signedLateralAt(lap.line, lap.u, pos.x, pos.z, LOOKAHEAD);
+      lap.lateral = this.signedLateralAt(lap.line, lap.u, pos.x, pos.z, params.botCurvatureSpacing);
     }
   }
 
   measureLateral(car, dt = 1 / 60) {
     const pos = car.chassis.position;
     const speedMps = Math.abs(car.vehicle.getCurrentSpeedKmHour()) / 3.6;
-    const tangentM = this.lookaheadM(speedMps);
     let best = null;
     for (const lap of this.laps) {
       const hint = lap.u + speedMps * dt / lap.line.length;
@@ -172,10 +169,13 @@ class AutoSteer {
           lap.err = globalErr;
         }
       }
-      lap.lateral = this.signedLateralAt(lap.line, lap.u, pos.x, pos.z, tangentM);
+      lap.lateral = this.signedLateralAt(lap.line, lap.u, pos.x, pos.z, params.botCurvatureSpacing);
       if (!best || lap.err < best.err) best = lap;
     }
-    const headingErrRad = this.headingErrRad(car, best.line, best.u, tangentM);
+    const lookaheadM = params.botLookahead + speedMps * params.botLookaheadTime;
+    const headingErrRad = this.headingErrRad(
+      car, best.line, best.u, params.botCurvatureSpacing, lookaheadM
+    );
     vehicleParams.autoSteerLateral = best.lateral;
     vehicleParams.autoSteerHeadingDeg = headingErrRad * 180 / Math.PI;
     return best;
