@@ -90,7 +90,6 @@ class Vehicle {
 
     this.speedometer = document.getElementById('speedometer')
     this.accelerometerDot = document.getElementById('accel-dot')
-    this.accelerometerReadout = document.getElementById('accel-readout')
     this.tcsIndicator = document.getElementById('tcs-indicator')
     this.escIndicator = document.getElementById('esc-indicator')
 
@@ -241,14 +240,12 @@ class Vehicle {
     this._smoothLongG = this._smoothLongG * 0.82 + longG * 0.18
     this._smoothLatG = this._smoothLatG * 0.82 + latG * 0.18
 
-    const maxG = 1.25
-    const px = Math.max(-1, Math.min(1, this._smoothLatG / maxG)) * 28
-    const py = Math.max(-1, Math.min(1, -this._smoothLongG / maxG)) * 28
-    this.accelerometerDot.style.transform = `translate(${px}px, ${py}px)`
-    if (this.accelerometerReadout) {
-      this.accelerometerReadout.textContent =
-        `${this._smoothLongG.toFixed(2)} ${this._smoothLatG.toFixed(2)}`
-    }
+    const maxG = 2
+    const maxPx = 46
+    const px = Math.max(-1, Math.min(1, this._smoothLatG / maxG)) * maxPx
+    const py = Math.max(-1, Math.min(1, this._smoothLongG / maxG)) * maxPx
+    this.accelerometerDot.style.transform =
+      `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`
   }
 
   updateSound() {
