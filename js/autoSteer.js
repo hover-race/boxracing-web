@@ -1,7 +1,10 @@
-// Player autosteer: align heading with centerline tangent. Lateral is measured only
-// for GUI / too-far cutout (botMaxOffset), not for steering.
+// Player autosteer: align heading with centerline tangent. Lateral nudges steering
+// slightly toward centerline when |lateral| is 1–6 m; also used for GUI / cutout.
 const HOLD_SEC = 0.5;
 const BLEND_SEC = 0.5;
+const DRIFT_GAIN = 0.035;
+const DRIFT_LAT_MIN = 1;
+const DRIFT_LAT_MAX = 6;
 
 class AutoSteer {
   constructor(lines) {
@@ -137,6 +140,12 @@ class AutoSteer {
     );
   }
 
+  driftBlend(lateral) {
+    const a = Math.abs(lateral);
+    if (a < DRIFT_LAT_MIN || a > DRIFT_LAT_MAX) return 0;
+    return (a - DRIFT_LAT_MIN) / (DRIFT_LAT_MAX - DRIFT_LAT_MIN);
+  }
+
   seedAtCar(car) {
     const pos = car.chassis.position;
     for (const lap of this.laps) {
@@ -199,9 +208,13 @@ class AutoSteer {
     }
 
     let target = -params.botSteerGain * params.autoSteerStrength * headingErrRad;
+    const driftBlend = this.driftBlend(best.lateral);
+    if (driftBlend > 0) {
+      target += -DRIFT_GAIN * params.autoSteerStrength * driftBlend * Math.sign(best.lateral);
+    }
     target = Math.max(-params.botMaxSteer, Math.min(params.botMaxSteer, target));
 
-    const logExtras = { headingErr: headingErrRad, target };
+    const logExtras = { headingErr: headingErrRad, target, driftBlend };
 
     const delta = target - this.steering;
     if (Math.abs(delta) > params.botSteerRate) {

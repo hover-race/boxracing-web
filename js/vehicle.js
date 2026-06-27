@@ -40,6 +40,8 @@ class Vehicle {
   escWasActive = false
   tcsLightOffTimeoutId = null
   escLightOffTimeoutId = null
+  _smoothLongG = 0
+  _smoothLatG = 0
 
   constructor(scene, physics, chassis, wheelMeshes, audioListener, { recordReplay = true } = {}) {
     this.scene = scene
@@ -87,6 +89,7 @@ class Vehicle {
     )
 
     this.speedometer = document.getElementById('speedometer')
+    this.accelerometerDot = document.getElementById('accel-dot')
     this.tcsIndicator = document.getElementById('tcs-indicator')
     this.escIndicator = document.getElementById('esc-indicator')
 
@@ -193,8 +196,56 @@ class Vehicle {
     // Update speed display in dat.gui
     vehicleParams.speed = speed
 
+    this.updateAccelerometer(dt)
+
     this.particles.updateSmoke(dt)
     this.updateSound()
+  }
+
+  updateAccelerometer(dt) {
+    if (!this.accelerometerDot) return
+
+    const lv = this.chassis.body.ammo.getLinearVelocity()
+    const vx = lv.x()
+    const vy = lv.y()
+    const vz = lv.z()
+
+    if (this._prevVelX === undefined) {
+      this._prevVelX = vx
+      this._prevVelY = vy
+      this._prevVelZ = vz
+      return
+    }
+
+    const ax = (vx - this._prevVelX) / dt
+    const az = (vz - this._prevVelZ) / dt
+    this._prevVelX = vx
+    this._prevVelY = vy
+    this._prevVelZ = vz
+
+    if (!this._accelFwd) this._accelFwd = new THREE.Vector3()
+    if (!this._accelRight) this._accelRight = new THREE.Vector3()
+    const fwd = this._accelFwd.set(0, 0, 1).applyQuaternion(this.chassis.quaternion)
+    const right = this._accelRight.set(1, 0, 0).applyQuaternion(this.chassis.quaternion)
+    fwd.y = 0
+    right.y = 0
+    if (fwd.lengthSq() > 1e-6) fwd.normalize()
+    else fwd.set(0, 0, 1)
+    if (right.lengthSq() > 1e-6) right.normalize()
+    else right.set(1, 0, 0)
+
+    const g = 9.81
+    const longG = (ax * fwd.x + az * fwd.z) / g
+    const latG = (ax * right.x + az * right.z) / g
+    this._smoothLongG = this._smoothLongG * 0.82 + longG * 0.18
+    this._smoothLatG = this._smoothLatG * 0.82 + latG * 0.18
+
+    const maxG = 2
+    const maxPx = 46
+    const px = Math.max(-1, Math.min(1, this._smoothLatG / maxG)) * maxPx
+    const py = Math.max(-1, Math.min(1, this._smoothLongG / maxG)) * maxPx
+    this.accelerometerDot.style.transform =
+      `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`
   }
 
   updateSound() {
