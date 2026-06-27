@@ -264,16 +264,7 @@ export class MainScene extends Scene3D {
     if (!this._autoStopAt || performance.now() < this._autoStopAt) return;
     this._autoStopAt = null;
     params.runPhysics = false;
-    this.dumpLatLog();
-  }
-
-  dumpLatLog() {
-    if (!this.autoSteer?.latLog.length) return;
-    const summary = AutoSteer.summarizeLatLog(this.autoSteer.latLog);
-    window.__latLogSummary = summary;
-    window.dumpLatLog = () => this.dumpLatLog();
-    console.log('__latLogSummary', summary);
-    console.table(summary.buckets);
+    this.autoSteer?.dumpLog();
   }
 
   teleportCar(transform) {
@@ -367,25 +358,20 @@ export class MainScene extends Scene3D {
       }
     }
 
-    const vehicleInputs = {
-      ...inputControls,
-      throttle: Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput + params.autoThrottle)),
-    }
+    let steering = inputControls.steering;
     if (this.autoSteer) {
-      if (params.autoSteer) {
-        vehicleInputs.steering = this.autoSteer.steeringFor(this.car, inputControls.steering, deltaTime);
-      } else {
-        const lap = this.autoSteer.measureLateral(this.car);
-        this.autoSteer._logFrame(this.car, lap);
-        vehicleParams.autoSteerAssist = 0;
-      }
+      steering = this.autoSteer.drive(this.car, steering, deltaTime);
     } else {
       vehicleParams.autoSteerLateral = 0;
     }
-    this.car.update(vehicleInputs);
-    if (this.autoSteer?.latLog.length) {
-      this.autoSteer.latLog[this.autoSteer.latLog.length - 1].wheelSteer = vehicleParams.wheelSteerAngle;
+
+    const vehicleInputs = {
+      ...inputControls,
+      throttle: Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput + params.autoThrottle)),
+      steering,
     }
+    this.car.update(vehicleInputs);
+    this.autoSteer?.patchWheelLog(vehicleParams.wheelSteerAngle);
     this.car.updateTireMarks();
     
     // Record replay data

@@ -1,26 +1,12 @@
-// Player autosteer: project onto the smoothed centerline, then steer to hold
-// zero lateral offset. Tuning lives here — GUI only exposes on/off and strength.
+// Player autosteer: align heading with centerline tangent. Lateral is measured only
+// for GUI / too-far cutout (botMaxOffset), not for steering.
 const HOLD_SEC = 0.5;
 const BLEND_SEC = 0.5;
-const LOOKAHEAD = 6;
-const LOOKAHEAD_TIME = 0.15;
-const STANLEY_K = 1.0;
-const STANLEY_SOFT = 5;
-const VEL_GAIN = 1.6;
-const HEADING_GAIN = 0.06;
-const STEER_RATE = 0.025;
-const STEER_RATE_REVERSE = 0.12;
-const STEER_SMOOTH = 0.5;
-const STEER_SMOOTH_REVERSE = 0.12;
-const LAT_FILTER = 0.2;
-const LAT_DEADBAND = 0.05;
-const STRAIGHT_CURV = 0.004;
 
 class AutoSteer {
   constructor(lines) {
     this.laps = lines.map((line) => ({ line, u: 0 }));
     this.steering = 0;
-    this.filtLat = 0;
     this.assist = 0;
     this.prevInputMag = 0;
     this.holdRemaining = 0;
@@ -49,9 +35,6 @@ class AutoSteer {
       wheelSteer: extras.wheelSteer ?? null,
       headingErr,
       headingDeg: headingErr != null ? headingErr * 180 / Math.PI : null,
-      crossVel: extras.crossVel ?? null,
-      curveBlend: extras.curveBlend ?? null,
-      latSteer: extras.latSteer ?? null,
       target: extras.target ?? null,
       assist: this.assist,
     });
@@ -92,20 +75,66 @@ class AutoSteer {
     };
   }
 
+  drive(car, manualSteering, deltaTime) {
+    if (params.autoSteer) {
+      return this.steeringFor(car, manualSteering, deltaTime);
+    }
+    const lap = this.measureLateral(car);
+    this._logFrame(car, lap);
+    vehicleParams.autoSteerAssist = 0;
+    return manualSteering;
+  }
+
+  patchWheelLog(wheelSteer) {
+    if (!this.latLog.length) return;
+    this.latLog[this.latLog.length - 1].wheelSteer = wheelSteer;
+  }
+
+  dumpLog() {
+    if (!this.latLog.length) return;
+    const summary = AutoSteer.summarizeLatLog(this.latLog);
+    window.__latLogSummary = summary;
+    window.dumpLatLog = () => this.dumpLog();
+    console.log('__latLogSummary', summary);
+    console.table(summary.buckets);
+  }
+
   _setAssist(amount) {
     this.assist = amount;
     vehicleParams.autoSteerAssist = amount;
   }
 
-  signedLateral(line, u, x, z, tangentDist = 3) {
+  // Tangent/normal at u from three curve samples spaced `spacingM` apart (chord prev→next).
+  tangentFrame(line, u, spacingM) {
+    const du = spacingM / line.length;
+    const prev = line.sample(u - du);
     const here = line.sample(u);
-    const ahead = line.sample(u + tangentDist / line.length);
-    const tx = ahead.x - here.x;
-    const tz = ahead.z - here.z;
-    const tLen = Math.hypot(tx, tz) || 1;
-    const nx = -tz / tLen;
-    const nz = tx / tLen;
+    const next = line.sample(u + du);
+    const tangentX = next.x - prev.x;
+    const tangentZ = next.z - prev.z;
+    const tLen = Math.hypot(tangentX, tangentZ) || 1;
+    return {
+      here,
+      tangentX,
+      tangentZ,
+      nx: -tangentZ / tLen,
+      nz: tangentX / tLen,
+    };
+  }
+
+  signedLateralAt(line, u, x, z, distM) {
+    const { here, nx, nz } = this.tangentFrame(line, u, distM);
     return (x - here.x) * nx + (z - here.z) * nz;
+  }
+
+  headingErrRad(car, line, u, spacingM, lookaheadM) {
+    const uRef = u + lookaheadM / line.length;
+    const fwd = this._fwd.set(0, 0, 1).applyQuaternion(car.chassis.quaternion);
+    const { tangentX, tangentZ } = this.tangentFrame(line, uRef, spacingM);
+    return Math.atan2(
+      fwd.z * tangentX - fwd.x * tangentZ,
+      fwd.x * tangentX + fwd.z * tangentZ
+    );
   }
 
   seedAtCar(car) {
@@ -114,22 +143,8 @@ class AutoSteer {
       lap.u = lap.line.project(pos.x, pos.z, null);
       const here = lap.line.sample(lap.u);
       lap.err = Math.hypot(pos.x - here.x, pos.z - here.z);
-      lap.lateral = this.signedLateral(lap.line, lap.u, pos.x, pos.z);
-      this.filtLat = lap.lateral;
+      lap.lateral = this.signedLateralAt(lap.line, lap.u, pos.x, pos.z, params.botCurvatureSpacing);
     }
-  }
-
-  curvatureAt(line, u, spacing = 8) {
-    const du = spacing / line.length;
-    const a = line.sample(u - du);
-    const b = line.sample(u);
-    const c = line.sample(u + du);
-    const dAB = Math.hypot(b.x - a.x, b.z - a.z);
-    const dBC = Math.hypot(c.x - b.x, c.z - b.z);
-    const dAC = Math.hypot(c.x - a.x, c.z - a.z);
-    if (dAB * dBC * dAC < 1e-6) return 0;
-    const area2 = Math.abs((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x));
-    return (2 * area2) / (dAB * dBC * dAC);
   }
 
   measureLateral(car, dt = 1 / 60) {
@@ -154,21 +169,23 @@ class AutoSteer {
           lap.err = globalErr;
         }
       }
-      lap.lateral = this.signedLateral(lap.line, lap.u, pos.x, pos.z);
+      lap.lateral = this.signedLateralAt(lap.line, lap.u, pos.x, pos.z, params.botCurvatureSpacing);
       if (!best || lap.err < best.err) best = lap;
     }
+    const lookaheadM = params.botLookahead + speedMps * params.botLookaheadTime;
+    const headingErrRad = this.headingErrRad(
+      car, best.line, best.u, params.botCurvatureSpacing, lookaheadM
+    );
     vehicleParams.autoSteerLateral = best.lateral;
+    vehicleParams.autoSteerHeadingDeg = headingErrRad * 180 / Math.PI;
     return best;
   }
 
   steeringFor(car, manualSteering = 0, deltaTime = 0) {
     const dt = deltaTime > 0 ? deltaTime / 1000 : 1 / 60;
-    const pos = car.chassis.position;
-    const fwd = this._fwd.set(0, 0, 1).applyQuaternion(car.chassis.quaternion);
     const best = this.measureLateral(car, dt);
-
     const inputMag = Math.abs(manualSteering);
-    const strength = params.autoSteerStrength;
+    const headingErrRad = vehicleParams.autoSteerHeadingDeg * Math.PI / 180;
 
     if (best.err > params.botMaxOffset) {
       this.holdRemaining = 0;
@@ -181,55 +198,16 @@ class AutoSteer {
       return 0;
     }
 
-    const latSmooth = 1 - Math.exp(-dt / LAT_FILTER);
-    this.filtLat += latSmooth * (best.lateral - this.filtLat);
-
-    const curv = this.curvatureAt(best.line, best.u);
-    const curveBlend = Math.min(1, curv / STRAIGHT_CURV);
-    const straight = curveBlend < 0.35;
-    const deadband = straight ? 0.12 : LAT_DEADBAND;
-    let lateralErr = this.filtLat;
-    if (Math.abs(lateralErr) < deadband) lateralErr = 0;
-    else lateralErr -= Math.sign(lateralErr) * deadband;
-
-    const speedMps = Math.abs(car.vehicle.getCurrentSpeedKmHour()) / 3.6;
-    const lookahead = LOOKAHEAD + speedMps * LOOKAHEAD_TIME;
-    const here = best.line.sample(best.u);
-    const ahead = best.line.sample(best.u + lookahead / best.line.length);
-    const tangentX = ahead.x - here.x;
-    const tangentZ = ahead.z - here.z;
-    const headingErr = Math.atan2(
-      fwd.z * tangentX - fwd.x * tangentZ,
-      fwd.x * tangentX + fwd.z * tangentZ
-    );
-
-    const tLen = Math.hypot(tangentX, tangentZ) || 1;
-    const nx = -tangentZ / tLen;
-    const nz = tangentX / tLen;
-    const vel = car.chassis.body.ammo.getLinearVelocity();
-    const crossVel = vel.x() * nx + vel.z() * nz;
-
-    const latSteer = Math.atan(STANLEY_K * lateralErr / (speedMps + STANLEY_SOFT));
-    const headWeight = straight ? 0.5 : 1;
-    const headGain = HEADING_GAIN * (straight ? 0.4 : 1);
-    const velGain = VEL_GAIN * (straight ? 0.75 : 1);
-    let target = strength * (
-      -latSteer
-      - headGain * headingErr * headWeight
-    ) - velGain * crossVel;
+    let target = -params.botSteerGain * params.autoSteerStrength * headingErrRad;
     target = Math.max(-params.botMaxSteer, Math.min(params.botMaxSteer, target));
 
-    const logExtras = { headingErr, crossVel, curveBlend, latSteer, target };
+    const logExtras = { headingErr: headingErrRad, target };
 
-    const reversing = target * this.steering < 0;
-    const steerRate = reversing ? STEER_RATE_REVERSE : STEER_RATE;
     const delta = target - this.steering;
-    if (Math.abs(delta) > steerRate) {
-      target = this.steering + Math.sign(delta) * steerRate;
+    if (Math.abs(delta) > params.botSteerRate) {
+      target = this.steering + Math.sign(delta) * params.botSteerRate;
     }
-    const smoothTau = reversing ? STEER_SMOOTH_REVERSE : STEER_SMOOTH;
-    const outSmooth = 1 - Math.exp(-dt / smoothTau);
-    this.steering += outSmooth * (target - this.steering);
+    this.steering = target;
 
     if (inputMag > 0) {
       this.holdRemaining = 0;

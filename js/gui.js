@@ -1,3 +1,5 @@
+// Dont use .name - keep variables searchable.
+
 dat.GUI.TEXT_OPEN = 'Options'
 dat.GUI.TEXT_CLOSED = 'Options'
 const gui = new dat.GUI({ width: 400 })
@@ -74,9 +76,9 @@ const params = {
   botDrive: false,
   numBots: 6,
   autoSteer: false,
-  autoSteerStrength: 1,
-  botLookahead: 8,
-  botLookaheadTime: 0.45,
+  autoSteerStrength: 1.35,
+  botLookahead: 3.5,
+  botLookaheadTime: 0,
   botSteerGain: 1.2,
   botMaxSteer: 1,
   botSteerRate: 0.15,
@@ -123,6 +125,7 @@ const vehicleParams = {
   steerAssistCorrection: 0,
   autoSteerAssist: 0,
   autoSteerLateral: 0,
+  autoSteerHeadingDeg: 0,
 }
 
 gui.useLocalStorage = true
@@ -145,9 +148,10 @@ stabilityFolder.add(params, 'steeringAssist')
 stabilityFolder.add(params, 'steerAssistSlipLimitDeg', 2, 25).step(0.5)
 stabilityFolder.add(params, 'steerAssistGain', 0, 2).step(0.05)
 stabilityFolder.add(params, 'autoSteer')
-stabilityFolder.add(params, 'autoSteerStrength', 0, 1).step(0.05)
+stabilityFolder.add(params, 'autoSteerStrength', 0, 2).step(0.05)
 stabilityFolder.add(vehicleParams, 'autoSteerAssist', 0, 1).step(0.01).listen()
-stabilityFolder.add(vehicleParams, 'autoSteerLateral', -15, 15).step(0.1).listen().name('Centerline Dist m')
+stabilityFolder.add(vehicleParams, 'autoSteerLateral', -15, 15).step(0.1).listen()
+stabilityFolder.add(vehicleParams, 'autoSteerHeadingDeg', -45, 45).step(0.1).listen()
 
 const botFolder = gui.addFolder('Bot')
 botFolder.add(params, 'numBots', 0, 20).step(1)
