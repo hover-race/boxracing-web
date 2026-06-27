@@ -236,7 +236,8 @@ export class MainScene extends Scene3D {
     window.refreshBotShader = () => refreshAllBotShaders(this)
     params.runPhysics = true
     this._physicsElapsed = 0
-    this._fpsSmooth = 60
+    this._fpsFrames = 0
+    this._fpsAccum = 0
     this._physicsTimer = document.getElementById('physics-timer')
     this._fpsCounter = document.getElementById('fps-counter')
 
@@ -338,8 +339,14 @@ export class MainScene extends Scene3D {
 
   update(time, deltaTime) {
     if (deltaTime > 0) {
-      this._fpsSmooth = this._fpsSmooth * 0.9 + (1000 / deltaTime) * 0.1
-      if (this._fpsCounter) this._fpsCounter.textContent = `${Math.round(this._fpsSmooth)} fps`
+      this._fpsFrames++
+      this._fpsAccum += deltaTime
+      if (this._fpsAccum >= 1000) {
+        const fps = Math.round(this._fpsFrames * 1000 / this._fpsAccum)
+        if (this._fpsCounter) this._fpsCounter.textContent = `${fps} fps`
+        this._fpsFrames = 0
+        this._fpsAccum = 0
+      }
     }
     if (!params.runPhysics) return
     this._physicsElapsed += deltaTime / 1000
