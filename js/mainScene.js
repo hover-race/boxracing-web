@@ -236,7 +236,9 @@ export class MainScene extends Scene3D {
     window.refreshBotShader = () => refreshAllBotShaders(this)
     params.runPhysics = true
     this._physicsElapsed = 0
+    this._fpsSmooth = 60
     this._physicsTimer = document.getElementById('physics-timer')
+    this._fpsCounter = document.getElementById('fps-counter')
 
     if (params.recordLaps) this.lapPathRecorder.startSession()
     window.downloadTrackTrace = () => this.lapPathRecorder.downloadTrace()
@@ -344,6 +346,10 @@ export class MainScene extends Scene3D {
 
 
   update(time, deltaTime) {
+    if (deltaTime > 0) {
+      this._fpsSmooth = this._fpsSmooth * 0.9 + (1000 / deltaTime) * 0.1
+      if (this._fpsCounter) this._fpsCounter.textContent = `${Math.round(this._fpsSmooth)} fps`
+    }
     if (!params.runPhysics) return
     this._physicsElapsed += deltaTime / 1000
     if (this._physicsTimer) this._physicsTimer.textContent = this._physicsElapsed.toFixed(1)
