@@ -42,6 +42,7 @@ class Vehicle {
   escLightOffTimeoutId = null
   _smoothLongG = 0
   _smoothLatG = 0
+  currentG = 0
 
   constructor(scene, physics, chassis, wheelMeshes, audioListener, { recordReplay = true } = {}) {
     this.scene = scene
@@ -237,6 +238,12 @@ class Vehicle {
     const g = 9.81
     const longG = (ax * fwd.x + az * fwd.z) / g
     const latG = (ax * right.x + az * right.z) / g
+    // Crash detection uses its own smoothing so single-frame physics spikes don't
+    // trigger it; params.explodeGSmoothing is the EMA weight of the new sample.
+    const k = params.explodeGSmoothing
+    this.currentG = this.currentG * (1 - k) + Math.hypot(longG, latG) * k
+    vehicleParams.crashG = this.currentG
+
     this._smoothLongG = this._smoothLongG * 0.82 + longG * 0.18
     this._smoothLatG = this._smoothLatG * 0.82 + latG * 0.18
 
