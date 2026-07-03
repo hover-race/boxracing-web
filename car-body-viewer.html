@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Car Body Viewer</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; overflow: hidden; background: #141820; }
+      #hud {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        color: #c8d0dc;
+        font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        pointer-events: none;
+      }
+      #hud strong { color: #fff; }
+      #toolbar {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        display: flex;
+        gap: 8px;
+      }
+      #toolbar label {
+        display: inline-block;
+        padding: 6px 12px;
+        background: #2a3344;
+        border: 1px solid #3a4558;
+        border-radius: 4px;
+        color: #e8ecf2;
+        font: 13px ui-monospace, SFMono-Regular, Menlo, monospace;
+        cursor: pointer;
+      }
+      #toolbar label:hover { background: #354055; }
+      body.dragover canvas { outline: 2px dashed #44ff88; outline-offset: -4px; }
+    </style>
+  </head>
+  <body>
+    <div id="hud">
+      <strong id="model-name">car-body.bbmodel</strong><br />
+      <span id="model-info"></span><br />
+      drag: orbit · scroll: zoom · right-drag: pan · drop file to load
+    </div>
+    <div id="toolbar">
+      <label>
+        Load .bbmodel
+        <input type="file" id="file-input" accept=".bbmodel,.json" hidden />
+      </label>
+    </div>
+
+    <script src="lib/enable3d.framework.0.25.4.min.js"></script>
+    <script type="module">
+      const THREE = ENABLE3D.THREE
+      const UNIT_SCALE = 1 / 16
+
+      const BB_COLORS = [
+        0xb0b0b0, 0xf57f17, 0xfed83d, 0x80ca10, 0xc62828,
+        0x1565c0, 0x283593, 0x6a1b9a, 0xad1457
+      ]
+
+      const PART_COLORS = {
+        floor_pan: 0xb71c1c,
+        side_sill_left: 0x9e1a1a,
+        side_sill_right: 0x9e1a1a,
+        front_bumper: 0x424242,
+        rear_bumper: 0x424242,
+        hood: 0xd32f2f,
+        trunk: 0xd32f2f,
+        cabin_lower: 0xc62828,
+        cabin_shoulder: 0xc62828,
+        roof: 0xb71c1c,
+        windshield: 0x4fc3f7,
+        rear_window: 0x4fc3f7,
+        fender_fl: 0xd32f2f,
+        fender_fr: 0xd32f2f,
+        fender_rl: 0xd32f2f,
+        fender_rr: 0xd32f2f,
+        headlight_l: 0xfff9c4,
+        headlight_r: 0xfff9c4,
+        taillight_l: 0xff1744,
+        taillight_r: 0xff1744,
+        spoiler: 0x212121
+      }
+
+      function isCube(el) {
+        return el.from && el.to && (!el.type || el.type === 'cube')
+      }
+
+      function buildCube(el) {
+        const from = el.from.map(v => v * UNIT_SCALE)
+        const to = el.to.map(v => v * UNIT_SCALE)
+        const origin = (el.origin || [0, 0, 0]).map(v => v * UNIT_SCALE)
+
+        const size = new THREE.Vector3(
+          Math.abs(to[0] - from[0]),
+          Math.abs(to[1] - from[1]),
+          Math.abs(to[2] - from[2])
+        )
+        const center = new THREE.Vector3(
+          (from[0] + to[0]) / 2,
+          (from[1] + to[1]) / 2,
+          (from[2] + to[2]) / 2
+        )
+
+        const color = PART_COLORS[el.name] ?? BB_COLORS[el.color] ?? 0xcc2222
+        const material = new THREE.MeshStandardMaterial({
+          color,
+          metalness: el.name.includes('light') ? 0.1 : 0.35,
+          roughness: el.name.includes('window') ? 0.15 : 0.55,
+          transparent: el.name.includes('window'),
+          opacity: el.name.includes('window') ? 0.55 : 1
+        })
+
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), material)
+        const pivot = new THREE.Group()
+        pivot.add(mesh)
+
+        mesh.position.copy(center).sub(new THREE.Vector3(...origin))
+
+        pivot.position.set(origin[0], origin[1], origin[2])
+        if (el.rotation) {
+          pivot.rotation.set(
+            THREE.MathUtils.degToRad(el.rotation[0]),
+            THREE.MathUtils.degToRad(el.rotation[1]),
+            THREE.MathUtils.degToRad(el.rotation[2])
+          )
+        }
+
+        pivot.name = el.name
+        mesh.castShadow = true
+        mesh.receiveShadow = true
+        return pivot
+      }
+
+      function buildModel(model) {
+        const root = new THREE.Group()
+        root.name = model.name || 'car-body'
+
+        for (const el of model.elements || []) {
+          if (!isCube(el)) continue
+          root.add(buildCube(el))
+        }
+
+        return root
+      }
+
+      function addWheelGuides(root) {
+        const guideMat = new THREE.MeshBasicMaterial({
+          color: 0x44ff88,
+          wireframe: true,
+          transparent: true,
+          opacity: 0.35
+        })
+        const radius = 0.24
+        const positions = [
+          [-0.72, radius, 1.45],
+          [0.72, radius, 1.45],
+          [-0.72, radius, -1.45],
+          [0.72, radius, -1.45]
+        ]
+        const labels = ['FL', 'FR', 'RL', 'RR']
+
+        positions.forEach((pos, i) => {
+          const guide = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, 0.12, 24),
+            guideMat
+          )
+          guide.rotation.z = Math.PI / 2
+          guide.position.set(pos[0], pos[1], pos[2])
+          guide.name = `wheel_guide_${labels[i]}`
+          root.add(guide)
+        })
+      }
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true })
+      renderer.setPixelRatio(window.devicePixelRatio)
+      renderer.setSize(window.innerWidth, window.innerHeight)
+      renderer.shadowMap.enabled = true
+      document.body.appendChild(renderer.domElement)
+
+      const scene = new THREE.Scene()
+      scene.background = new THREE.Color(0x141820)
+      scene.fog = new THREE.Fog(0x141820, 18, 40)
+
+      const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.05, 100)
+      camera.position.set(4.5, 2.2, 5.5)
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.55))
+      const key = new THREE.DirectionalLight(0xffffff, 1.1)
+      key.position.set(6, 10, 4)
+      key.castShadow = true
+      scene.add(key)
+      scene.add(new THREE.DirectionalLight(0x88aaff, 0.35).position.set(-5, 3, -6))
+
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(30, 30),
+        new THREE.MeshStandardMaterial({ color: 0x2a3040, roughness: 0.95 })
+      )
+      ground.rotation.x = -Math.PI / 2
+      ground.receiveShadow = true
+      scene.add(ground)
+      scene.add(new THREE.GridHelper(20, 20, 0x3a4558, 0x2a3344))
+
+      const modelNameEl = document.getElementById('model-name')
+      const modelInfoEl = document.getElementById('model-info')
+      const fileInput = document.getElementById('file-input')
+
+      let car = null
+      let maxDim = 4
+
+      let theta = 0.8
+      let phi = 0.35
+      let radius = 8
+      const target = new THREE.Vector3()
+
+      function fitCamera(object) {
+        const box = new THREE.Box3().setFromObject(object)
+        const center = box.getCenter(new THREE.Vector3())
+        const size = box.getSize(new THREE.Vector3())
+        maxDim = Math.max(size.x, size.y, size.z, 0.5)
+        target.copy(center)
+        target.y = box.min.y + size.y * 0.35
+        radius = maxDim * 2.2
+        updateCamera()
+      }
+
+      function setModelInfo(model, label) {
+        const cubes = (model.elements || []).filter(isCube).length
+        const format = model.meta?.model_format || 'unknown'
+        modelNameEl.textContent = label
+        modelInfoEl.textContent = `${cubes} cubes · ${format}`
+      }
+
+      function showModel(model, label, { wheelGuides = false } = {}) {
+        if (car) {
+          scene.remove(car)
+          car.traverse(child => {
+            if (child.geometry) child.geometry.dispose()
+            if (child.material) child.material.dispose()
+          })
+        }
+
+        car = buildModel(model)
+        if (wheelGuides) addWheelGuides(car)
+        scene.add(car)
+        fitCamera(car)
+        setModelInfo(model, label)
+      }
+
+      function loadBbmodelJson(model, label, options) {
+        if (!model.elements?.length) throw new Error('no elements in model')
+        showModel(model, label, options)
+      }
+
+      async function loadBbmodelUrl(url, label, options) {
+        const model = await fetch(url).then(r => {
+          if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
+          return r.json()
+        })
+        loadBbmodelJson(model, label, options)
+      }
+
+      function loadBbmodelFile(file) {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const model = JSON.parse(reader.result)
+          loadBbmodelJson(model, file.name)
+        }
+        reader.readAsText(file)
+      }
+
+      const defaultUrl = new URLSearchParams(location.search).get('model') || 'assets/car-body.bbmodel'
+      await loadBbmodelUrl(defaultUrl, defaultUrl.split('/').pop(), { wheelGuides: true })
+
+      let isOrbiting = false
+      let isPanning = false
+      let lastX = 0
+      let lastY = 0
+
+      function updateCamera() {
+        camera.position.set(
+          target.x + radius * Math.sin(theta) * Math.cos(phi),
+          target.y + radius * Math.sin(phi),
+          target.z + radius * Math.cos(theta) * Math.cos(phi)
+        )
+        camera.lookAt(target)
+      }
+
+      updateCamera()
+
+      renderer.domElement.addEventListener('contextmenu', e => e.preventDefault())
+
+      renderer.domElement.addEventListener('pointerdown', e => {
+        lastX = e.clientX
+        lastY = e.clientY
+        isOrbiting = e.button === 0
+        isPanning = e.button === 2
+        renderer.domElement.setPointerCapture(e.pointerId)
+      })
+
+      renderer.domElement.addEventListener('pointerup', e => {
+        isOrbiting = false
+        isPanning = false
+        renderer.domElement.releasePointerCapture(e.pointerId)
+      })
+
+      renderer.domElement.addEventListener('pointermove', e => {
+        const dx = e.clientX - lastX
+        const dy = e.clientY - lastY
+        lastX = e.clientX
+        lastY = e.clientY
+
+        if (isOrbiting) {
+          theta -= dx * 0.008
+          phi = Math.max(0.05, Math.min(1.45, phi + dy * 0.008))
+          updateCamera()
+        } else if (isPanning) {
+          const right = new THREE.Vector3()
+          const up = new THREE.Vector3(0, 1, 0)
+          camera.getWorldDirection(right)
+          right.cross(up).normalize()
+          target.addScaledVector(right, -dx * 0.005)
+          target.y += dy * 0.005
+          updateCamera()
+        }
+      })
+
+      renderer.domElement.addEventListener('wheel', e => {
+        radius = Math.max(maxDim * 0.8, Math.min(maxDim * 6, radius + e.deltaY * 0.01))
+        updateCamera()
+      }, { passive: true })
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight
+        camera.updateProjectionMatrix()
+        renderer.setSize(window.innerWidth, window.innerHeight)
+      })
+
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0]
+        if (file) loadBbmodelFile(file)
+        fileInput.value = ''
+      })
+
+      document.body.addEventListener('dragover', e => {
+        e.preventDefault()
+        document.body.classList.add('dragover')
+      })
+      document.body.addEventListener('dragleave', () => {
+        document.body.classList.remove('dragover')
+      })
+      document.body.addEventListener('drop', e => {
+        e.preventDefault()
+        document.body.classList.remove('dragover')
+        const file = [...e.dataTransfer.files].find(f => f.name.endsWith('.bbmodel') || f.name.endsWith('.json'))
+        if (file) loadBbmodelFile(file)
+      })
+
+      renderer.setAnimationLoop(() => renderer.render(scene, camera))
+    </script>
+  </body>
+</html>

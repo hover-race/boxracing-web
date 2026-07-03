@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UI Test</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="controls">
+      <label>
+        <input id="tcs-active" type="checkbox" />
+        TCS active
+      </label>
+      <label>
+        <input id="esc-active" type="checkbox" />
+        ESC active
+      </label>
+      <label>
+        <input id="tire-sound-active" type="checkbox" />
+        Tire screech
+      </label>
+    </div>
+
+    <div id="esc-indicator">ESC</div>
+    <div id="tcs-indicator">TCS</div>
+
+    <script src="lib/enable3d.framework.0.25.4.min.js"></script>
+    <script>
+      window.THREE = ENABLE3D.THREE
+      window.params = { soundVolume: 100 }
+    </script>
+    <script type="module">
+      import { TireScreechSound } from './js/sound.js'
+
+      const tcsCheckbox = document.getElementById('tcs-active')
+      const escCheckbox = document.getElementById('esc-active')
+      const tireSoundCheckbox = document.getElementById('tire-sound-active')
+      const tcsIndicator = document.getElementById('tcs-indicator')
+      const escIndicator = document.getElementById('esc-indicator')
+
+      const listener = new THREE.AudioListener()
+      const tireSound = new TireScreechSound(listener)
+
+      let soundRafId = null
+      let lastSoundTime = performance.now()
+
+      tcsCheckbox.addEventListener('change', () => {
+        tcsIndicator.classList.toggle('active', tcsCheckbox.checked)
+      })
+
+      escCheckbox.addEventListener('change', () => {
+        escIndicator.classList.toggle('active', escCheckbox.checked)
+      })
+
+      tireSoundCheckbox.addEventListener('change', () => {
+        if (tireSoundCheckbox.checked) {
+          tireSound.audioUnlocked = true
+          const tick = (now) => {
+            if (!tireSoundCheckbox.checked) return
+            const dt = Math.min(0.05, (now - lastSoundTime) / 1000)
+            lastSoundTime = now
+            tireSound.update(1, dt)
+            soundRafId = requestAnimationFrame(tick)
+          }
+          lastSoundTime = performance.now()
+          soundRafId = requestAnimationFrame(tick)
+        } else {
+          cancelAnimationFrame(soundRafId)
+          tireSound.update(0, 0.05)
+        }
+      })
+    </script>
+  </body>
+</html>
+

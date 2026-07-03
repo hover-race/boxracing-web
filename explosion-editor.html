@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Explosion Editor</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; overflow: hidden; background: #141820; }
+      #hud {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        color: #c8d0dc;
+        font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        pointer-events: none;
+      }
+      #hud strong { color: #fff; }
+      .dg.ac { z-index: 10 !important; }
+    </style>
+  </head>
+  <body>
+    <div id="hud">
+      <strong>Explosion Editor</strong><br />
+      space / click ground: explode · drag: orbit · scroll: zoom
+    </div>
+
+    <script src="lib/enable3d.framework.0.25.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script type="module">
+      window.THREE = ENABLE3D.THREE
+      const { ExplosionFX, fxParams } = await import('./js/explosionFx.js')
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true })
+      renderer.setPixelRatio(window.devicePixelRatio)
+      renderer.setSize(window.innerWidth, window.innerHeight)
+      document.body.appendChild(renderer.domElement)
+
+      const scene = new THREE.Scene()
+      scene.background = new THREE.Color(0x1a2030)
+      scene.fog = new THREE.Fog(0x1a2030, 30, 70)
+
+      const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.05, 200)
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6))
+      const key = new THREE.DirectionalLight(0xffffff, 1.0)
+      key.position.set(6, 12, 4)
+      scene.add(key)
+
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(80, 80),
+        new THREE.MeshStandardMaterial({ color: 0x2a3040, roughness: 0.95 })
+      )
+      ground.rotation.x = -Math.PI / 2
+      scene.add(ground)
+      scene.add(new THREE.GridHelper(40, 40, 0x3a4558, 0x2a3344))
+
+      const fx = new ExplosionFX(scene, fxParams)
+      window.__fx = fx
+      window.__fxParams = fxParams
+
+      // Orbit camera (same scheme as car-body-viewer)
+      let theta = 0.8
+      let phi = 0.3
+      let radius = 14
+      const target = new THREE.Vector3(0, 1.5, 0)
+
+      function updateCamera() {
+        camera.position.set(
+          target.x + radius * Math.sin(theta) * Math.cos(phi),
+          target.y + radius * Math.sin(phi),
+          target.z + radius * Math.cos(theta) * Math.cos(phi)
+        )
+        camera.lookAt(target)
+      }
+      updateCamera()
+
+      let isOrbiting = false
+      let lastX = 0
+      let lastY = 0
+      let downX = 0
+      let downY = 0
+
+      renderer.domElement.addEventListener('pointerdown', e => {
+        isOrbiting = true
+        lastX = downX = e.clientX
+        lastY = downY = e.clientY
+        renderer.domElement.setPointerCapture(e.pointerId)
+      })
+
+      renderer.domElement.addEventListener('pointerup', e => {
+        isOrbiting = false
+        renderer.domElement.releasePointerCapture(e.pointerId)
+        // Treat as click (not drag): explode at ground point
+        if (Math.hypot(e.clientX - downX, e.clientY - downY) < 5) {
+          const ndc = new THREE.Vector2(
+            (e.clientX / window.innerWidth) * 2 - 1,
+            -(e.clientY / window.innerHeight) * 2 + 1
+          )
+          const ray = new THREE.Raycaster()
+          ray.setFromCamera(ndc, camera)
+          const hit = ray.intersectObject(ground)[0]
+          if (hit) fx.spawn(hit.point.setY(0.5))
+        }
+      })
+
+      renderer.domElement.addEventListener('pointermove', e => {
+        if (!isOrbiting) return
+        const dx = e.clientX - lastX
+        const dy = e.clientY - lastY
+        lastX = e.clientX
+        lastY = e.clientY
+        theta -= dx * 0.008
+        phi = Math.max(0.05, Math.min(1.45, phi + dy * 0.008))
+        updateCamera()
+      })
+
+      renderer.domElement.addEventListener('wheel', e => {
+        radius = Math.max(4, Math.min(50, radius + e.deltaY * 0.02))
+        updateCamera()
+      }, { passive: true })
+
+      window.addEventListener('keydown', e => {
+        if (e.code === 'Space') fx.spawn(new THREE.Vector3(0, 0.5, 0))
+      })
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight
+        camera.updateProjectionMatrix()
+        renderer.setSize(window.innerWidth, window.innerHeight)
+      })
+
+      // Particle editor GUI
+      const gui = new dat.GUI({ width: 320 })
+      const actions = {
+        explode: () => fx.spawn(new THREE.Vector3(0, 0.5, 0)),
+        copyParams: () => navigator.clipboard.writeText(JSON.stringify(fxParams, null, 2)),
+        timeScale: 1,
+        loop: false,
+      }
+      gui.add(actions, 'explode')
+      gui.add(actions, 'copyParams')
+      gui.add(actions, 'timeScale', 0, 2).step(0.05)
+      gui.add(actions, 'loop')
+
+      const fireFolder = gui.addFolder('Fireball')
+      fireFolder.add(fxParams, 'fireballRadius', 0.5, 10).step(0.1)
+      fireFolder.add(fxParams, 'fireballDuration', 0.2, 3).step(0.05)
+      fireFolder.add(fxParams, 'fireballWobble', 0, 1).step(0.01)
+      fireFolder.add(fxParams, 'fireballBands', 2, 6).step(1)
+      fireFolder.open()
+
+      const smokeFolder = gui.addFolder('Smoke')
+      smokeFolder.add(fxParams, 'smokeCount', 0, 40).step(1)
+      smokeFolder.add(fxParams, 'smokeSize', 0.2, 5).step(0.1)
+      smokeFolder.add(fxParams, 'smokeDuration', 0.5, 6).step(0.1)
+      smokeFolder.add(fxParams, 'smokeRiseSpeed', 0, 8).step(0.1)
+      smokeFolder.add(fxParams, 'smokeSpread', 0, 8).step(0.1)
+      smokeFolder.open()
+
+      const debrisFolder = gui.addFolder('Debris')
+      debrisFolder.add(fxParams, 'debrisCount', 0, 60).step(1)
+      debrisFolder.add(fxParams, 'debrisSize', 0.05, 1).step(0.01)
+      debrisFolder.add(fxParams, 'debrisSpeed', 1, 30).step(0.5)
+      debrisFolder.add(fxParams, 'debrisGravity', 0, 50).step(1)
+      debrisFolder.add(fxParams, 'debrisDuration', 0.3, 5).step(0.1)
+      debrisFolder.open()
+
+      const flashFolder = gui.addFolder('Flash')
+      flashFolder.add(fxParams, 'flashRadius', 1, 15).step(0.5)
+      flashFolder.add(fxParams, 'flashDuration', 0.05, 1).step(0.01)
+
+      // First boom on load so you see something immediately
+      fx.spawn(new THREE.Vector3(0, 0.5, 0))
+
+      let lastTime = performance.now()
+      let loopTimer = 0
+      renderer.setAnimationLoop(() => {
+        const now = performance.now()
+        const dt = Math.min(0.05, (now - lastTime) / 1000) * actions.timeScale
+        lastTime = now
+        if (actions.loop) {
+          loopTimer -= dt
+          if (loopTimer <= 0) {
+            fx.spawn(new THREE.Vector3(0, 0.5, 0))
+            loopTimer = 3
+          }
+        }
+        fx.update(dt)
+        renderer.render(scene, camera)
+      })
+    </script>
+  </body>
+</html>
