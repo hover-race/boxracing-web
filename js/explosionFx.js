@@ -143,6 +143,28 @@ class ExplosionFX {
     return fx
   }
 
+  // Smoke-only variant for minor impacts: a few small dark puffs, no fireball,
+  // debris, or flash. Intensity (0..1) scales puff count and size.
+  spawnSmoke(position, intensity = 1) {
+    const p = this.params
+    const group = new THREE.Group()
+    group.position.copy(position)
+    this.scene.add(group)
+
+    const fx = { group, t: 0, fireball: null, smoke: [], debris: [], flash: null }
+    const count = Math.max(2, Math.round(p.smokeCount * 0.5 * intensity))
+    for (let i = 0; i < count; i++) {
+      const puff = this._makeSmokePuff(p, i / count)
+      puff.size *= 0.3 + 0.4 * intensity
+      puff.delay = Math.random() * 0.1
+      fx.smoke.push(puff)
+      group.add(puff.mesh)
+    }
+
+    this.active.push(fx)
+    return fx
+  }
+
   _makeFireball(p) {
     const material = new THREE.ShaderMaterial({
       vertexShader: fireballVertex,
@@ -226,7 +248,8 @@ class ExplosionFX {
 
   update(dt) {
     const p = this.params
-    const totalLife = Math.max(p.fireballDuration, p.smokeDuration, p.debrisDuration)
+    // +0.6 covers the max smoke spawn delay
+    const totalLife = Math.max(p.fireballDuration, p.smokeDuration + 0.6, p.debrisDuration)
 
     for (let i = this.active.length - 1; i >= 0; i--) {
       const fx = this.active[i]
@@ -245,6 +268,7 @@ class ExplosionFX {
   }
 
   _updateFireball(fx, p) {
+    if (!fx.fireball) return
     const life = fx.t / p.fireballDuration
     const { mesh, material } = fx.fireball
     if (life >= 1) {
@@ -304,6 +328,7 @@ class ExplosionFX {
   }
 
   _updateFlash(fx, p) {
+    if (!fx.flash) return
     const life = fx.t / p.flashDuration
     const { mesh, material } = fx.flash
     if (life >= 1) {
@@ -315,11 +340,13 @@ class ExplosionFX {
   }
 
   _dispose(fx) {
-    fx.fireball.material.dispose()
-    fx.fireball.mesh.geometry.dispose()
+    if (fx.fireball) {
+      fx.fireball.material.dispose()
+      fx.fireball.mesh.geometry.dispose()
+    }
     for (const puff of fx.smoke) puff.material.dispose()
     for (const chunk of fx.debris) chunk.material.dispose()
-    fx.flash.material.dispose()
+    if (fx.flash) fx.flash.material.dispose()
     this.scene.remove(fx.group)
   }
 

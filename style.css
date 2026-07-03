@@ -111,14 +111,39 @@ canvas {
     transform: translate(-50%, -50%);
 }
 
+#hud-bottom-right {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 1;
+}
+
+#hp-bar {
+    width: 240px;
+    height: 26px;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    background: rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    z-index: 1;
+}
+
+#hp-fill {
+    height: 100%;
+    width: 100%;
+    background: #4caf50;
+    transition: width 0.15s linear, background 0.15s linear;
+}
+
 #speedometer {
     font-size: 34px;
 }
 
 #tcs-indicator,
 #esc-indicator {
-    position: fixed;
-    bottom: 20px;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -130,7 +155,6 @@ canvas {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    z-index: 1;
     pointer-events: none;
     opacity: 0;
     visibility: hidden;
@@ -138,13 +162,11 @@ canvas {
 }
 
 #tcs-indicator {
-    right: 20px;
     border: 3px solid #ffb300;
     color: #ffb300;
 }
 
 #esc-indicator {
-    right: 68px;
     border: 3px solid #ff3b30;
     color: #ff3b30;
 }

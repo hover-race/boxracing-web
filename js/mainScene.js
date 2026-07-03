@@ -142,7 +142,6 @@ export class MainScene extends Scene3D {
     this.car = await Vehicle.setupCarMustang(this, this.startTransform, carModel.clone())
 
     this.explosionFx = new ExplosionFX(this.scene)
-    this._exploding = false
     
     // Initialize camera switcher
     this.cameraSwitcher = new CameraSwitcher(this)
@@ -272,26 +271,6 @@ export class MainScene extends Scene3D {
     this.autoSteer?.dumpLog();
   }
 
-  explodeCar() {
-    this._exploding = true;
-    console.log(`BOOM: ${this.car.currentG.toFixed(1)} G (limit ${params.explodeGLimit})`);
-    this.explosionFx.spawn(this.car.chassis.position.clone());
-    this.car.chassis.visible = false;
-    for (const wheel of this.car.wheelMeshes) wheel.visible = false;
-    this.car.chassis.body.setVelocity(0, 0, 0);
-    this.car.chassis.body.setAngularVelocity(0, 0, 0);
-    setTimeout(() => {
-      this.teleportCar(this.startTransform);
-      // Velocity was zeroed; reset the accelerometer's previous-velocity sample so
-      // the respawn doesn't register as another G spike.
-      this.car._prevVelX = this.car._prevVelY = this.car._prevVelZ = 0;
-      this.car.currentG = 0;
-      this.car.chassis.visible = true;
-      for (const wheel of this.car.wheelMeshes) wheel.visible = true;
-      this._exploding = false;
-    }, params.respawnDelay);
-  }
-
   teleportCar(transform) {
     const pos = transform.position;
     const rot = transform.quaternion;
@@ -406,8 +385,8 @@ export class MainScene extends Scene3D {
     this.car.updateTireMarks();
 
     this.explosionFx.update(deltaTime / 1000);
-    if (params.explosionEnabled && !this._exploding && this.car.currentG > params.explodeGLimit) {
-      this.explodeCar();
+    if (params.explosionEnabled && !this.car.exploding && this.car.updateDamage(deltaTime / 1000, this.explosionFx)) {
+      this.car.explode(this.explosionFx, this.startTransform, (t) => this.teleportCar(t));
     }
     
     // Record replay data

@@ -69,8 +69,10 @@ const params = {
   soundVolume: 50,
   explosionEnabled: true,
   explosionForceThreshold: 50,
-  explodeGLimit: 16,
   explodeGSmoothing: 0.25,
+  carMaxHp: 100,
+  damageGMin: 8,
+  damageHpPerG: 3.125,
   respawnDelay: 1000,
   particleCount: 100,
   portalEnabled: true,
@@ -171,8 +173,10 @@ botFolder.add(params, 'botCurvatureSpacing', 3, 25).step(1)
 
 const debugFolder = gui.addFolder('Debug')
 debugFolder.add(params, 'explosionEnabled')
-debugFolder.add(params, 'explodeGLimit', 1, 20).step(0.5)
 debugFolder.add(params, 'explodeGSmoothing', 0.02, 1).step(0.01)
+debugFolder.add(params, 'carMaxHp', 10, 500).step(10)
+debugFolder.add(params, 'damageGMin', 0, 16).step(0.5)
+debugFolder.add(params, 'damageHpPerG', 0.5, 15).step(0.125)
 debugFolder.add(vehicleParams, 'crashG', 0, 20).step(0.1).listen()
 debugFolder.add(params, 'recordLaps')
 debugFolder.add(params, 'throttleInput', -1, 1).step(0.01)

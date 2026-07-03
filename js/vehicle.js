@@ -2,6 +2,7 @@ import { Wheel } from './wheel.js';
 import { ReplayRecorder } from './replays.js';
 import { TireParticles } from './particles.js';
 import { applyBotShader } from './botShaders.js';
+import { playExplosionSound, playImpactSound } from './sfx.js';
 
 class Vehicle {
   vehicle
@@ -43,6 +44,8 @@ class Vehicle {
   _smoothLongG = 0
   _smoothLatG = 0
   currentG = 0
+  hp = 0
+  exploding = false
 
   constructor(scene, physics, chassis, wheelMeshes, audioListener, { recordReplay = true } = {}) {
     this.scene = scene
@@ -91,6 +94,17 @@ class Vehicle {
 
     this.speedometer = document.getElementById('speedometer')
     this.accelerometerDot = document.getElementById('accel-dot')
+    this.hpFill = document.getElementById('hp-fill')
+    this.hp = params.carMaxHp
+    // Damage only applies while the chassis itself is in contact with something.
+    // The wheels ride on raycasts, so sliding/braking G never counts — wall hits
+    // and rollovers do.
+    this.lastContactTime = -Infinity
+    this._impactPeakG = params.damageGMin
+    this._impactSmoked = false
+    chassis.body.on.collision((otherObject, event) => {
+      if (event !== 'end') this.lastContactTime = performance.now()
+    })
     this.tcsIndicator = document.getElementById('tcs-indicator')
     this.escIndicator = document.getElementById('esc-indicator')
 
@@ -253,6 +267,69 @@ class Vehicle {
     const py = Math.max(-1, Math.min(1, this._smoothLongG / maxG)) * maxPx
     this.accelerometerDot.style.transform =
       `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`
+  }
+
+  // Damage is per impact, not per second: each hit costs damageHpPerG HP for every
+  // G its peak exceeds damageGMin (linear; below damageGMin is free). The cost is
+  // charged incrementally as the impact's peak G rises, and the peak resets once
+  // crashG drops back under the threshold, so holding contact doesn't keep draining.
+  // Returns true when HP is depleted; the caller decides how to explode/respawn.
+  updateDamage(dt, explosionFx) {
+    const inContact = performance.now() - this.lastContactTime < 250
+    if (inContact && this.currentG > params.damageGMin) {
+      if (this.currentG > this._impactPeakG) {
+        this.hp -= (this.currentG - this._impactPeakG) * params.damageHpPerG
+        this._impactPeakG = this.currentG
+        // One smoke puff burst + thud per impact, scaled by how hard it was
+        if (explosionFx && !this._impactSmoked) {
+          this._impactSmoked = true
+          const intensity = Math.min(1, (this.currentG - params.damageGMin) / 8)
+          explosionFx.spawnSmoke(this.chassis.position.clone(), intensity)
+          playImpactSound(intensity)
+        }
+      }
+    } else {
+      this._impactPeakG = params.damageGMin
+      this._impactSmoked = false
+    }
+    this.updateHpBar()
+    return this.hp <= 0
+  }
+
+  resetHp() {
+    this.hp = params.carMaxHp
+    this.updateHpBar()
+  }
+
+  // Spawn the explosion effect, hide the car, and respawn it at respawnTransform
+  // after params.respawnDelay via the provided teleport function.
+  explode(explosionFx, respawnTransform, teleport) {
+    this.exploding = true
+    console.log(`BOOM: hp depleted at ${this.currentG.toFixed(1)} G`)
+    explosionFx.spawn(this.chassis.position.clone())
+    playExplosionSound()
+    this.chassis.visible = false
+    for (const wheel of this.wheelMeshes) wheel.visible = false
+    this.chassis.body.setVelocity(0, 0, 0)
+    this.chassis.body.setAngularVelocity(0, 0, 0)
+    setTimeout(() => {
+      teleport(respawnTransform)
+      // Velocity was zeroed; reset the accelerometer's previous-velocity sample so
+      // the respawn doesn't register as another G spike.
+      this._prevVelX = this._prevVelY = this._prevVelZ = 0
+      this.currentG = 0
+      this.chassis.visible = true
+      for (const wheel of this.wheelMeshes) wheel.visible = true
+      this.resetHp()
+      this.exploding = false
+    }, params.respawnDelay)
+  }
+
+  updateHpBar() {
+    if (!this.hpFill) return
+    const frac = Math.max(0, Math.min(1, this.hp / params.carMaxHp))
+    this.hpFill.style.width = `${frac * 100}%`
+    this.hpFill.style.background = frac > 0.5 ? '#4caf50' : frac > 0.25 ? '#ffb300' : '#ff3b30'
   }
 
   updateSound() {
