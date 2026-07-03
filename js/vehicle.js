@@ -334,8 +334,13 @@ class Vehicle {
 
   updateSound() {
     if (this.chassis.engineSound) {
+      // Wheel surface speed (omega * r), not contact-patch speed: forwardSpeed reads 0
+      // when a wheel is airborne, which made the engine cut out over jumps. Angular
+      // velocity keeps tracking the drivetrain in the air.
+      const bl = this.wheels[this.BACK_LEFT]
+      const br = this.wheels[this.BACK_RIGHT]
       const rearMps = Math.abs(
-        (this.wheels[this.BACK_LEFT].forwardSpeed + this.wheels[this.BACK_RIGHT].forwardSpeed) * 0.5
+        (bl.angularVelocity * bl.radius + br.angularVelocity * br.radius) * 0.5
       )
       const speed = rearMps * 2.23694
       this.chassis.engineSound.setVolume(Math.min(1, speed / 100) * (params.soundVolume / 100))
@@ -712,7 +717,16 @@ class Vehicle {
     scene.physics.add.existing(chassis, { shape: 'convex', mass: 800 })
     chassis.body.setDamping(0.1, 0.1)
 
-    const engineSound = new THREE.Audio(scene.listener)
+    // Bots get positional audio so their engines fall off with distance;
+    // the player's engine stays non-positional (camera-relative, always audible).
+    const engineSound = isBot
+      ? new THREE.PositionalAudio(scene.listener)
+      : new THREE.Audio(scene.listener)
+    if (isBot) {
+      engineSound.setRefDistance(8)
+      engineSound.setRolloffFactor(2)
+      chassis.add(engineSound)
+    }
     const audioLoader = new THREE.AudioLoader()
     audioLoader.load('assets/winston_high.wav', (buffer) => {
       engineSound.setBuffer(buffer)
