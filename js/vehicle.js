@@ -158,6 +158,8 @@ class Vehicle {
   }
 
   update(inputs) {
+    if (this.exploding) return
+
     this.updateControls(inputs)
     
     // Check if steering sensitivity has changed in GUI
@@ -301,6 +303,49 @@ class Vehicle {
     this.updateHpBar()
   }
 
+  resetMotion() {
+    const body = this.chassis.body
+    body.setVelocity(0, 0, 0)
+    body.setAngularVelocity(0, 0, 0)
+    const zero = new Ammo.btVector3(0, 0, 0)
+    body.ammo.setLinearVelocity(zero)
+    body.ammo.setAngularVelocity(zero)
+    for (const wheel of this.wheels) {
+      wheel.angularVelocity = 0
+      wheel.rotation = 0
+    }
+    this.vehicleSteering = 0
+    this.driverSteering = 0
+    this.engineForce = 0
+    this.rearLeftEngineForce = 0
+    this.rearRightEngineForce = 0
+    this.footBrake = 0
+    this.handBrake = 0
+    this.escBrakeBL = 0
+    this.escBrakeBR = 0
+    this.vehicle.setSteeringValue(0, this.FRONT_LEFT)
+    this.vehicle.setSteeringValue(0, this.FRONT_RIGHT)
+    this.vehicle.applyEngineForce(0, this.BACK_LEFT)
+    this.vehicle.applyEngineForce(0, this.BACK_RIGHT)
+    this.vehicle.setBrake(0, this.FRONT_LEFT)
+    this.vehicle.setBrake(0, this.FRONT_RIGHT)
+    this.vehicle.setBrake(0, this.BACK_LEFT)
+    this.vehicle.setBrake(0, this.BACK_RIGHT)
+  }
+
+  freezePhysics() {
+    this._savedCollisionFlags = this.chassis.body.ammo.getCollisionFlags()
+    this.chassis.body.ammo.setCollisionFlags(this._savedCollisionFlags | 2)
+    this.resetMotion()
+  }
+
+  unfreezePhysics() {
+    if (this._savedCollisionFlags === undefined) return
+    this.chassis.body.ammo.setCollisionFlags(this._savedCollisionFlags)
+    this._savedCollisionFlags = undefined
+    this.chassis.body.ammo.activate()
+  }
+
   // Spawn the explosion effect, hide the car, and respawn it at respawnTransform
   // after params.respawnDelay via the provided teleport function.
   explode(explosionFx, respawnTransform, teleport) {
@@ -308,16 +353,19 @@ class Vehicle {
     console.log(`BOOM: hp depleted at ${this.currentG.toFixed(1)} G`)
     explosionFx.spawn(this.chassis.position.clone())
     playExplosionSound()
+    this.freezePhysics()
     this.chassis.visible = false
     for (const wheel of this.wheelMeshes) wheel.visible = false
-    this.chassis.body.setVelocity(0, 0, 0)
-    this.chassis.body.setAngularVelocity(0, 0, 0)
     setTimeout(() => {
       teleport(respawnTransform)
+      this.unfreezePhysics()
+      this.resetMotion()
       // Velocity was zeroed; reset the accelerometer's previous-velocity sample so
       // the respawn doesn't register as another G spike.
       this._prevVelX = this._prevVelY = this._prevVelZ = 0
       this.currentG = 0
+      this._impactPeakG = params.damageGMin
+      this._impactSmoked = false
       this.chassis.visible = true
       for (const wheel of this.wheelMeshes) wheel.visible = true
       this.resetHp()

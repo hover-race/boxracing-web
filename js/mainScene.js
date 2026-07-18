@@ -277,13 +277,11 @@ export class MainScene extends Scene3D {
     this.car.chassis.position.copy(pos);
     this.car.chassis.quaternion.copy(rot);
     const body = this.car.chassis.body;
-    body.setVelocity(0, 0, 0);
-    body.setAngularVelocity(0, 0, 0);
     const tf = body.ammo.getWorldTransform();
     tf.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
     tf.setRotation(new Ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
     body.ammo.setWorldTransform(tf);
-    body.ammo.activate();
+    this.car.resetMotion();
   }
 
   log(a, b) {
