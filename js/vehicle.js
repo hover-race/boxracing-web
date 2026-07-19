@@ -732,7 +732,7 @@ class Vehicle {
     chassis.quaternion.copy(transform.quaternion)
 
     scene.add.existing(chassis)
-    scene.physics.add.existing(chassis, { shape: 'convex', mass: carModel.mass })
+    scene.physics.add.existing(chassis, { shape: 'convex', mass: carModel.mass, addChildren: false })
     chassis.body.setDamping(0.1, 0.1)
 
     // Bots get positional audio so their engines fall off with distance;
