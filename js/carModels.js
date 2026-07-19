@@ -7,8 +7,8 @@ class CarModelDefinition {
     visualRoot,
     chassis,
     wheels,
-    wheelRadiusFront = 0.24,
-    wheelRadiusBack = 0.24,
+    wheelRadiusFront = 0.37,
+    wheelRadiusBack = 0.37,
     wheelbase = 2.6,
     mass = 800,
   }) {
