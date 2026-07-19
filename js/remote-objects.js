@@ -1,10 +1,10 @@
 import { RemoteCar } from './vehicle.js';
 
 class RemoteObjectManager {
-  constructor(scene) {
+  constructor(scene, carModels) {
     this.scene = scene;
+    this.carModels = carModels;
     this.remoteCars = new Map();
-    this.carModel = null;
   }
 
   handleStateUpdate(states, myPeerId) {
@@ -29,14 +29,20 @@ class RemoteObjectManager {
         
         // If this object has position data, it's likely a car
         if (objectState && objectState.position) {
-          // Create a new RemoteCar if we don't have one for this object
+          const car_id = this.carModels.has(objectState.car_id) ? objectState.car_id : 'mustang';
+          const existingCar = this.remoteCars.get(compoundKey);
+          if (existingCar && existingCar.car_id !== car_id) {
+            existingCar.destroy();
+            this.remoteCars.delete(compoundKey);
+          }
+
           if (!this.remoteCars.has(compoundKey)) {
             console.log(`Creating a RemoteCar for peer ${peerId}, object ${objectId}`);
-            if (!this.carModel) {
-              console.error('No preloaded car model available');
-              continue;
-            }
-            this.remoteCars.set(compoundKey, new RemoteCar(this.scene, this.carModel));
+            const { definition, prefab } = this.carModels.get(car_id);
+            this.remoteCars.set(
+              compoundKey,
+              new RemoteCar(this.scene, prefab.clone(true), definition)
+            );
           }
           
           // Update the car with the latest state

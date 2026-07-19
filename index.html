@@ -27,6 +27,13 @@
   </head>
 
   <body>
+    <div id="car-selection">
+      <div id="car-selection-panel">
+        <h1>Choose Your Car</h1>
+        <div id="car-selection-options"></div>
+        <button id="car-selection-start" type="button">Race</button>
+      </div>
+    </div>
     <!-- <div id="info-text">Car using Raycast Vehicle<br />WASD and SPACE</div> -->
     <div id="top-left-controls">
       <div id="connection-status" class="status-connecting">Connecting...</div>
@@ -73,7 +80,9 @@
 
     <script type="module">
       import { MainScene } from './js/mainScene.js';
-      
+      import { selectCar } from './js/carSelection.js';
+
+      await selectCar()
       PhysicsLoader('lib/ammo/kripken', () => new Project({ scenes: [MainScene], antialias: true }))
     </script>
 

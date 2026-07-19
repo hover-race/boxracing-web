@@ -33,6 +33,7 @@ const playerControl = {
 }
 
 const params = {
+  car_id: localStorage.getItem('car_id') || 'mustang',
   offlinePlay: false,
   updateCamera: true,
   analogControls: true,

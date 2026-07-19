@@ -3,6 +3,7 @@ import { ReplayRecorder } from './replays.js';
 import { TireParticles } from './particles.js';
 import { applyBotShader } from './botShaders.js';
 import { playExplosionSound, playImpactSound } from './sfx.js';
+import { extractCarParts } from './carModels.js';
 
 class Vehicle {
   vehicle
@@ -47,10 +48,15 @@ class Vehicle {
   hp = 0
   exploding = false
 
-  constructor(scene, physics, chassis, wheelMeshes, audioListener, { recordReplay = true } = {}) {
+  constructor(scene, physics, chassis, wheelMeshes, audioListener, {
+    recordReplay = true,
+    carModel,
+  } = {}) {
     this.scene = scene
     this.physics = physics
     this.chassis = chassis
+    this.car_id = carModel.car_id
+    this.wheelbase = carModel.wheelbase
     this.wheels = []
 
     const { physicsWorld } = physics
@@ -65,8 +71,8 @@ class Vehicle {
     this.vehicle.setCoordinateSystem(0, 1, 2)
     physicsWorld.addAction(this.vehicle)
 
-    const wheelRadiusBack = 0.24
-    const wheelRadiusFront = 0.24
+    const wheelRadiusBack = carModel.wheelRadiusBack
+    const wheelRadiusFront = carModel.wheelRadiusFront
 
     this.addWheel(
       wheelMeshes.frontLeft,
@@ -496,7 +502,7 @@ class Vehicle {
   }
 
   getOversteer(dt) {
-    const wheelbaseM = 2.6
+    const wheelbaseM = this.wheelbase
     const delta = this.vehicleSteering
     const v = this.vehicle.getCurrentSpeedKmHour() / 3.6
 
@@ -716,53 +722,17 @@ class Vehicle {
   }
 
 
-  static async setupCarMustang(scene, transform, preloadedModel, { recordReplay = true, isBot = false, botColor = null } = {}) {
-    let wheels = {
-      frontRight: null,
-      frontLeft: null, 
-      rearRight: null,
-      rearLeft: null
-    }
-    let chassis
-    let tire
-    let centerOfMass
-
-
-    let scene3D = preloadedModel;
-
-    scene3D.traverse(child => {
-      if (child.isMesh) {
-        if (child.material) {
-          child.material.metalness = 0;
-        }
-        if (child.name === "Plane002") {
-          chassis = child
-          chassis.receiveShadow = chassis.castShadow = true
-          chassis.position.copy(transform.position)
-          chassis.quaternion.copy(transform.quaternion)
-        } else if (child.name === 'FrontRightWheel') {
-          wheels.frontRight = child
-          tire = child
-          tire.receiveShadow = tire.castShadow = true
-          tire.geometry.center()
-        } else if (child.name === 'FrontLeftWheel') {
-          wheels.frontLeft = child
-        } else if (child.name === 'RearRightWheel') {
-          wheels.rearRight = child
-        } else if (child.name === 'RearLeftWheel') {
-          wheels.rearLeft = child
-        }  
-      }
-    })
-    console.log(wheels)
-
-    if (!chassis || !tire) {
-      console.log('chassis or tire not found')
-      return null
-    }
+  static async setup(scene, transform, preloadedModel, carModel, {
+    recordReplay = true,
+    isBot = false,
+    botColor = null,
+  } = {}) {
+    const { chassis, wheels } = extractCarParts(preloadedModel, carModel)
+    chassis.position.copy(transform.position)
+    chassis.quaternion.copy(transform.quaternion)
 
     scene.add.existing(chassis)
-    scene.physics.add.existing(chassis, { shape: 'convex', mass: 800 })
+    scene.physics.add.existing(chassis, { shape: 'convex', mass: carModel.mass })
     chassis.body.setDamping(0.1, 0.1)
 
     // Bots get positional audio so their engines fall off with distance;
@@ -794,13 +764,10 @@ class Vehicle {
     document.addEventListener('touchstart', playSound, { once: true })
     document.addEventListener('keydown', playSound, { once: true })
 
-    // This doesn't work. this just moves the car to the given global position. Not so easy to move CoM arbitrarily.
-    // const centerOfMassTransform = new Ammo.btTransform()
-    // centerOfMassTransform.setIdentity()
-    // centerOfMassTransform.setOrigin(new Ammo.btVector3(centerOfMass.position.x, centerOfMass.position.y, centerOfMass.position.z))
-    // chassis.body.ammo.setCenterOfMassTransform(centerOfMassTransform)
-
-    const vehicle = new Vehicle(scene.scene, scene.physics, chassis, wheels, scene.listener, { recordReplay })
+    const vehicle = new Vehicle(scene.scene, scene.physics, chassis, wheels, scene.listener, {
+      recordReplay,
+      carModel,
+    })
     if (isBot) applyBotShader(vehicle, params.botShader, botColor)
     vehicle.particles.enableAudioOnFirstGesture()
     return vehicle
@@ -819,6 +786,7 @@ class Vehicle {
         Number(this.chassis.quaternion.z.toFixed(3)),
         Number(this.chassis.quaternion.w.toFixed(3))
       ],
+      car_id: this.car_id,
       playerName: playerControl.name
     }
   }
@@ -830,54 +798,31 @@ class Vehicle {
 
 
 class RemoteCar {
-  constructor(scene, model) {
+  constructor(scene, model, carModel) {
     this.scene = scene
+    this.car_id = carModel.car_id
     this.playerName = ''
     this.wheelMeshes = []
     this.lastUpdate = 0
 
-    // Ensure model is provided
-    if (!model) {
-      throw new Error('Model is required for RemoteCar constructor');
-    }
-    
-    // Use pre-loaded model
-    this.setupModel(model)
+    this.setupModel(model, carModel)
   }
 
-  setupModel(model) {
-    // Clone the model to ensure unique materials
-    const modelClone = model.clone()
-    
-    // Process the cloned model
-    modelClone.traverse(child => {
-      if (child.isMesh) {
-        if (child.material) {
-          child.material.metalness = 0;
-        }
-        // Make remote car semi-transparent blue
-        // if (child.material) {
-        //   child.material = child.material.clone()
-        //   child.material.color.setHex(0x0000ff)
-        //   child.material.transparent = true
-        //   child.material.opacity = 0.7
-        // }
-
-        if (child.name === "Plane002") {
-          this.chassis = child
-        } else if (child.name.includes('Wheel')) {
-          this.wheelMeshes.push(child)
-        }
-      }
-    })
+  setupModel(model, carModel) {
+    const { chassis, wheels } = extractCarParts(model, carModel)
+    this.chassis = chassis
+    this.wheelMeshes = [
+      wheels.frontLeft,
+      wheels.frontRight,
+      wheels.rearLeft,
+      wheels.rearRight,
+    ]
 
     this.wheelMeshes.forEach(wheelMesh => {
       this.chassis.add(wheelMesh)
     })
 
-    if (this.chassis) {
-      this.scene.add.existing(this.chassis)
-    }
+    this.scene.add.existing(this.chassis)
   }
 
   deserialize(data) {

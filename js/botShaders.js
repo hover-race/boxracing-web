@@ -27,7 +27,7 @@ const BOT_EXTRA_NAMES = ['__bot_outline', '__bot_inside']
 function botBodyMeshes(chassis) {
   const meshes = []
   chassis.traverse(c => {
-    if (c.isMesh && !BOT_EXTRA_NAMES.includes(c.name)) meshes.push(c)
+    if (c.isMesh && !c.userData.isCollisionMesh && !BOT_EXTRA_NAMES.includes(c.name)) meshes.push(c)
   })
   return meshes
 }
@@ -96,7 +96,11 @@ const XRAY_SHELL_MIN = 0.25  // flat shell stays slightly visible up close
 
 function botCarMeshes(car) {
   const meshes = botBodyMeshes(car.chassis)
-  for (const wheel of car.wheelMeshes ?? []) meshes.push(wheel)
+  for (const wheel of car.wheelMeshes ?? []) {
+    wheel.traverse(child => {
+      if (child.isMesh && !BOT_EXTRA_NAMES.includes(child.name)) meshes.push(child)
+    })
+  }
   return meshes
 }
 

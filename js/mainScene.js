@@ -14,6 +14,7 @@ import { Bot } from './bot.js';
 import { AutoSteer } from './autoSteer.js';
 import { centerlineFromTrack } from './trackCenterline.js';
 import { ExplosionFX } from './explosionFx.js';
+import { CAR_MODELS, getCarModel } from './carModels.js';
 
 export class MainScene extends Scene3D {
   car
@@ -62,18 +63,15 @@ export class MainScene extends Scene3D {
     this.lapPathRecorder = new LapPathRecorder()
     this.checkpointManager.lapPathRecorder = this.lapPathRecorder
 
-    // Preload car model once
-    console.log("Preloading car model...");
-    const carGltf = await this.load.gltf('assets/glb/red-mustang-bigwheel2.glb');
-    const carModel = carGltf.scenes[0];
-
-    carModel.children.forEach(child => {
-      console.log(3333, child.name, child.position)})
-    console.log("Car model preloaded successfully");
-
-    // Initialize remote object manager with preloaded model
-    this.remoteManager = new RemoteObjectManager(this)
-    this.remoteManager.carModel = carModel.clone();
+    this.carModels = new Map()
+    for (const definition of CAR_MODELS) {
+      const gltf = await this.load.gltf(definition.file)
+      this.carModels.set(definition.car_id, {
+        definition,
+        prefab: definition.selectScene(gltf),
+      })
+    }
+    this.remoteManager = new RemoteObjectManager(this, this.carModels)
 
     // Add skybox
     const skyGeometry = new THREE.SphereGeometry(1000, 32, 32)
@@ -139,7 +137,14 @@ export class MainScene extends Scene3D {
       console.log('StartPos2 not found in track; bot spawned 4m right of StartPos1')
     }
 
-    this.car = await Vehicle.setupCarMustang(this, this.startTransform, carModel.clone())
+    const selectedCarModel = getCarModel(params.car_id)
+    const selectedPrefab = this.carModels.get(selectedCarModel.car_id).prefab
+    this.car = await Vehicle.setup(
+      this,
+      this.startTransform,
+      selectedPrefab.clone(true),
+      selectedCarModel
+    )
 
     this.explosionFx = new ExplosionFX(this.scene)
     
@@ -180,8 +185,15 @@ export class MainScene extends Scene3D {
     const botCount = params.numBots
     if (botCount > 0) {
       const gridBot = new Bot(this.racingLines)
+      const gridCarModel = CAR_MODELS[Math.floor(Math.random() * CAR_MODELS.length)]
       this.bots.push({
-        car: await Vehicle.setupCarMustang(this, this.botStartTransform, carModel.clone(), { recordReplay: false, isBot: true, botColor: botColorForIndex(0, botCount) }),
+        car: await Vehicle.setup(
+          this,
+          this.botStartTransform,
+          this.carModels.get(gridCarModel.car_id).prefab.clone(true),
+          gridCarModel,
+          { recordReplay: false, isBot: true, botColor: botColorForIndex(0, botCount) }
+        ),
         bot: gridBot,
       })
 
@@ -190,9 +202,16 @@ export class MainScene extends Scene3D {
         const u = 0.05 + Math.random() * 0.9
         const transform = MainScene.transformOnLine(spawnLine, u)
         const bot = new Bot(this.racingLines)
+        const botCarModel = CAR_MODELS[Math.floor(Math.random() * CAR_MODELS.length)]
         for (const lap of bot.laps) lap.u = u
         this.bots.push({
-          car: await Vehicle.setupCarMustang(this, transform, carModel.clone(), { recordReplay: false, isBot: true, botColor: botColorForIndex(i + 1, botCount) }),
+          car: await Vehicle.setup(
+            this,
+            transform,
+            this.carModels.get(botCarModel.car_id).prefab.clone(true),
+            botCarModel,
+            { recordReplay: false, isBot: true, botColor: botColorForIndex(i + 1, botCount) }
+          ),
           bot,
         })
       }
