@@ -357,19 +357,19 @@ class CameraSwitcher {
     this.orbit = new CameraOrbit()
     // Bumper cam: low on the front of the car, looking forward
     this.bumper = new CameraFixed(
-      new THREE.Vector3(0, 0.4, 2),     // front of car, just above bumper
+      new THREE.Vector3(0, 0.56, 2.8),     // front of car, just above bumper
       new THREE.Vector3(0, 0.3, 10),       // look far ahead
       'Bumper Cam'
     )
     // Side cam: low to the side
     this.side = new CameraFixed(
-      new THREE.Vector3(0.8, 0.4, 0),      // left side, low
+      new THREE.Vector3(1.12, 0.56, 0),      // left side, low
       new THREE.Vector3(0.5, 0.3, 2),         // look slightly ahead of car center
       'Side Cam'
     )
     // Hood cam: top of the hood, looking forward
     this.hood = new CameraFixed(
-      new THREE.Vector3(0, 0.8, 0.5),      // center of hood
+      new THREE.Vector3(0, 1.12, 0.7),      // center of hood
       new THREE.Vector3(0, 0.7, 10),          // look far ahead
       'Hood Cam'
     )
@@ -385,8 +385,8 @@ class CameraSwitcher {
   }
 
   initFollow(camera, target) {
-    this.follow.distance = 2.75
-    this.follow.height = 1.3
+    this.follow.distance = 3.85
+    this.follow.height = 1.82
     this.follow.heightDamping = 2.0
     this.follow.rotationDamping = 0.60
     this.follow.followVelocity = true
