@@ -1,12 +1,14 @@
 import { Config } from './config.js'
 
 class Wheel {
-  constructor(vehicleRigidBody, wheelInfo, radius, raycastVehicle, wheelIndex) {
+  constructor(vehicleRigidBody, wheelInfo, radius, raycastVehicle, wheelIndex, engineTorque = 700, maxEngineForce = 3000) {
     this.vehicleRigidBody = vehicleRigidBody
     this.wheelInfo = wheelInfo;
     this.radius = radius;
     this.raycastVehicle = raycastVehicle
     this.wheelIndex = wheelIndex
+    this.engineTorque = engineTorque
+    this.maxEngineForce = maxEngineForce
 
     // State variables
     this.angularVelocity = 0;  // rad/s
@@ -143,7 +145,7 @@ class Wheel {
   }
 
   getDriveTorque(engineForce) {
-    let driveTorque = engineForce / 3000 * params.engineTorque
+    let driveTorque = engineForce / this.maxEngineForce * this.engineTorque
     const slipOverLimit = Math.max(0, Math.abs(this.slipRatio) - params.tcSlipLimit)
     if (params.tractionControl && slipOverLimit > 0) {
       driveTorque *= Math.max(0, 1 - Math.min(params.tcMaxCut, slipOverLimit * params.tcStrength))

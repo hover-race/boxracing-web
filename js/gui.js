@@ -56,6 +56,7 @@ const params = {
   throttleInput: 0,
   autoThrottle: 0,
   runPhysics: true,
+  physicsDebug: false,
   autoStopPhysicsAfterSec: 0,
   debugSpawnU: -1,
   debugSpawnBackM: 30,
@@ -183,6 +184,7 @@ debugFolder.add(params, 'recordLaps')
 debugFolder.add(params, 'throttleInput', -1, 1).step(0.01)
 debugFolder.add(params, 'autoThrottle', 0, 1).step(0.05)
 debugFolder.add(params, 'runPhysics')
+debugFolder.add(params, 'physicsDebug').onChange((enabled) => window.setPhysicsDebug?.(enabled))
 debugFolder.add(params, 'autoStopPhysicsAfterSec')
 debugFolder.add(params, 'debugSpawnU', -1, 1).step(0.01).name('Spawn u (-1=start)')
 debugFolder.add(params, 'debugSpawnBackM', 0, 150).step(5).name('Spawn back m')

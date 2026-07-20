@@ -118,7 +118,7 @@ class Vehicle {
     this.wheels = this.wheelMeshes.map((mesh, index) => {
       const wheelInfo = this.vehicle.getWheelInfo(index);
       const radius = index < 2 ? wheelRadiusFront : wheelRadiusBack;
-      return new Wheel(this.chassis.body.ammo, wheelInfo, radius, this.vehicle, index);
+      return new Wheel(this.chassis.body.ammo, wheelInfo, radius, this.vehicle, index, carModel.engineTorque, this.maxEngineForce);
     });
 
     this.particles = new TireParticles(scene, this, audioListener)

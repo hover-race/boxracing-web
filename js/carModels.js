@@ -11,6 +11,7 @@ class CarModelDefinition {
     wheelRadiusBack = 0.37,
     wheelbase = 2.6,
     mass = 800,
+    engineTorque = 700,
   }) {
     this.car_id = car_id
     this.displayName = displayName
@@ -23,6 +24,7 @@ class CarModelDefinition {
     this.wheelRadiusBack = wheelRadiusBack
     this.wheelbase = wheelbase
     this.mass = mass
+    this.engineTorque = engineTorque
   }
 
   selectScene(gltf) {
@@ -47,6 +49,7 @@ class MustangCarModel extends CarModelDefinition {
         rearLeft: 'RearLeftWheel',
         rearRight: 'RearRightWheel',
       },
+      engineTorque: 980,
     })
   }
 }

@@ -275,6 +275,14 @@ export class MainScene extends Scene3D {
     if (params.autoStopPhysicsAfterSec > 0) {
       this._autoStopAt = null;
     }
+
+    window.setPhysicsDebug = (enabled) => {
+      const drawer = this.physics?.debugDrawer
+      if (!drawer) return
+      if (enabled) drawer.enable()
+      else drawer.disable()
+    }
+    window.setPhysicsDebug(params.physicsDebug)
   }
 
   _scheduleAutoStop() {
