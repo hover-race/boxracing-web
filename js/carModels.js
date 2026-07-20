@@ -49,7 +49,7 @@ class MustangCarModel extends CarModelDefinition {
         rearLeft: 'RearLeftWheel',
         rearRight: 'RearRightWheel',
       },
-      engineTorque: 980,
+      engineTorque: 1000,
     })
   }
 }
@@ -72,6 +72,7 @@ class MonteCarloCarModel extends CarModelDefinition {
       wheelRadiusFront: 0.39,
       wheelRadiusBack: 0.39,
       wheelbase: 2.69,
+      engineTorque: 1000,
     })
   }
 }
