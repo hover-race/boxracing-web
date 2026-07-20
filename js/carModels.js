@@ -12,6 +12,7 @@ class CarModelDefinition {
     wheelbase = 2.6,
     mass = 800,
     engineTorque = 700,
+    drivenWheels = ['rearLeft', 'rearRight'],
   }) {
     this.car_id = car_id
     this.displayName = displayName
@@ -25,6 +26,7 @@ class CarModelDefinition {
     this.wheelbase = wheelbase
     this.mass = mass
     this.engineTorque = engineTorque
+    this.drivenWheels = drivenWheels
   }
 
   selectScene(gltf) {
@@ -77,9 +79,34 @@ class MonteCarloCarModel extends CarModelDefinition {
   }
 }
 
+class Evo5CarModel extends CarModelDefinition {
+  constructor() {
+    super({
+      car_id: 'evo5',
+      displayName: 'Evo 5',
+      file: 'assets/glb/evo5.glb',
+      sceneName: 'Scene',
+      visualRoot: 'Root',
+      chassis: 'Body',
+      wheels: {
+        frontLeft: 'Wheel2',
+        frontRight: 'Wheel1',
+        rearLeft: 'Wheel4',
+        rearRight: 'Wheel3',
+      },
+      wheelRadiusFront: 0.39,
+      wheelRadiusBack: 0.39,
+      wheelbase: 2.5,
+      engineTorque: 1000,
+      drivenWheels: ['frontLeft', 'frontRight', 'rearLeft', 'rearRight'],
+    })
+  }
+}
+
 const CAR_MODELS = [
   new MustangCarModel(),
   new MonteCarloCarModel(),
+  new Evo5CarModel(),
 ]
 
 const CAR_MODELS_BY_ID = new Map(CAR_MODELS.map(model => [model.car_id, model]))

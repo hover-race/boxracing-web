@@ -29,9 +29,16 @@ class Vehicle {
   BACK_LEFT = 2
   BACK_RIGHT = 3
 
+  static WHEEL_SLOT_INDEX = {
+    frontLeft: 0,
+    frontRight: 1,
+    rearLeft: 2,
+    rearRight: 3,
+  }
+
   wheels = []  // Array to store Wheel instances
-  rearLeftEngineForce = 0
-  rearRightEngineForce = 0
+  wheelEngineForce = [0, 0, 0, 0]
+  drivenWheelIndices = []
   prevYawError = 0
   escTorqueCutSmoothed = 0
   escOuterRearBrakeSmoothed = 0
@@ -57,6 +64,9 @@ class Vehicle {
     this.chassis = chassis
     this.car_id = carModel.car_id
     this.wheelbase = carModel.wheelbase
+    this.drivenWheelIndices = carModel.drivenWheels.map(
+      slot => Vehicle.WHEEL_SLOT_INDEX[slot]
+    )
     this.wheels = []
 
     const { physicsWorld } = physics
@@ -175,10 +185,10 @@ class Vehicle {
     
     const dt = 1/60;  // Assuming 60fps, ideally get this from the physics world
     const frontBrake = this.footBrake
-    this.wheels[this.FRONT_LEFT].update(dt, 0, frontBrake)
-    this.wheels[this.FRONT_RIGHT].update(dt, 0, frontBrake)
-    this.wheels[this.BACK_LEFT].update(dt, this.rearLeftEngineForce, frontBrake + this.escBrakeBL, this.handBrake)
-    this.wheels[this.BACK_RIGHT].update(dt, this.rearRightEngineForce, frontBrake + this.escBrakeBR, this.handBrake)
+    this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake)
+    this.wheels[this.FRONT_RIGHT].update(dt, this.wheelEngineForce[1], frontBrake)
+    this.wheels[this.BACK_LEFT].update(dt, this.wheelEngineForce[2], frontBrake + this.escBrakeBL, this.handBrake)
+    this.wheels[this.BACK_RIGHT].update(dt, this.wheelEngineForce[3], frontBrake + this.escBrakeBR, this.handBrake)
     this.wheels[this.FRONT_LEFT].gui()
     vehicleParams.frontSlipAngle = Math.max(
       Math.abs(this.wheels[this.FRONT_LEFT].slipAngle),
@@ -323,8 +333,7 @@ class Vehicle {
     this.vehicleSteering = 0
     this.driverSteering = 0
     this.engineForce = 0
-    this.rearLeftEngineForce = 0
-    this.rearRightEngineForce = 0
+    this.wheelEngineForce = [0, 0, 0, 0]
     this.footBrake = 0
     this.handBrake = 0
     this.escBrakeBL = 0
@@ -466,37 +475,45 @@ class Vehicle {
       return false
     }
 
-    const rearSlip = (
-      Math.abs(this.wheels[this.BACK_LEFT].slipRatio) +
-      Math.abs(this.wheels[this.BACK_RIGHT].slipRatio)
-    ) * 0.5
-    const slipOverLimit = Math.max(0, rearSlip - params.tcSlipLimit)
+    const drivenSlip = this.drivenWheelIndices.reduce(
+      (sum, i) => sum + Math.abs(this.wheels[i].slipRatio),
+      0
+    ) / this.drivenWheelIndices.length
+    const slipOverLimit = Math.max(0, drivenSlip - params.tcSlipLimit)
     const baseCut = Math.min(params.tcMaxCut, slipOverLimit * params.tcStrength)
 
     // Fade TC in with speed so launches aren't overly torque-limited.
     // Use rear contact-patch forward speed (m/s) as the best proxy for "vehicle moving".
-    const rearSpeedMps = Math.abs(
-      (this.wheels[this.BACK_LEFT].forwardSpeed + this.wheels[this.BACK_RIGHT].forwardSpeed) * 0.5
+    const drivenSpeedMps = Math.abs(
+      this.drivenWheelIndices.reduce(
+        (sum, i) => sum + this.wheels[i].forwardSpeed,
+        0
+      ) / this.drivenWheelIndices.length
     )
     const tcFullEffectMps = 20 * 0.44704
-    const speedFactor = Math.min(1, rearSpeedMps / tcFullEffectMps)
+    const speedFactor = Math.min(1, drivenSpeedMps / tcFullEffectMps)
     const cut = baseCut * speedFactor
 
     this.engineForce *= 1 - cut
     return cut > 0
   }
 
+  applyDriveForces() {
+    this.wheelEngineForce = [0, 0, 0, 0]
+    for (const i of this.drivenWheelIndices) {
+      this.wheelEngineForce[i] = this.engineForce
+    }
+  }
+
   applyStabilityActuation() {
-    this.rearLeftEngineForce = this.engineForce
-    this.rearRightEngineForce = this.engineForce
+    this.applyDriveForces()
     this.escBrakeBL = 0
     this.escBrakeBR = 0
     const actuation = this.stabilityActuation
     if (!params.spinPrevention || !actuation) return
 
     this.engineForce *= 1 - actuation.torqueCut
-    this.rearLeftEngineForce = this.engineForce
-    this.rearRightEngineForce = this.engineForce
+    this.applyDriveForces()
     this.escBrakeBL = actuation.escBrakeBL
     this.escBrakeBR = actuation.escBrakeBR
   }
@@ -684,7 +701,9 @@ class Vehicle {
     // hold the foot brake and gas at the same time (burnout / left-foot braking).
     // The brake key doubles as reverse: it brakes while rolling forward, then
     // drives backwards once the car has (nearly) stopped.
-    const rollingForward = this.wheels.length && this.wheels[this.BACK_LEFT].forwardSpeed > 0.5
+    const rollingForward = this.drivenWheelIndices.some(
+      i => this.wheels[i].forwardSpeed > 0.5
+    )
     let reverseThrottle = 0
     let footBrakeInput = inputs.brake
     if (inputs.brake > 0 && !rollingForward) {
@@ -696,6 +715,7 @@ class Vehicle {
     this.engineForce = this.maxEngineForce * throttleInput;
     this.applyStabilityActuation()
     const tcsActive = this.applyTractionControl()
+    this.applyDriveForces()
     vehicleParams.curThrottle = this.maxEngineForce > 0 ? this.engineForce / this.maxEngineForce : 0
     this.updateIndicatorOnActivation(this.tcsIndicator, params.tractionControl, tcsActive, 'tcsWasActive', 'tcsLightOffTimeoutId')
 
