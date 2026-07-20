@@ -97,7 +97,7 @@ class Evo5CarModel extends CarModelDefinition {
       wheelRadiusFront: 0.39,
       wheelRadiusBack: 0.39,
       wheelbase: 2.5,
-      engineTorque: 1000,
+      engineTorque: 500,
       drivenWheels: ['frontLeft', 'frontRight', 'rearLeft', 'rearRight'],
     })
   }
