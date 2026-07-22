@@ -14,7 +14,7 @@ import { Bot } from './bot.js';
 import { AutoSteer } from './autoSteer.js';
 import { centerlineFromTrack } from './trackCenterline.js';
 import { ExplosionFX } from './explosionFx.js';
-import { CAR_MODELS, getCarModel } from './carModels.js';
+import { CAR_MODELS, getCarModel, selectScene } from './carModels.js';
 
 export class MainScene extends Scene3D {
   car
@@ -68,7 +68,7 @@ export class MainScene extends Scene3D {
       const gltf = await this.load.gltf(definition.file)
       this.carModels.set(definition.car_id, {
         definition,
-        prefab: definition.selectScene(gltf),
+        prefab: selectScene(definition, gltf),
       })
     }
     this.remoteManager = new RemoteObjectManager(this, this.carModels)
@@ -150,7 +150,7 @@ export class MainScene extends Scene3D {
     
     // Initialize camera switcher
     this.cameraSwitcher = new CameraSwitcher(this)
-    this.cameraSwitcher.initFollow(this.camera, this.car.chassis);
+    this.cameraSwitcher.initFollow(this.camera, this.car.visualRoot);
     window.bindCameraSwitcherToGui?.(this.cameraSwitcher)
     
     // Initialize checkpoint manager with the car
@@ -301,9 +301,8 @@ export class MainScene extends Scene3D {
   teleportCar(transform) {
     const pos = transform.position;
     const rot = transform.quaternion;
-    this.car.chassis.position.copy(pos);
-    this.car.chassis.quaternion.copy(rot);
-    const body = this.car.chassis.body;
+    this.car.syncBodyTransform(pos, rot);
+    const body = this.car.collisionMesh.body;
     const tf = body.ammo.getWorldTransform();
     tf.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
     tf.setRotation(new Ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
@@ -421,7 +420,7 @@ export class MainScene extends Scene3D {
 
     // Record the racing line for the current lap
     if (this.lapPathRecorder) {
-      this.lapPathRecorder.recordFrame(this.car.chassis.position);
+      this.lapPathRecorder.recordFrame(this.car.visualRoot.position);
     }
     
     // Update replay player if playing
@@ -455,7 +454,7 @@ export class MainScene extends Scene3D {
 
   updateCamera(deltaTime) {
     if (this.cameraSwitcher) {
-      this.cameraSwitcher.update(this.camera, this.car.chassis, deltaTime);
+      this.cameraSwitcher.update(this.camera, this.car.visualRoot, deltaTime);
     }
   }
 

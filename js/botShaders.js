@@ -95,7 +95,7 @@ const XRAY_FAR = 140.0
 const XRAY_SHELL_MIN = 0.25  // flat shell stays slightly visible up close
 
 function botCarMeshes(car) {
-  const meshes = botBodyMeshes(car.chassis)
+  const meshes = botBodyMeshes(car.visualRoot)
   for (const wheel of car.wheelMeshes ?? []) {
     wheel.traverse(child => {
       if (child.isMesh && !BOT_EXTRA_NAMES.includes(child.name)) meshes.push(child)
@@ -123,7 +123,7 @@ function makeDistanceShellMaterial(color) {
 }
 
 function applyBotShader(car, shader, color) {
-  car.chassis.userData.botColor = color
+  car.visualRoot.userData.botColor = color
   for (const mesh of botCarMeshes(car)) {
     if (!mesh.userData.botBaseMaterial) mesh.userData.botBaseMaterial = mesh.material
     const base = mesh.userData.botBaseMaterial
@@ -158,7 +158,7 @@ function applyBotShader(car, shader, color) {
 
 function refreshAllBotShaders(mainScene) {
   for (const { car } of mainScene.bots ?? []) {
-    if (car?.chassis) applyBotShader(car, params.botShader, car.chassis.userData.botColor)
+    if (car?.visualRoot) applyBotShader(car, params.botShader, car.visualRoot.userData.botColor)
   }
 }
 
@@ -171,8 +171,8 @@ function updateBotFade(mainScene) {
   if (params.botShader !== 'xray') return
   const cam = mainScene.camera
   for (const { car } of mainScene.bots ?? []) {
-    if (!car?.chassis) continue
-    const dist = cam.position.distanceTo(car.chassis.getWorldPosition(_xrayTmp))
+    if (!car?.visualRoot) continue
+    const dist = cam.position.distanceTo(car.visualRoot.getWorldPosition(_xrayTmp))
     const t = Math.min(1, Math.max(0, (dist - XRAY_NEAR) / (XRAY_FAR - XRAY_NEAR)))
     const shellOp = XRAY_SHELL_MIN + t * (1 - XRAY_SHELL_MIN)
     const normalOp = 1 - t
@@ -184,7 +184,7 @@ function updateBotFade(mainScene) {
         c.material.depthWrite = normalOp > 0.5
       }
     })
-    fade(car.chassis)
+    fade(car.visualRoot)
     for (const wheel of car.wheelMeshes ?? []) fade(wheel)
   }
 }

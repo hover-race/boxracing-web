@@ -55,13 +55,14 @@ class Vehicle {
   hp = 0
   exploding = false
 
-  constructor(scene, physics, chassis, wheelMeshes, audioListener, {
+  constructor(scene, physics, collisionMesh, visualRoot, wheelMeshes, audioListener, {
     recordReplay = true,
     carModel,
   } = {}) {
     this.scene = scene
     this.physics = physics
-    this.chassis = chassis
+    this.collisionMesh = collisionMesh
+    this.visualRoot = visualRoot
     this.car_id = carModel.car_id
     this.wheelbase = carModel.wheelbase
     this.drivenWheelIndices = carModel.drivenWheels.map(
@@ -73,10 +74,10 @@ class Vehicle {
 
     this.tuning = new Ammo.btVehicleTuning()
     const rayCaster = new Ammo.btDefaultVehicleRaycaster(physicsWorld)
-    this.vehicle = new Ammo.btRaycastVehicle(this.tuning, chassis.body.ammo, rayCaster)
+    this.vehicle = new Ammo.btRaycastVehicle(this.tuning, collisionMesh.body.ammo, rayCaster)
 
     // do not automatically sync the mesh to the physics body
-    chassis.body.skipUpdate = true
+    collisionMesh.body.skipUpdate = true
 
     this.vehicle.setCoordinateSystem(0, 1, 2)
     physicsWorld.addAction(this.vehicle)
@@ -118,7 +119,7 @@ class Vehicle {
     this.lastContactTime = -Infinity
     this._impactPeakG = params.damageGMin
     this._impactSmoked = false
-    chassis.body.on.collision((otherObject, event) => {
+    collisionMesh.body.on.collision((otherObject, event) => {
       if (event !== 'end') this.lastContactTime = performance.now()
     })
     this.tcsIndicator = document.getElementById('tcs-indicator')
@@ -128,7 +129,7 @@ class Vehicle {
     this.wheels = this.wheelMeshes.map((mesh, index) => {
       const wheelInfo = this.vehicle.getWheelInfo(index);
       const radius = index < 2 ? wheelRadiusFront : wheelRadiusBack;
-      return new Wheel(this.chassis.body.ammo, wheelInfo, radius, this.vehicle, index, carModel.engineTorque, this.maxEngineForce);
+      return new Wheel(this.collisionMesh.body.ammo, wheelInfo, radius, this.vehicle, index, carModel.engineTorque, this.maxEngineForce);
     });
 
     this.particles = new TireParticles(scene, this, audioListener)
@@ -163,8 +164,19 @@ class Vehicle {
     this[wasActiveProp] = activeNow
   }
 
+  get chassis() {
+    return this.collisionMesh
+  }
+
+  syncBodyTransform(position, quaternion) {
+    this.collisionMesh.position.copy(position)
+    this.collisionMesh.quaternion.copy(quaternion)
+    this.visualRoot.position.copy(position)
+    this.visualRoot.quaternion.copy(quaternion)
+  }
+
   applyPushForce() {
-    const basis = this.chassis.body.ammo.getWorldTransform().getBasis();
+    const basis = this.collisionMesh.body.ammo.getWorldTransform().getBasis();
     const forward = new Ammo.btVector3(
       basis.getRow(0).z(),
       basis.getRow(1).z(),
@@ -220,8 +232,10 @@ class Vehicle {
     p = tm.getOrigin()
     q = tm.getRotation()
 
-    this.chassis.position.set(p.x(), p.y(), p.z())
-    this.chassis.quaternion.set(q.x(), q.y(), q.z(), q.w())
+    this.collisionMesh.position.set(p.x(), p.y(), p.z())
+    this.collisionMesh.quaternion.set(q.x(), q.y(), q.z(), q.w())
+    this.visualRoot.position.set(p.x(), p.y(), p.z())
+    this.visualRoot.quaternion.set(q.x(), q.y(), q.z(), q.w())
     
     const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
     this.speedometer.textContent = `${speed.toFixed(0)} mph`
@@ -258,8 +272,8 @@ class Vehicle {
 
     if (!this._accelFwd) this._accelFwd = new THREE.Vector3()
     if (!this._accelRight) this._accelRight = new THREE.Vector3()
-    const fwd = this._accelFwd.set(0, 0, 1).applyQuaternion(this.chassis.quaternion)
-    const right = this._accelRight.set(1, 0, 0).applyQuaternion(this.chassis.quaternion)
+    const fwd = this._accelFwd.set(0, 0, 1).applyQuaternion(this.visualRoot.quaternion)
+    const right = this._accelRight.set(1, 0, 0).applyQuaternion(this.visualRoot.quaternion)
     fwd.y = 0
     right.y = 0
     if (fwd.lengthSq() > 1e-6) fwd.normalize()
@@ -302,7 +316,7 @@ class Vehicle {
         if (explosionFx && !this._impactSmoked) {
           this._impactSmoked = true
           const intensity = Math.min(1, (this.currentG - params.damageGMin) / 8)
-          explosionFx.spawnSmoke(this.chassis.position.clone(), intensity)
+          explosionFx.spawnSmoke(this.visualRoot.position.clone(), intensity)
           playImpactSound(intensity)
         }
       }
@@ -366,10 +380,10 @@ class Vehicle {
   explode(explosionFx, respawnTransform, teleport) {
     this.exploding = true
     console.log(`BOOM: hp depleted at ${this.currentG.toFixed(1)} G`)
-    explosionFx.spawn(this.chassis.position.clone())
+    explosionFx.spawn(this.visualRoot.position.clone())
     playExplosionSound()
     this.freezePhysics()
-    this.chassis.visible = false
+    this.visualRoot.visible = false
     for (const wheel of this.wheelMeshes) wheel.visible = false
     setTimeout(() => {
       teleport(respawnTransform)
@@ -381,7 +395,7 @@ class Vehicle {
       this.currentG = 0
       this._impactPeakG = params.damageGMin
       this._impactSmoked = false
-      this.chassis.visible = true
+      this.visualRoot.visible = true
       for (const wheel of this.wheelMeshes) wheel.visible = true
       this.resetHp()
       this.exploding = false
@@ -396,7 +410,7 @@ class Vehicle {
   }
 
   updateSound() {
-    if (this.chassis.engineSound) {
+    if (this.collisionMesh.engineSound) {
       // Wheel surface speed (omega * r), not contact-patch speed: forwardSpeed reads 0
       // when a wheel is airborne, which made the engine cut out over jumps. Angular
       // velocity keeps tracking the drivetrain in the air.
@@ -406,11 +420,11 @@ class Vehicle {
         (bl.angularVelocity * bl.radius + br.angularVelocity * br.radius) * 0.5
       )
       const speed = rearMps * 2.23694
-      this.chassis.engineSound.setVolume(Math.min(1, speed / 100) * (params.soundVolume / 100))
+      this.collisionMesh.engineSound.setVolume(Math.min(1, speed / 100) * (params.soundVolume / 100))
       const minPitch = 0.5
       const maxPitch = 2.0
       const pitch = minPitch + (maxPitch - minPitch) * (speed / 100)
-      this.chassis.engineSound.setPlaybackRate(Math.min(maxPitch, Math.max(minPitch, pitch)))
+      this.collisionMesh.engineSound.setPlaybackRate(Math.min(maxPitch, Math.max(minPitch, pitch)))
     }
   }
 
@@ -747,13 +761,16 @@ class Vehicle {
     isBot = false,
     botColor = null,
   } = {}) {
-    const { chassis, wheels } = extractCarParts(preloadedModel, carModel)
-    chassis.position.copy(transform.position)
-    chassis.quaternion.copy(transform.quaternion)
+    const { collisionMesh, visualRoot, wheels } = extractCarParts(preloadedModel, carModel)
+    collisionMesh.position.copy(transform.position)
+    collisionMesh.quaternion.copy(transform.quaternion)
+    visualRoot.position.copy(transform.position)
+    visualRoot.quaternion.copy(transform.quaternion)
 
-    scene.add.existing(chassis)
-    scene.physics.add.existing(chassis, { shape: 'convex', mass: carModel.mass, addChildren: false })
-    chassis.body.setDamping(0.1, 0.1)
+    scene.add.existing(collisionMesh)
+    scene.add.existing(visualRoot)
+    scene.physics.add.existing(collisionMesh, { shape: 'convex', mass: carModel.mass, addChildren: false })
+    collisionMesh.body.setDamping(0.1, 0.1)
 
     // Bots get positional audio so their engines fall off with distance;
     // the player's engine stays non-positional (camera-relative, always audible).
@@ -763,20 +780,20 @@ class Vehicle {
     if (isBot) {
       engineSound.setRefDistance(8)
       engineSound.setRolloffFactor(2)
-      chassis.add(engineSound)
+      collisionMesh.add(engineSound)
     }
     const audioLoader = new THREE.AudioLoader()
     audioLoader.load('assets/winston_high.wav', (buffer) => {
       engineSound.setBuffer(buffer)
       engineSound.setLoop(true)
       engineSound.setVolume(params.soundVolume / 100)
-      chassis.engineSound = engineSound
+      collisionMesh.engineSound = engineSound
     })
 
     let hasInteracted = false
     const playSound = () => {
-      if (!hasInteracted && chassis.engineSound) {
-        chassis.engineSound.play()
+      if (!hasInteracted && collisionMesh.engineSound) {
+        collisionMesh.engineSound.play()
         hasInteracted = true
       }
     }
@@ -784,7 +801,7 @@ class Vehicle {
     document.addEventListener('touchstart', playSound, { once: true })
     document.addEventListener('keydown', playSound, { once: true })
 
-    const vehicle = new Vehicle(scene.scene, scene.physics, chassis, wheels, scene.listener, {
+    const vehicle = new Vehicle(scene.scene, scene.physics, collisionMesh, visualRoot, wheels, scene.listener, {
       recordReplay,
       carModel,
     })
@@ -829,8 +846,8 @@ class RemoteCar {
   }
 
   setupModel(model, carModel) {
-    const { chassis, wheels } = extractCarParts(model, carModel)
-    this.chassis = chassis
+    const { visualRoot, wheels } = extractCarParts(model, carModel)
+    this.visualRoot = visualRoot
     this.wheelMeshes = [
       wheels.frontLeft,
       wheels.frontRight,
@@ -838,20 +855,22 @@ class RemoteCar {
       wheels.rearRight,
     ]
 
-    this.wheelMeshes.forEach(wheelMesh => {
-      this.chassis.add(wheelMesh)
-    })
+    this.scene.add.existing(visualRoot)
+    for (const wheelMesh of this.wheelMeshes) {
+      this.scene.scene.add(wheelMesh)
+    }
+  }
 
-    this.scene.add.existing(this.chassis)
+  get chassis() {
+    return this.visualRoot
   }
 
   deserialize(data) {
-    if (this.chassis && data.position && data.quaternion) {
-      this.chassis.position.copy(data.position)
-      // Copy doesn't work
-      this.chassis.quaternion.fromArray(data.quaternion)
+    if (this.visualRoot && data.position && data.quaternion) {
+      this.visualRoot.position.copy(data.position)
+      this.visualRoot.quaternion.fromArray(data.quaternion)
     } else {
-      console.warn('chassis or data.position or data.quaternion not found')
+      console.warn('visualRoot or data.position or data.quaternion not found')
     }
     
     // Use wheelMeshes instead of wheels, and check if data.wheelRotations exists
@@ -877,12 +896,13 @@ class RemoteCar {
   }
 
   destroy() {
-    this.scene.scene.remove(this.chassis)
+    this.scene.scene.remove(this.visualRoot)
+    for (const wheel of this.wheelMeshes) this.scene.scene.remove(wheel)
   }
 
   updateNameBillboard() {
     // Create or update the player name billboard
-    if (!this.nameBillboard && this.chassis) {
+    if (!this.nameBillboard && this.visualRoot) {
       // Create canvas for the text
       const canvas = document.createElement('canvas')
       canvas.width = 612
@@ -916,7 +936,7 @@ class RemoteCar {
       this.nameBillboard.position.set(0, 3, 0)  // Position higher above car
       
       // Add to chassis
-      this.chassis.add(this.nameBillboard)
+      this.visualRoot.add(this.nameBillboard)
       
       // Store for later updates
       this.nameCanvas = canvas

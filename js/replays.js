@@ -128,9 +128,12 @@ class ReplayPlayer {
       transform.setRotation(new Ammo.btQuaternion(q.x, q.y, q.z, q.w));
       car.chassis.body.ammo.setWorldTransform(transform);
 
-      // Also sync the Three.js mesh
-      car.chassis.position.copy(frame.position);
-      car.chassis.quaternion.copy(frame.rotation);
+      // Also sync the Three.js meshes
+      if (car.syncBodyTransform) car.syncBodyTransform(frame.position, frame.rotation)
+      else {
+        car.chassis.position.copy(frame.position)
+        car.chassis.quaternion.copy(frame.rotation)
+      }
     } catch (error) {
       console.error('Error updating replay:', error);
       this.stop();
