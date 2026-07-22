@@ -19,8 +19,11 @@ Any key in `params` can be overridden via query string; the URL beats localStora
 Types are coerced from each param's default (booleans accept `true`/`1`).
 
 ```
+http://localhost:8080/?skipIntro=1&car_id=mustang&offlinePlay=1&numBots=0&autoStopPhysicsAfterSec=5
 http://localhost:8080/?throttleInput=1&engineTorque=900&autoStopPhysicsAfterSec=3
 ```
+
+`skipIntro` skips the car picker and loads `car_id` immediately (still needs `offlinePlay=1` for offline).
 
 Implemented by `applyUrlParamOverrides()` in `gui.js`.
 

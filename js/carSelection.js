@@ -6,6 +6,17 @@ function selectCar() {
   const startButton = document.getElementById('car-selection-start')
   let selectedCar = getCarModel(params.car_id)
 
+  function finish(carId) {
+    params.car_id = carId
+    localStorage.setItem('car_id', carId)
+    overlay.remove()
+    return carId
+  }
+
+  if (params.skipIntro) {
+    return Promise.resolve(finish(selectedCar.car_id))
+  }
+
   function updateSelection() {
     for (const button of options.querySelectorAll('[data-car-id]')) {
       button.classList.toggle('selected', button.dataset.carId === selectedCar.car_id)
@@ -28,10 +39,7 @@ function selectCar() {
 
   return new Promise(resolve => {
     startButton.addEventListener('click', () => {
-      params.car_id = selectedCar.car_id
-      localStorage.setItem('car_id', selectedCar.car_id)
-      overlay.remove()
-      resolve(selectedCar.car_id)
+      resolve(finish(selectedCar.car_id))
     }, { once: true })
   })
 }

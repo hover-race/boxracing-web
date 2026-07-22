@@ -44,7 +44,7 @@ class MustangCarModel extends CarModelDefinition {
       file: 'assets/glb/red-mustang-bigwheel2.glb',
       sceneName: 'Scene',
       visualRoot: 'Body001',
-      chassis: 'Plane002',
+      chassis: 'Body001',
       wheels: {
         frontLeft: 'FrontLeftWheel',
         frontRight: 'FrontRightWheel',
@@ -64,12 +64,12 @@ class MonteCarloCarModel extends CarModelDefinition {
       file: 'assets/glb/green-monte-carlo.glb',
       sceneName: 'MonteCarlo',
       visualRoot: 'CarsGreenMonteCarlo001',
-      chassis: 'bodyMesh_ChickHicks_Body002',
+      chassis: 'CollisionMesh',
       wheels: {
-        frontLeft: '!Wheel2',
-        frontRight: 'Wheel1',
-        rearLeft: '!Wheel1',
-        rearRight: 'Wheel2',
+        frontLeft: 'Wheel1001',
+        frontRight: '!Wheel2',
+        rearLeft: 'Wheel2001',
+        rearRight: '!Wheel1',
       },
       wheelRadiusFront: 0.39,
       wheelRadiusBack: 0.39,
@@ -121,6 +121,17 @@ function findPart(root, name, carModel) {
   return part
 }
 
+function findChassisMesh(root, name, carModel) {
+  const part = findPart(root, name, carModel)
+  if (part.isMesh) return part
+  let mesh = null
+  part.traverse(child => {
+    if (child.isMesh && !mesh) mesh = child
+  })
+  if (!mesh) throw new Error(`${carModel.displayName}: chassis "${name}" has no mesh`)
+  return mesh
+}
+
 function cloneMaterials(root) {
   root.traverse(child => {
     if (!child.isMesh || !child.material) return
@@ -152,8 +163,7 @@ function extractCarParts(modelRoot, carModel) {
   modelRoot.updateMatrixWorld(true)
 
   const visualRoot = findPart(modelRoot, carModel.visualRoot, carModel)
-  const bodyMesh = findPart(modelRoot, carModel.chassis, carModel)
-  if (!bodyMesh.isMesh) throw new Error(`${carModel.displayName}: chassis must be a mesh`)
+  const bodyMesh = findChassisMesh(modelRoot, carModel.chassis, carModel)
 
   const wheelSources = {
     frontLeft: findPart(modelRoot, carModel.wheels.frontLeft, carModel),
