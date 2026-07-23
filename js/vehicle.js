@@ -65,6 +65,7 @@ class Vehicle {
     this.visualRoot = visualRoot
     this.car_id = carModel.car_id
     this.wheelbase = carModel.wheelbase
+    this.wheelTravel = carModel.wheelTravel
     this.drivenWheelIndices = carModel.drivenWheels.map(
       slot => Vehicle.WHEEL_SLOT_INDEX[slot]
     )
@@ -456,7 +457,7 @@ class Vehicle {
     var suspensionDampingRelaxation = 3
     var suspensionDampingCompression = 4.4
     var suspensionRestLength = 0
-    var maxSuspensionTravelCm = 500
+    var maxSuspensionTravelCm = this.wheelTravel * 100
 
     this.tuning.maxSuspensionTravelCm = maxSuspensionTravelCm
 

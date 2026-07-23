@@ -3,6 +3,7 @@ const DEFAULTS = {
   wheelRadiusFront: 0.37,
   wheelRadiusBack: 0.37,
   wheelbase: 2.6,
+  wheelTravel: 0.15,
   mass: 800,
   engineTorque: 700,
   drivenWheels: ['rearLeft', 'rearRight'],
@@ -57,6 +58,25 @@ const CAR_MODELS = [
     wheelbase: 2.5,
     engineTorque: 500,
     drivenWheels: ['frontLeft', 'frontRight', 'rearLeft', 'rearRight'],
+  },
+  {
+    car_id: 'raptor',
+    displayName: 'Raptor',
+    file: 'assets/glb/raptor.glb',
+    sceneName: 'Raptor',
+    visualRoot: 'Raptor002',
+    wheels: {
+      frontLeft: 'Wheel004',
+      frontRight: 'Wheel002',
+      rearLeft: 'Wheel003',
+      rearRight: 'Wheel1',
+    },
+    wheelRadiusFront: 0.42,
+    wheelRadiusBack: 0.42,
+    wheelbase: 3.4,
+    wheelTravel: 0.28,
+    mass: 1200,
+    engineTorque: 900,
   },
 ].map(model => ({ ...DEFAULTS, ...model }))
 
