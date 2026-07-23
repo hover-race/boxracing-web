@@ -64,7 +64,7 @@ const params = {
   spawnAngle: 0,
   botShader: 'xray',
   botOutlineThickness: 0.02,
-  smokeEnabled: false,
+  smokeEnabled: true,
   smokeSlipThreshold: 0.25,
   smokeRate: 45,
   maxSmokeParticles: 160,
