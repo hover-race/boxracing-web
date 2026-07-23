@@ -30,9 +30,7 @@
     <div id="car-selection">
       <div id="car-selection-panel">
         <h1>Choose Your Car</h1>
-        <div id="car-selection-preview">
-          <canvas id="car-selection-canvas"></canvas>
-        </div>
+        <div id="car-selection-preview"></div>
         <div id="car-selection-options"></div>
         <button id="car-selection-start" type="button">Race</button>
       </div>
@@ -81,20 +79,22 @@
       window.PhysicsLoader = PhysicsLoader;
     </script>
 
-    <script type="importmap">
-    {
-      "imports": {
-        "three": "./js/three-shim.js"
-      }
-    }
-    </script>
-
     <script type="module">
       import { MainScene } from './js/mainScene.js';
-      import { selectCar } from './js/carSelection.js';
+      import { CarSelectionScene } from './js/carSelectionScene.js';
+      import { selectCar, startMainScene } from './js/carSelection.js';
 
-      await selectCar()
-      PhysicsLoader('lib/ammo/kripken', () => new Project({ scenes: [MainScene], antialias: true }))
+      PhysicsLoader('lib/ammo/kripken', async () => {
+        const project = new Project({
+          parent: 'car-selection-preview',
+          scenes: [CarSelectionScene, MainScene],
+          antialias: true,
+        })
+        const carScene = project.scenes.get('carSelection')
+        await carScene.ready
+        await selectCar(carScene)
+        await startMainScene(project)
+      })
     </script>
 
     <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>

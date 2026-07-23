@@ -17,6 +17,10 @@ import { ExplosionFX } from './explosionFx.js';
 import { CAR_MODELS, getCarModel, selectScene } from './carModels.js';
 
 export class MainScene extends Scene3D {
+  constructor() {
+    super({ key: 'main' })
+  }
+
   car
   keys = {
     w: false,
