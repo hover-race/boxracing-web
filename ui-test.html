@@ -255,6 +255,52 @@
         opacity: 0.35;
         animation: none;
       }
+
+      .sound-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid #3a3a3a;
+        border-radius: 8px;
+        background: #2a2a2a;
+        color: #ececec;
+        cursor: pointer;
+        box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
+      }
+
+      .sound-toggle:hover {
+        border-color: #555;
+        color: #fff;
+      }
+
+      .sound-toggle svg {
+        width: 22px;
+        height: 22px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.75;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .sound-toggle .sound-icon-off {
+        display: none;
+      }
+
+      .sound-toggle.muted .sound-icon-on {
+        display: none;
+      }
+
+      .sound-toggle.muted .sound-icon-off {
+        display: block;
+      }
+
+      .sound-toggle.muted {
+        color: #888;
+      }
     </style>
   </head>
   <body class="ui-test-body">
@@ -277,6 +323,19 @@
     </div>
 
     <div class="ui-test-side">
+      <button id="sound-toggle" type="button" class="sound-toggle" aria-label="Mute sound" aria-pressed="false">
+        <svg class="sound-icon-on" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M11 5L6 9H3v6h3l5 4V5z" />
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+        </svg>
+        <svg class="sound-icon-off" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M11 5L6 9H3v6h3l5 4V5z" />
+          <path d="M16 9l5 5" />
+          <path d="M21 9l-5 5" />
+        </svg>
+      </button>
+
       <div id="controls">
         <label>
           <input id="esc-active" type="checkbox" />
@@ -307,6 +366,7 @@
       const tireSoundCheckbox = document.getElementById('tire-sound-active')
       const tcsIndicator = document.getElementById('tcs-indicator')
       const escIndicator = document.getElementById('esc-indicator')
+      const soundToggle = document.getElementById('sound-toggle')
 
       const listener = new THREE.AudioListener()
       const tireSound = new TireScreechSound(listener)
@@ -315,8 +375,29 @@
       let lastSoundTime = performance.now()
       let toastTimeoutId = null
       let clickCtx = null
+      let soundMuted = false
+      let savedSoundVolume = params.soundVolume
+
+      function setSoundMuted(muted) {
+        soundMuted = muted
+        if (muted) {
+          savedSoundVolume = params.soundVolume || savedSoundVolume
+          params.soundVolume = 0
+          tireSound.update(0, 0.05)
+        } else {
+          params.soundVolume = savedSoundVolume || 100
+        }
+        soundToggle.classList.toggle('muted', muted)
+        soundToggle.setAttribute('aria-pressed', String(muted))
+        soundToggle.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound')
+      }
+
+      soundToggle.addEventListener('click', () => {
+        setSoundMuted(!soundMuted)
+      })
 
       function playToggleClick() {
+        if (soundMuted) return
         clickCtx ||= new AudioContext()
         if (clickCtx.state === 'suspended') clickCtx.resume()
         const t = clickCtx.currentTime
