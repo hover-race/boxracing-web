@@ -30,6 +30,9 @@
     <div id="car-selection">
       <div id="car-selection-panel">
         <h1>Choose Your Car</h1>
+        <div id="car-selection-preview">
+          <canvas id="car-selection-canvas"></canvas>
+        </div>
         <div id="car-selection-options"></div>
         <button id="car-selection-start" type="button">Race</button>
       </div>
@@ -76,6 +79,14 @@
       window.Scene3D = Scene3D;
       window.Project = Project;
       window.PhysicsLoader = PhysicsLoader;
+    </script>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "./js/three-shim.js"
+      }
+    }
     </script>
 
     <script type="module">
