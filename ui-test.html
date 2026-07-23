@@ -5,25 +5,292 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>UI Test</title>
     <link rel="stylesheet" href="style.css" />
+    <style>
+      body.ui-test-body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 48px;
+        background: #0a0a0a;
+      }
+
+      .ui-test-panel {
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        gap: 40px;
+        padding: 44px 56px 52px;
+        border-radius: 10px;
+        background:
+          repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 4px),
+          linear-gradient(180deg, #171717 0%, #0f0f0f 100%);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.04),
+          0 18px 40px rgba(0, 0, 0, 0.55);
+      }
+
+      .tc-toast {
+        position: absolute;
+        left: 50%;
+        top: 18px;
+        transform: translateX(-50%);
+        padding: 7px 14px;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.78);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: #fff;
+        font: 700 13px/1 monospace;
+        letter-spacing: 0.06em;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+
+      .tc-toast.show {
+        opacity: 1;
+      }
+
+      .tc-rocker {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .tc-rocker input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+        pointer-events: none;
+      }
+
+      .tc-rocker-label {
+        font: 900 24px/1 "Arial Black", Arial, sans-serif;
+        letter-spacing: 0.06em;
+        color: #ececec;
+        text-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.18),
+          0 2px 4px rgba(0, 0, 0, 0.8);
+      }
+
+      .tc-rocker-assembly {
+        position: relative;
+        width: 72px;
+        height: 92px;
+        perspective: 180px;
+      }
+
+      .tc-rocker-nut {
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        width: 58px;
+        height: 24px;
+        transform: translateX(-50%);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, transparent 28%),
+          linear-gradient(180deg, #eef1f5 0%, #b6bcc6 38%, #8d939d 62%, #d3d8df 100%);
+        clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+        box-shadow:
+          inset 0 -2px 3px rgba(0, 0, 0, 0.25),
+          0 2px 4px rgba(0, 0, 0, 0.45);
+      }
+
+      .tc-rocker-nut::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 18px;
+        height: 18px;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #2a2a2a 0%, #090909 70%);
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+      }
+
+      .tc-rocker-lever {
+        position: absolute;
+        left: 50%;
+        bottom: 16px;
+        width: 16px;
+        height: 58px;
+        transform: translateX(-50%) rotateX(22deg);
+        transform-origin: 50% 100%;
+        transform-style: preserve-3d;
+        transition: transform 0.14s ease;
+      }
+
+      .tc-rocker-lever::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 8px;
+        background:
+          linear-gradient(90deg, #707680 0%, #eef1f6 22%, #ffffff 50%, #c9ced6 78%, #6f757f 100%);
+        box-shadow:
+          inset 1px 0 0 rgba(255, 255, 255, 0.65),
+          inset -1px 0 0 rgba(0, 0, 0, 0.18),
+          0 4px 8px rgba(0, 0, 0, 0.35);
+      }
+
+      .tc-rocker-cap {
+        position: absolute;
+        top: -2px;
+        left: 50%;
+        width: 13px;
+        height: 10px;
+        transform: translateX(-50%);
+        border-radius: 50% 50% 45% 45%;
+        background: radial-gradient(circle at 40% 35%, #24344f 0%, #101722 70%);
+        box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.55);
+        transition: background 0.14s ease, box-shadow 0.14s ease;
+      }
+
+      .tc-rocker input:checked + .tc-rocker-label + .tc-rocker-assembly .tc-rocker-lever {
+        transform: translateX(-50%) rotateX(-22deg);
+      }
+
+      .tc-rocker input:checked + .tc-rocker-label + .tc-rocker-assembly .tc-rocker-cap {
+        background: radial-gradient(circle at 38% 32%, #b8e4ff 0%, #4f9dff 38%, #1f5fd4 72%, #12356f 100%);
+        box-shadow:
+          0 0 6px #58a8ff,
+          0 0 14px rgba(63, 145, 255, 0.75),
+          inset 0 -1px 2px rgba(0, 0, 0, 0.25);
+      }
+
+      .tc-rocker:active .tc-rocker-lever {
+        transform: translateX(-50%) rotateX(28deg);
+      }
+
+      .tc-rocker input:checked:active + .tc-rocker-label + .tc-rocker-assembly .tc-rocker-lever {
+        transform: translateX(-50%) rotateX(-28deg);
+      }
+
+      .v-toggle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .v-toggle input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+        pointer-events: none;
+      }
+
+      .v-toggle-label {
+        font: 700 14px/1 system-ui, -apple-system, sans-serif;
+        letter-spacing: 0.04em;
+        color: #d8d8d8;
+      }
+
+      .v-toggle-track {
+        position: relative;
+        width: 34px;
+        height: 68px;
+        box-sizing: border-box;
+        padding: 3px;
+        border-radius: 17px;
+        border: 1px solid #3a3a3a;
+        background: #2a2a2a;
+        box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
+      }
+
+      .v-toggle-thumb {
+        position: absolute;
+        left: 3px;
+        bottom: 3px;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: #f2f2f2;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+        transition: transform 0.15s ease, background 0.15s ease;
+      }
+
+      .v-toggle input:checked + .v-toggle-label + .v-toggle-track {
+        background: #3d8f46;
+        border-color: #357a3d;
+      }
+
+      .v-toggle input:checked + .v-toggle-label + .v-toggle-track .v-toggle-thumb {
+        transform: translateY(-36px);
+        background: #fff;
+      }
+
+      .ui-test-side {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        color: #fff;
+        font-family: monospace;
+      }
+
+      #controls label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      #esc-indicator,
+      #tcs-indicator {
+        position: static;
+        opacity: 1;
+        visibility: visible;
+      }
+
+      #tcs-indicator:not(.active),
+      #esc-indicator:not(.active) {
+        opacity: 0.35;
+        animation: none;
+      }
+    </style>
   </head>
-  <body>
-    <div id="controls">
-      <label>
-        <input id="tcs-active" type="checkbox" />
-        TCS active
+  <body class="ui-test-body">
+    <div class="ui-test-panel">
+      <div id="tc-toast" class="tc-toast"></div>
+      <label class="tc-rocker">
+        <input id="tc-rocker-input" type="checkbox" />
+        <span class="tc-rocker-label">TC</span>
+        <span class="tc-rocker-assembly">
+          <span class="tc-rocker-lever"><span class="tc-rocker-cap"></span></span>
+          <span class="tc-rocker-nut"></span>
+        </span>
       </label>
-      <label>
-        <input id="esc-active" type="checkbox" />
-        ESC active
-      </label>
-      <label>
-        <input id="tire-sound-active" type="checkbox" />
-        Tire screech
+
+      <label class="v-toggle">
+        <input id="tc-vtoggle-input" type="checkbox" />
+        <span class="v-toggle-label">TC</span>
+        <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
       </label>
     </div>
 
-    <div id="esc-indicator">ESC</div>
-    <div id="tcs-indicator">TCS</div>
+    <div class="ui-test-side">
+      <div id="controls">
+        <label>
+          <input id="esc-active" type="checkbox" />
+          ESC active
+        </label>
+        <label>
+          <input id="tire-sound-active" type="checkbox" />
+          Tire screech
+        </label>
+      </div>
+
+      <div id="esc-indicator">ESC</div>
+      <div id="tcs-indicator">TCS</div>
+    </div>
 
     <script src="lib/enable3d.framework.0.25.4.min.js"></script>
     <script>
@@ -33,7 +300,9 @@
     <script type="module">
       import { TireScreechSound } from './js/sound.js'
 
-      const tcsCheckbox = document.getElementById('tcs-active')
+      const tcRocker = document.getElementById('tc-rocker-input')
+      const tcVToggle = document.getElementById('tc-vtoggle-input')
+      const tcToast = document.getElementById('tc-toast')
       const escCheckbox = document.getElementById('esc-active')
       const tireSoundCheckbox = document.getElementById('tire-sound-active')
       const tcsIndicator = document.getElementById('tcs-indicator')
@@ -44,9 +313,47 @@
 
       let soundRafId = null
       let lastSoundTime = performance.now()
+      let toastTimeoutId = null
+      let clickCtx = null
 
-      tcsCheckbox.addEventListener('change', () => {
-        tcsIndicator.classList.toggle('active', tcsCheckbox.checked)
+      function playToggleClick() {
+        clickCtx ||= new AudioContext()
+        if (clickCtx.state === 'suspended') clickCtx.resume()
+        const t = clickCtx.currentTime
+        const osc = clickCtx.createOscillator()
+        const gain = clickCtx.createGain()
+        osc.type = 'square'
+        osc.frequency.setValueAtTime(2200, t)
+        osc.frequency.exponentialRampToValueAtTime(700, t + 0.025)
+        gain.gain.setValueAtTime(0.12, t)
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045)
+        osc.connect(gain)
+        gain.connect(clickCtx.destination)
+        osc.start(t)
+        osc.stop(t + 0.05)
+      }
+
+      function showTcToast(enabled) {
+        tcToast.textContent = enabled ? 'Driver Aids ON' : 'Driver Aids OFF'
+        tcToast.classList.add('show')
+        clearTimeout(toastTimeoutId)
+        toastTimeoutId = setTimeout(() => tcToast.classList.remove('show'), 900)
+      }
+
+      function setTcEnabled(enabled) {
+        tcRocker.checked = enabled
+        tcVToggle.checked = enabled
+        tcsIndicator.classList.toggle('active', enabled)
+        playToggleClick()
+        showTcToast(enabled)
+      }
+
+      tcRocker.addEventListener('change', () => {
+        setTcEnabled(tcRocker.checked)
+      })
+
+      tcVToggle.addEventListener('change', () => {
+        setTcEnabled(tcVToggle.checked)
       })
 
       escCheckbox.addEventListener('change', () => {
@@ -73,4 +380,3 @@
     </script>
   </body>
 </html>
-

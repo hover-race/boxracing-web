@@ -146,16 +146,16 @@ gui.add(params, 'soundVolume', 0, 100).step(1)
 gui.add(vehicleParams, 'steeringSensitivity', 0.1, 2.0).step(0.1)
 
 const stabilityFolder = gui.addFolder('Driving Assist')
-stabilityFolder.add(params, 'tractionControl')
+const tcController = stabilityFolder.add(params, 'tractionControl')
 stabilityFolder.add(params, 'tcSlipLimit', 0, 1).step(0.01)
 stabilityFolder.add(params, 'tcStrength', 0, 10).step(0.1)
 stabilityFolder.add(params, 'tcMaxCut', 0, 1).step(0.01)
-stabilityFolder.add(params, 'spinPrevention')
+const spinPreventionController = stabilityFolder.add(params, 'spinPrevention')
 stabilityFolder.add(params, 'spinAssist', 0, 1).step(0.25)
-stabilityFolder.add(params, 'steeringAssist')
+const steeringAssistController = stabilityFolder.add(params, 'steeringAssist')
 stabilityFolder.add(params, 'steerAssistSlipLimitDeg', 2, 25).step(0.5)
 stabilityFolder.add(params, 'steerAssistGain', 0, 2).step(0.05)
-stabilityFolder.add(params, 'autoSteer')
+const autoSteerController = stabilityFolder.add(params, 'autoSteer')
 stabilityFolder.add(params, 'autoSteerStrength', 0, 2).step(0.05)
 stabilityFolder.add(vehicleParams, 'autoSteerAssist', 0, 1).step(0.01).listen()
 stabilityFolder.add(vehicleParams, 'autoSteerLateral', -15, 15).step(0.1).listen()
@@ -223,6 +223,81 @@ function applyUrlParamOverrides() {
   gui.__controllers.forEach((c) => c.updateDisplay())
 }
 applyUrlParamOverrides()
+
+const tcToggleInput = document.getElementById('tc-toggle-input')
+const autoSteerToggleInput = document.getElementById('auto-steer-toggle-input')
+const hudToast = document.getElementById('hud-toast')
+let toastTimeoutId = null
+let clickCtx = null
+
+function playToggleClick() {
+  clickCtx ||= new AudioContext()
+  if (clickCtx.state === 'suspended') clickCtx.resume()
+  const t = clickCtx.currentTime
+  const osc = clickCtx.createOscillator()
+  const gain = clickCtx.createGain()
+  osc.type = 'square'
+  osc.frequency.setValueAtTime(2200, t)
+  osc.frequency.exponentialRampToValueAtTime(700, t + 0.025)
+  gain.gain.setValueAtTime(0.12, t)
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045)
+  osc.connect(gain)
+  gain.connect(clickCtx.destination)
+  osc.start(t)
+  osc.stop(t + 0.05)
+}
+
+function showHudToast(message) {
+  hudToast.textContent = message
+  hudToast.classList.add('show')
+  clearTimeout(toastTimeoutId)
+  toastTimeoutId = setTimeout(() => hudToast.classList.remove('show'), 900)
+}
+
+function driverAidsEnabled() {
+  return params.tractionControl && params.spinPrevention && params.steeringAssist
+}
+
+function setDriverAids(enabled) {
+  params.tractionControl = enabled
+  params.spinPrevention = enabled
+  params.steeringAssist = enabled
+  tcController.updateDisplay()
+  spinPreventionController.updateDisplay()
+  steeringAssistController.updateDisplay()
+}
+
+function syncDriverAidsToggle() {
+  tcToggleInput.checked = driverAidsEnabled()
+}
+
+function releaseToggleFocus(input) {
+  input.blur()
+  input.closest('label')?.blur()
+}
+
+tcToggleInput.checked = driverAidsEnabled()
+tcToggleInput.addEventListener('change', () => {
+  setDriverAids(tcToggleInput.checked)
+  playToggleClick()
+  showHudToast(tcToggleInput.checked ? 'Driver Aids ON' : 'Driver Aids OFF')
+  releaseToggleFocus(tcToggleInput)
+})
+tcController.onChange(syncDriverAidsToggle)
+spinPreventionController.onChange(syncDriverAidsToggle)
+steeringAssistController.onChange(syncDriverAidsToggle)
+
+autoSteerToggleInput.checked = params.autoSteer
+autoSteerToggleInput.addEventListener('change', () => {
+  params.autoSteer = autoSteerToggleInput.checked
+  autoSteerController.updateDisplay()
+  playToggleClick()
+  showHudToast(autoSteerToggleInput.checked ? 'Auto Steer ON' : 'Auto Steer OFF')
+  releaseToggleFocus(autoSteerToggleInput)
+})
+autoSteerController.onChange((enabled) => {
+  autoSteerToggleInput.checked = enabled
+})
 
 gui.close()
 

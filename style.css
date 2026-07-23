@@ -205,9 +205,88 @@ canvas {
     bottom: 20px;
     right: 20px;
     display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    z-index: 1;
+}
+
+.hud-toast {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 10px);
+    padding: 7px 14px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font: 700 13px/1 monospace;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.hud-toast.show {
+    opacity: 1;
+}
+
+.v-toggle {
+    display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 8px;
-    z-index: 1;
+    cursor: pointer;
+    user-select: none;
+}
+
+.v-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.v-toggle-label {
+    font: 700 12px/1 monospace;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.88);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.v-toggle-track {
+    position: relative;
+    width: 34px;
+    height: 68px;
+    box-sizing: border-box;
+    padding: 3px;
+    border-radius: 17px;
+    border: 1px solid #3a3a3a;
+    background: #2a2a2a;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+.v-toggle-thumb {
+    position: absolute;
+    left: 3px;
+    bottom: 3px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #f2f2f2;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.v-toggle input:checked + .v-toggle-label + .v-toggle-track {
+    background: #3d8f46;
+    border-color: #357a3d;
+}
+
+.v-toggle input:checked + .v-toggle-label + .v-toggle-track .v-toggle-thumb {
+    transform: translateY(-36px);
+    background: #fff;
 }
 
 #hp-bar {
