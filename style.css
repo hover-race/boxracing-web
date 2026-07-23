@@ -22,6 +22,7 @@ canvas {
     display: flex;
     background: radial-gradient(circle at center, #263238 0%, #080b0d 75%);
     color: #fff;
+    font-family: 'Press Start 2P', monospace;
 }
 
 #car-selection-panel {
@@ -36,9 +37,9 @@ canvas {
 
 #car-selection-panel h1 {
     margin: 0 0 16px;
-    font: 700 clamp(24px, 4vw, 40px)/1 monospace;
+    font: 400 clamp(14px, 2.5vw, 22px)/1.6 'Press Start 2P', monospace;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
 }
 
 #car-selection-preview {
@@ -70,12 +71,12 @@ canvas {
 }
 
 .car-selection-card {
-    min-height: 72px;
+    min-height: 80px;
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     background: #1c252b;
     color: #fff;
-    font: 700 20px monospace;
+    font: 400 clamp(13px, 1.6vw, 16px)/1.6 'Press Start 2P', monospace;
     cursor: pointer;
 }
 
@@ -90,12 +91,12 @@ canvas {
 
 #car-selection-start {
     min-width: 180px;
-    padding: 12px 28px;
+    padding: 14px 28px;
     border: 0;
     border-radius: 6px;
     background: #4caf50;
     color: #fff;
-    font: 700 18px monospace;
+    font: 400 14px/1.6 'Press Start 2P', monospace;
     cursor: pointer;
 }
 
@@ -328,32 +329,6 @@ canvas {
     min-width: 120px;
     min-height: 36px;
     display: block !important;
-}
-
-#export-trace-btn,
-#export-lap-btn {
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 14px;
-    background: #1976d2;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    min-height: 36px;
-    display: block !important;
-}
-
-#export-trace-btn:hover,
-#export-lap-btn:hover {
-    background: #1565c0;
-    transform: translateY(-1px);
-}
-
-#export-trace-btn:active,
-#export-lap-btn:active {
-    transform: scale(0.95) translateY(0);
 }
 
 #create-server-btn:hover {

@@ -270,11 +270,6 @@ export class MainScene extends Scene3D {
     if (params.recordLaps) this.lapPathRecorder.startSession()
     window.downloadTrackTrace = () => this.lapPathRecorder.downloadTrace()
     window.downloadLap = (n) => this.lapPathRecorder.downloadLap(n)
-    document.getElementById('export-trace-btn')?.addEventListener('click', () => window.downloadTrackTrace())
-    document.getElementById('export-lap-btn')?.addEventListener('click', () => {
-      const n = this.lapPathRecorder.lapNumber
-      if (n > 0) window.downloadLap(n)
-    })
 
     if (params.autoStopPhysicsAfterSec > 0) {
       this._autoStopAt = null;

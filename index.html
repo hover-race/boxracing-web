@@ -19,6 +19,9 @@
     <meta property="og:type" content="website" />
     <!-- Emoji Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚘</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <title>Box Racing</title>
     <script src="lib/enable3d.framework.0.25.4.min.js"></script>
@@ -29,7 +32,7 @@
   <body>
     <div id="car-selection">
       <div id="car-selection-panel">
-        <h1>Choose Your Car</h1>
+        <h1>Choose Car</h1>
         <div id="car-selection-preview"></div>
         <div id="car-selection-options"></div>
         <button id="car-selection-start" type="button">Race</button>
@@ -39,8 +42,6 @@
     <div id="top-left-controls">
       <div id="connection-status" class="status-connecting">Connecting...</div>
       <button id="create-server-btn">Create Server</button>
-      <button id="export-trace-btn">Export Trace</button>
-      <button id="export-lap-btn">Export Lap</button>
     </div>
     <div id="hud-bottom-left">
       <div id="fps-counter">-- fps</div>
