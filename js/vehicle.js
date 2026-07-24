@@ -66,6 +66,7 @@ class Vehicle {
     this.car_id = carModel.car_id
     this.wheelbase = carModel.wheelbase
     this.wheelTravel = carModel.wheelTravel
+    this.suspensionStiffness = carModel.suspensionStiffness
     this.drivenWheelIndices = carModel.drivenWheels.map(
       slot => Vehicle.WHEEL_SLOT_INDEX[slot]
     )
@@ -453,7 +454,7 @@ class Vehicle {
   addWheel(wheelMesh, isFront, radius) {
     this.wheels.push(new Wheel(wheelMesh))
     const pos = new Ammo.btVector3(wheelMesh.position.x, wheelMesh.position.y, wheelMesh.position.z)
-    var suspensionStiffness = 50.0
+    var suspensionStiffness = this.suspensionStiffness
     var suspensionDampingRelaxation = 3
     var suspensionDampingCompression = 4.4
     var suspensionRestLength = 0
