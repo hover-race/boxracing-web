@@ -289,6 +289,12 @@ canvas {
     background: #fff;
 }
 
+#sound-toggle .v-toggle-label {
+    font-size: 16px;
+    letter-spacing: 0;
+    line-height: 1;
+}
+
 #hp-bar {
     width: 240px;
     height: 26px;

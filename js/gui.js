@@ -142,7 +142,7 @@ gui.remember(params)
 gui.add(params, 'botShader', ['none', 'outline', 'fresnel', 'solid', 'xray']).onChange(() => window.refreshBotShader?.())
 gui.add(params, 'botOutlineThickness', 0.005, 0.06).step(0.001).onChange(() => window.refreshBotShader?.())
 gui.add(params, 'smokeEnabled')
-gui.add(params, 'soundVolume', 0, 100).step(1)
+const soundVolumeController = gui.add(params, 'soundVolume', 0, 100).step(1)
 gui.add(vehicleParams, 'steeringSensitivity', 0.1, 2.0).step(0.1)
 
 const stabilityFolder = gui.addFolder('Driving Assist')
@@ -227,10 +227,51 @@ applyUrlParamOverrides()
 const tcToggleInput = document.getElementById('tc-toggle-input')
 const autoSteerToggleInput = document.getElementById('auto-steer-toggle-input')
 const hudToast = document.getElementById('hud-toast')
+const soundToggleInput = document.getElementById('sound-toggle-input')
+const soundToggleLabel = document.querySelector('#sound-toggle .v-toggle-label')
 let toastTimeoutId = null
 let clickCtx = null
+let savedSoundVolume = params.soundVolume > 0 ? params.soundVolume : 50
+let soundMuted = params.soundVolume === 0
+
+function syncSoundToggle() {
+  if (!soundToggleInput) return
+  soundToggleInput.checked = !soundMuted
+  if (soundToggleLabel) soundToggleLabel.textContent = soundMuted ? '🔇' : '🔊'
+}
+
+function setSoundMuted(muted) {
+  soundMuted = muted
+  if (muted) {
+    if (params.soundVolume > 0) savedSoundVolume = params.soundVolume
+    params.soundVolume = 0
+  } else {
+    params.soundVolume = savedSoundVolume || 50
+  }
+  soundVolumeController.updateDisplay()
+  syncSoundToggle()
+}
+
+if (soundToggleInput) {
+  syncSoundToggle()
+  soundToggleInput.addEventListener('change', () => {
+    setSoundMuted(!soundToggleInput.checked)
+    if (!soundMuted) playToggleClick()
+    releaseToggleFocus(soundToggleInput)
+  })
+}
+soundVolumeController.onChange((value) => {
+  if (value === 0) {
+    soundMuted = true
+  } else {
+    soundMuted = false
+    savedSoundVolume = value
+  }
+  syncSoundToggle()
+})
 
 function playToggleClick() {
+  if (soundMuted) return
   clickCtx ||= new AudioContext()
   if (clickCtx.state === 'suspended') clickCtx.resume()
   const t = clickCtx.currentTime
