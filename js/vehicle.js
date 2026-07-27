@@ -66,7 +66,11 @@ class Vehicle {
     this.car_id = carModel.car_id
     this.wheelbase = carModel.wheelbase
     this.wheelTravel = carModel.wheelTravel
+    this.suspensionRestLength = carModel.suspensionRestLength
     this.suspensionStiffness = carModel.suspensionStiffness
+    this.suspensionDampingRelaxation = carModel.suspensionDampingRelaxation
+    this.suspensionDampingCompression = carModel.suspensionDampingCompression
+    this.suspensionRollInfluence = carModel.suspensionRollInfluence
     this.drivenWheelIndices = carModel.drivenWheels.map(
       slot => Vehicle.WHEEL_SLOT_INDEX[slot]
     )
@@ -455,9 +459,9 @@ class Vehicle {
     this.wheels.push(new Wheel(wheelMesh))
     const pos = new Ammo.btVector3(wheelMesh.position.x, wheelMesh.position.y, wheelMesh.position.z)
     var suspensionStiffness = this.suspensionStiffness
-    var suspensionDampingRelaxation = 3
-    var suspensionDampingCompression = 4.4
-    var suspensionRestLength = 0
+    var suspensionDampingRelaxation = this.suspensionDampingRelaxation
+    var suspensionDampingCompression = this.suspensionDampingCompression
+    var suspensionRestLength = this.suspensionRestLength
     var maxSuspensionTravelCm = this.wheelTravel * 100
 
     this.tuning.maxSuspensionTravelCm = maxSuspensionTravelCm
@@ -480,7 +484,7 @@ class Vehicle {
     wheelInfo.set_m_wheelsDampingCompression(suspensionDampingCompression)
 
     wheelInfo.set_m_frictionSlip(0)
-    wheelInfo.set_m_rollInfluence(1)
+    wheelInfo.set_m_rollInfluence(this.suspensionRollInfluence)
 
     this.wheelMeshes.push(wheelMesh)
     this.scene.add(wheelMesh)
