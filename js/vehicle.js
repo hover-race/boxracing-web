@@ -4,6 +4,7 @@ import { TireParticles } from './particles.js';
 import { applyBotShader } from './botShaders.js';
 import { playExplosionSound, playImpactSound } from './sfx.js';
 import { extractCarParts } from './carModels.js';
+import { GROUP_CAR, GROUP_TRACK } from './carCollisions.js';
 
 class Vehicle {
   vehicle
@@ -64,6 +65,7 @@ class Vehicle {
     this.collisionMesh = collisionMesh
     this.visualRoot = visualRoot
     this.car_id = carModel.car_id
+    this.mass = carModel.mass
     this.wheelbase = carModel.wheelbase
     this.wheelTravel = carModel.wheelTravel
     this.suspensionRestLength = carModel.suspensionRestLength
@@ -126,8 +128,11 @@ class Vehicle {
     this._impactPeakG = params.damageGMin
     this._impactSmoked = false
     collisionMesh.body.on.collision((otherObject, event) => {
+      if (otherObject?.userData?.isCollisionMesh) return
       if (event !== 'end') this.lastContactTime = performance.now()
     })
+    this._grayUntil = 0
+    this._grayBackups = null
     this.tcsIndicator = document.getElementById('tcs-indicator')
     this.escIndicator = document.getElementById('esc-indicator')
 
@@ -145,6 +150,8 @@ class Vehicle {
       this.recorder.start()
       console.log('Vehicle: Auto-recording started on car load')
     }
+
+    physics.carCollisionManager?.register(this)
   }
 
   updateIndicatorOnActivation(indicator, enabled, activeNow, wasActiveProp, timeoutProp) {
@@ -172,6 +179,48 @@ class Vehicle {
 
   get chassis() {
     return this.collisionMesh
+  }
+
+  _collisionVisualRoots() {
+    return [this.visualRoot, ...(this.wheelMeshes ?? [])]
+  }
+
+  startCollisionGrayOut(durationMs = 1000) {
+    this._grayUntil = performance.now() + durationMs
+    if (this._grayBackups) return
+    this._grayBackups = []
+    for (const root of this._collisionVisualRoots()) {
+      root.traverse(child => {
+        if (!child.isMesh || !child.material || child.userData.isCollisionMesh) return
+        const materials = Array.isArray(child.material) ? child.material : [child.material]
+        for (const material of materials) {
+          this._grayBackups.push({
+            material,
+            color: material.color?.clone?.() ?? null,
+            opacity: material.opacity,
+            transparent: material.transparent,
+            depthWrite: material.depthWrite,
+          })
+          if (material.color) material.color.setRGB(0.25, 0.25, 0.25)
+          material.transparent = true
+          material.opacity = Math.min(material.opacity ?? 1, 0.3)
+          material.depthWrite = false
+        }
+      })
+    }
+  }
+
+  updateCollisionGrayOut() {
+    if (!this._grayUntil) return
+    if (performance.now() < this._grayUntil) return
+    this._grayUntil = 0
+    for (const backup of this._grayBackups ?? []) {
+      if (backup.color && backup.material.color) backup.material.color.copy(backup.color)
+      backup.material.opacity = backup.opacity
+      backup.material.transparent = backup.transparent
+      backup.material.depthWrite = backup.depthWrite
+    }
+    this._grayBackups = null
   }
 
   syncBodyTransform(position, quaternion) {
@@ -775,7 +824,13 @@ class Vehicle {
 
     scene.add.existing(collisionMesh)
     scene.add.existing(visualRoot)
-    scene.physics.add.existing(collisionMesh, { shape: 'convex', mass: carModel.mass, addChildren: false })
+    scene.physics.add.existing(collisionMesh, {
+      shape: 'convex',
+      mass: carModel.mass,
+      addChildren: false,
+      collisionGroup: GROUP_CAR,
+      collisionMask: GROUP_TRACK,
+    })
     collisionMesh.body.setDamping(0.1, 0.1)
 
     // Bots get positional audio so their engines fall off with distance;

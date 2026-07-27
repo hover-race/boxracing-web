@@ -15,6 +15,7 @@ import { AutoSteer } from './autoSteer.js';
 import { centerlineFromTrack } from './trackCenterline.js';
 import { ExplosionFX } from './explosionFx.js';
 import { CAR_MODELS, getCarModel, selectScene } from './carModels.js';
+import { CarCollisionManager, GROUP_TRACK, GROUP_CAR } from './carCollisions.js';
 
 export class MainScene extends Scene3D {
   constructor() {
@@ -99,7 +100,13 @@ export class MainScene extends Scene3D {
 
     // Load track
     var track = await this.loadGltf('assets/glb/rcc-oval.glb')
-    this.physics.add.existing(track, { collisionFlags: 1, mass: 0, shape: 'concave' })
+    this.physics.add.existing(track, {
+      collisionFlags: 1,
+      mass: 0,
+      shape: 'concave',
+      collisionGroup: GROUP_TRACK,
+      collisionMask: GROUP_TRACK | GROUP_CAR,
+    })
     this.track = track
     this.startTransform = new THREE.Object3D()
     this.botStartTransform = new THREE.Object3D()
@@ -140,6 +147,9 @@ export class MainScene extends Scene3D {
       this.botStartTransform.quaternion.copy(this.startTransform.quaternion)
       console.log('StartPos2 not found in track; bot spawned 4m right of StartPos1')
     }
+
+    this.carCollisionManager = new CarCollisionManager(this.physics.physicsWorld)
+    this.physics.carCollisionManager = this.carCollisionManager
 
     const selectedCarModel = getCarModel(params.car_id)
     const selectedPrefab = this.carModels.get(selectedCarModel.car_id).prefab
@@ -406,6 +416,7 @@ export class MainScene extends Scene3D {
     this.car.update(vehicleInputs);
     this.autoSteer?.patchWheelLog(vehicleParams.wheelSteerAngle);
     this.car.updateTireMarks();
+    this.carCollisionManager?.update()
 
     this.explosionFx.update(deltaTime / 1000);
     if (params.explosionEnabled && !this.car.exploding && this.car.updateDamage(deltaTime / 1000, this.explosionFx)) {
