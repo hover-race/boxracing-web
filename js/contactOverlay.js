@@ -61,11 +61,17 @@ function ensureContactOverlays(vehicle) {
     root.traverse(mesh => {
       if (!mesh.isMesh || mesh.userData.isCollisionMesh) return
       if (mesh.name?.startsWith('__')) return
-      ensureHeatAttribute(mesh.geometry)
-      const overlay = new THREE.Mesh(mesh.geometry, vehicle._contactMaterial)
+      // Own geometry so contactHeat is not shared across same-model cars.
+      if (mesh.geometry.getAttribute('contactHeat')) {
+        mesh.geometry.deleteAttribute('contactHeat')
+      }
+      const geo = mesh.geometry.clone()
+      ensureHeatAttribute(geo)
+      const overlay = new THREE.Mesh(geo, vehicle._contactMaterial)
       overlay.name = CONTACT_OVERLAY_NAME
       overlay.renderOrder = 1000
       overlay.visible = false
+      overlay.userData.ownsGeometry = true
       mesh.add(overlay)
       vehicle._contactOverlays.push(overlay)
     })
@@ -166,6 +172,7 @@ function disposeContactOverlays(vehicle) {
   if (!vehicle._contactOverlays) return
   for (const overlay of vehicle._contactOverlays) {
     overlay.parent?.remove(overlay)
+    if (overlay.userData.ownsGeometry) overlay.geometry.dispose()
   }
   vehicle._contactOverlays = null
   vehicle._contactMaterial = null
