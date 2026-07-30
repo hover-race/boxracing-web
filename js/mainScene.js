@@ -159,6 +159,7 @@ export class MainScene extends Scene3D {
       selectedPrefab.clone(true),
       selectedCarModel
     )
+    this.carCollisionManager.localVehicle = this.car
 
     this.explosionFx = new ExplosionFX(this.scene)
     

@@ -96,6 +96,7 @@ class CarCollisionManager {
   constructor(physicsWorld) {
     this.physicsWorld = physicsWorld
     this.vehicles = []
+    this.localVehicle = null
     this._fwdA = new THREE.Vector3()
     this._fwdB = new THREE.Vector3()
     ensureGhostPairCallback(physicsWorld)
@@ -114,10 +115,6 @@ class CarCollisionManager {
       return
     }
 
-    for (const vehicle of this.vehicles) {
-      if (vehicle.exploding) continue
-      syncCarGhost(vehicle)
-    }
 
     const handled = new Set()
     let resolved = false
@@ -150,7 +147,10 @@ class CarCollisionManager {
       carCollisionDebug.branch = 'none'
     }
 
-    for (const vehicle of this.vehicles) vehicle.updateCollisionGrayOut()
+    for (const vehicle of this.vehicles){
+      vehicle.updateCollisionGrayOut()
+      syncCarGhost(vehicle)
+    }
   }
 
   resolvePair(a, b) {
@@ -169,8 +169,8 @@ class CarCollisionManager {
 
     if (speedDiff > params.carCollisionSpeedDiffThreshold) {
       carCollisionDebug.branch = 'speedDiffGray'
-      a.startCollisionGrayOut(1000)
-      b.startCollisionGrayOut(1000)
+      if (a !== this.localVehicle) a.startCollisionGrayOut(1000)
+      if (b !== this.localVehicle) b.startCollisionGrayOut(1000)
       return
     }
 

@@ -183,7 +183,7 @@ botFolder.add(params, 'botSteerGain', 0, 5).step(0.1)
 botFolder.add(params, 'botMaxSteer', 0.1, 1).step(0.05)
 botFolder.add(params, 'botSteerRate', 0.01, 0.5).step(0.01)
 botFolder.add(params, 'botMaxOffset', 1, 30).step(1)
-botFolder.add(params, 'botMaxSpeed', 50, 250).step(5)
+botFolder.add(params, 'botMaxSpeed', 20, 250).step(10)
 botFolder.add(params, 'botMaxLatAccel', 4, 25).step(0.5)
 botFolder.add(params, 'botCurvatureSpacing', 3, 25).step(1)
 
