@@ -61,6 +61,32 @@ function horizontalForward(vehicle, out) {
   return out
 }
 
+function pairKey(indexA, indexB) {
+  return indexA < indexB ? `${indexA}:${indexB}` : `${indexB}:${indexA}`
+}
+
+// Deepest penetration per car-ghost pair, read from the manifolds Bullet already
+// built during the last step (no extra narrowphase work).
+function collectPairDepths(physicsWorld, out) {
+  out.clear()
+  const dispatcher = physicsWorld.getDispatcher()
+  const manifoldCount = dispatcher.getNumManifolds()
+  for (let i = 0; i < manifoldCount; i++) {
+    const manifold = dispatcher.getManifoldByIndexInternal(i)
+    const indexA = Ammo.castObject(manifold.getBody0(), Ammo.btCollisionObject).getUserIndex()
+    const indexB = Ammo.castObject(manifold.getBody1(), Ammo.btCollisionObject).getUserIndex()
+    if (!vehiclesByGhostUserIndex.has(indexA) || !vehiclesByGhostUserIndex.has(indexB)) continue
+
+    let depth = 0
+    const contactCount = manifold.getNumContacts()
+    for (let j = 0; j < contactCount; j++) {
+      const distance = manifold.getContactPoint(j).getDistance()
+      if (-distance > depth) depth = -distance
+    }
+    if (depth > 0) out.set(pairKey(indexA, indexB), depth)
+  }
+}
+
 function speedDiffRatio(a, b) {
   const va = Math.abs(a.getSpeed())
   const vb = Math.abs(b.getSpeed())
@@ -78,14 +104,15 @@ function rearAndFront(a, b, fwdA, fwdB) {
   return { rear: b, front: a }
 }
 
-function softPushRear(rear, front) {
+function softPushRear(rear, front, depth) {
   const dx = rear.collisionMesh.position.x - front.collisionMesh.position.x
   const dz = rear.collisionMesh.position.z - front.collisionMesh.position.z
   const len = Math.hypot(dx, dz)
   if (len < 1e-4) return
   const nx = dx / len
   const nz = dz / len
-  const force = params.carCollisionPushForce * rear.mass
+  const depthScale = Math.min(1, depth)
+  const force = params.carCollisionPushForce * rear.mass * depthScale
   const btForce = new Ammo.btVector3(nx * force, 0, nz * force)
   rear.collisionMesh.body.ammo.applyCentralForce(btForce)
   Ammo.destroy(btForce)
@@ -97,6 +124,7 @@ class CarCollisionManager {
     this.physicsWorld = physicsWorld
     this.vehicles = []
     this.localVehicle = null
+    this._pairDepths = new Map()
     this._fwdA = new THREE.Vector3()
     this._fwdB = new THREE.Vector3()
     ensureGhostPairCallback(physicsWorld)
@@ -116,6 +144,8 @@ class CarCollisionManager {
     }
 
 
+    collectPairDepths(this.physicsWorld, this._pairDepths)
+
     const handled = new Set()
     let resolved = false
     for (const vehicle of this.vehicles) {
@@ -127,13 +157,11 @@ class CarCollisionManager {
         const other = vehiclesByGhostUserIndex.get(otherIndex)
         if (!other || other === vehicle || other.exploding) continue
 
-        const a = vehicle.carGhostUserIndex
-        const b = other.carGhostUserIndex
-        const key = a < b ? `${a}:${b}` : `${b}:${a}`
+        const key = pairKey(vehicle.carGhostUserIndex, other.carGhostUserIndex)
         if (handled.has(key)) continue
         handled.add(key)
 
-        this.resolvePair(vehicle, other)
+        this.resolvePair(vehicle, other, this._pairDepths.get(key) ?? 0)
         resolved = true
       }
     }
@@ -144,6 +172,7 @@ class CarCollisionManager {
       carCollisionDebug.speedB = 0
       carCollisionDebug.speedDiff = 0
       carCollisionDebug.fwdDot = 0
+      carCollisionDebug.depth = 0
       carCollisionDebug.branch = 'none'
     }
 
@@ -153,7 +182,7 @@ class CarCollisionManager {
     }
   }
 
-  resolvePair(a, b) {
+  resolvePair(a, b, depth) {
     const speedA = Math.abs(a.getSpeed())
     const speedB = Math.abs(b.getSpeed())
     const speedDiff = speedDiffRatio(a, b)
@@ -166,6 +195,7 @@ class CarCollisionManager {
     carCollisionDebug.speedB = speedB
     carCollisionDebug.speedDiff = speedDiff
     carCollisionDebug.fwdDot = fwdDot
+    carCollisionDebug.depth = depth
 
     if (speedDiff > params.carCollisionSpeedDiffThreshold) {
       carCollisionDebug.branch = 'speedDiffGray'
@@ -181,7 +211,7 @@ class CarCollisionManager {
 
     carCollisionDebug.branch = 'softPushRear'
     const { rear, front } = rearAndFront(a, b, fwdA, fwdB)
-    softPushRear(rear, front)
+    softPushRear(rear, front, depth)
   }
 }
 

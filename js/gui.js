@@ -85,7 +85,7 @@ const params = {
   carCollisionEnabled: true,
   carCollisionSpeedDiffThreshold: 0.2,
   carCollisionSameDirDot: 0.5,
-  carCollisionPushForce: 40,
+  carCollisionPushForce: 18,
   autoSteer: false,
   autoSteerStrength: 1.35,
   botLookahead: 3.5,
@@ -146,6 +146,7 @@ const carCollisionDebug = {
   speedB: 0,
   speedDiff: 0,
   fwdDot: 0,
+  depth: 0,
   branch: 'none',
 }
 
@@ -197,6 +198,7 @@ carCollisionFolder.add(carCollisionDebug, 'speedA', -200, 200).step(0.1).listen(
 carCollisionFolder.add(carCollisionDebug, 'speedB', -200, 200).step(0.1).listen()
 carCollisionFolder.add(carCollisionDebug, 'speedDiff', 0, 1).step(0.001).listen()
 carCollisionFolder.add(carCollisionDebug, 'fwdDot', -1, 1).step(0.01).listen()
+carCollisionFolder.add(carCollisionDebug, 'depth', 0, 1).step(0.001).listen()
 carCollisionFolder.add(carCollisionDebug, 'branch', ['none', 'speedDiffGray', 'oppositeDirSkip', 'softPushRear']).listen()
 
 const debugFolder = gui.addFolder('Debug')
