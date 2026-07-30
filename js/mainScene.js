@@ -418,7 +418,7 @@ export class MainScene extends Scene3D {
     this.car.update(vehicleInputs);
     this.autoSteer?.patchWheelLog(vehicleParams.wheelSteerAngle);
     this.car.updateTireMarks();
-    this.carCollisionManager?.update()
+    this.carCollisionManager?.update(deltaTime / 1000)
 
     this.explosionFx.update(deltaTime / 1000);
     if (params.explosionEnabled && !this.car.exploding && this.car.updateDamage(deltaTime / 1000, this.explosionFx)) {

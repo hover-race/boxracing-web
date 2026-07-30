@@ -110,10 +110,10 @@
         <select id="shader-select"></select>
       </label>
 
-      <h2>Contact clip</h2>
+      <h2>Contact heat</h2>
       <label class="row">
         <input id="contact-enabled" type="checkbox" checked />
-        Red overlay
+        Paint + fade
       </label>
       <label>
         Depth <span id="depth-value" class="value">0.40</span>
@@ -131,7 +131,7 @@
         Height <span id="height-value" class="value">0.30</span>
         <input id="contact-height" type="range" min="-0.2" max="1.2" step="0.01" value="0.3" />
       </label>
-      <p class="hint">drag red sphere · orbit/zoom as usual</p>
+      <p class="hint">drag sphere to paint · red fades out</p>
     </div>
     <div id="viewport"></div>
 
@@ -149,6 +149,7 @@
     <script type="module">
       import { CAR_MODELS, getCarModel, extractCarParts, selectScene } from './js/carModels.js'
       import { BOT_SHADERS, applyBotShader, botColorForIndex } from './js/botShaders.js'
+      import { updateContactHeat, clearContactOverlay, disposeContactOverlays } from './js/contactOverlay.js'
 
       const THREE = window.THREE
       const Scene3D = window.Scene3D
@@ -179,71 +180,6 @@
       }
       shaderSelect.value = params.botShader
 
-      function makeContactOverlayMaterial() {
-        return new THREE.ShaderMaterial({
-          uniforms: {
-            contactPoint: { value: new THREE.Vector3() },
-            contactNormal: { value: new THREE.Vector3(0, 0, -1) },
-            depth: { value: 0.4 },
-            color: { value: new THREE.Color(1.0, 0.08, 0.1) },
-            edgeWidth: { value: 0.035 },
-          },
-          vertexShader: `
-            varying vec3 vWorldPos;
-            varying vec3 vViewNormal;
-            varying vec3 vViewPos;
-            void main() {
-              vec4 world = modelMatrix * vec4(position, 1.0);
-              vWorldPos = world.xyz;
-              vec4 mv = modelViewMatrix * vec4(position, 1.0);
-              vViewPos = mv.xyz;
-              vViewNormal = normalize(normalMatrix * normal);
-              gl_Position = projectionMatrix * mv;
-            }
-          `,
-          fragmentShader: `
-            uniform vec3 contactPoint;
-            uniform vec3 contactNormal;
-            uniform float depth;
-            uniform vec3 color;
-            uniform float edgeWidth;
-            varying vec3 vWorldPos;
-            varying vec3 vViewNormal;
-            varying vec3 vViewPos;
-            void main() {
-              vec3 N = normalize(contactNormal);
-              float s = dot(vWorldPos - contactPoint, N);
-              // N points into the car; keep fragments in [-depth, 0]
-              if (s > 0.0 || s < -depth) discard;
-
-              // Contact-plane rim (front of the slab)
-              float planeEdge = 1.0 - smoothstep(0.0, edgeWidth, -s);
-              // Far face of the slab
-              float backEdge = 1.0 - smoothstep(0.0, edgeWidth, depth + s);
-
-              // Mesh silhouette / crease edges inside the slab (screen-space)
-              vec3 vn = normalize(vViewNormal);
-              float ndv = abs(dot(vn, normalize(-vViewPos)));
-              float sil = pow(1.0 - ndv, 2.2);
-              float crease = 1.0 - smoothstep(0.0, 0.35, length(fwidth(vn)));
-              crease = pow(1.0 - crease, 4.0);
-
-              float edge = max(max(planeEdge, backEdge * 0.65), max(sil, crease));
-              if (edge < 0.08) discard;
-
-              gl_FragColor = vec4(color, clamp(edge, 0.0, 1.0));
-            }
-          `,
-          transparent: true,
-          depthWrite: false,
-          depthTest: true,
-          polygonOffset: true,
-          polygonOffsetFactor: -2,
-          polygonOffsetUnits: -2,
-          side: THREE.FrontSide,
-        })
-      }
-
       class CarShaderTestScene extends Scene3D {
         constructor() {
           super({ key: 'carShaderTest' })
@@ -272,8 +208,6 @@
           this.carProxy = null
           this.carGroup = null
           this.autoSpin = false
-          this.contactOverlays = []
-          this.contactMaterial = makeContactOverlayMaterial()
           this._worldPoint = new THREE.Vector3()
           this._worldNormal = new THREE.Vector3()
           this._raycaster = new THREE.Raycaster()
@@ -295,7 +229,7 @@
           const normalGeom = new THREE.ConeGeometry(0.05, 0.28, 8)
           const normalMat = new THREE.MeshBasicMaterial({ color: 0xff6688 })
           this.contactArrow = new THREE.Mesh(normalGeom, normalMat)
-          this.contactArrow.rotation.x = Math.PI / 2 // point along −Z after placement
+          this.contactArrow.rotation.x = Math.PI / 2
           this.contactArrow.position.z = -0.2
           this.contactAnchor.add(this.contactArrow)
 
@@ -312,7 +246,6 @@
 
           await this.showCar(carSelect.value)
           this.applyShader()
-          this.rebuildContactOverlays()
           this.syncContactFromUi()
         }
 
@@ -347,7 +280,6 @@
           heightInput.value = this.contactAnchor.position.y.toFixed(2)
           forwardInput.value = Math.max(0, this.contactAnchor.position.z).toFixed(2)
           this.syncContactLabels()
-          this.updateContactUniforms()
         }
 
         onPointerUp() {
@@ -371,54 +303,30 @@
             Number(forwardInput.value),
           )
           this.syncContactLabels()
-          this.updateContactUniforms()
-          const on = contactEnabled.checked
-          this.contactAnchor.visible = on
-          for (const overlay of this.contactOverlays) overlay.visible = on
+          this.contactAnchor.visible = contactEnabled.checked
+          if (!contactEnabled.checked && this.carProxy) clearContactOverlay(this.carProxy)
         }
 
-        updateContactUniforms() {
-          if (!this.contactAnchor || !this.carGroup) return
+        currentContact() {
+          if (!contactEnabled.checked || !this.contactAnchor || !this.carGroup) return null
           this.contactAnchor.updateMatrixWorld(true)
+          this.carGroup.updateMatrixWorld(true)
           this.contactAnchor.getWorldPosition(this._worldPoint)
-          // Normal into the car: car local −Z
           this._worldNormal.set(0, 0, -1).transformDirection(this.carGroup.matrixWorld).normalize()
-          const u = this.contactMaterial.uniforms
-          u.contactPoint.value.copy(this._worldPoint)
-          u.contactNormal.value.copy(this._worldNormal)
-          u.depth.value = Number(depthInput.value)
-        }
-
-        clearContactOverlays() {
-          for (const overlay of this.contactOverlays) {
-            overlay.parent?.remove(overlay)
-            overlay.geometry = null
-            overlay.material = null
+          return {
+            point: this._worldPoint,
+            normal: this._worldNormal,
+            depth: Number(depthInput.value),
           }
-          this.contactOverlays = []
-        }
-
-        rebuildContactOverlays() {
-          this.clearContactOverlays()
-          if (!this.carProxy) return
-          const addOverlay = (mesh) => {
-            if (!mesh.isMesh || mesh.userData.isCollisionMesh) return
-            if (mesh.name?.startsWith('__')) return
-            const overlay = new THREE.Mesh(mesh.geometry, this.contactMaterial)
-            overlay.name = '__contact_overlay'
-            overlay.renderOrder = 1000
-            overlay.visible = contactEnabled.checked
-            mesh.add(overlay)
-            this.contactOverlays.push(overlay)
-          }
-          this.carProxy.visualRoot.traverse(addOverlay)
-          for (const wheel of this.carProxy.wheelMeshes ?? []) wheel.traverse(addOverlay)
         }
 
         update(_time, delta) {
           if (this.autoSpin) this.pivot.rotation.y += (delta / 1000) * 0.5
           this.controls?.update()
-          this.updateContactUniforms()
+
+          if (this.carProxy) {
+            updateContactHeat(this.carProxy, this.currentContact(), delta / 1000)
+          }
 
           if ((params.botShader === 'digital' || params.botShader === 'glitch' || params.botShader === 'waves') && this.carProxy) {
             const t = performance.now() * 0.001
@@ -440,7 +348,7 @@
         }
 
         clearPivot() {
-          this.clearContactOverlays()
+          if (this.carProxy) disposeContactOverlays(this.carProxy)
           if (this.contactAnchor.parent) this.contactAnchor.parent.remove(this.contactAnchor)
           while (this.pivot.children.length) {
             this.pivot.remove(this.pivot.children[0])
@@ -493,17 +401,14 @@
           }
           entry.group.add(this.contactAnchor)
           this.applyShader()
-          this.rebuildContactOverlays()
           this.syncContactFromUi()
         }
 
         applyShader() {
           if (!this.carProxy) return
-          this.clearContactOverlays()
+          disposeContactOverlays(this.carProxy)
           params.botShader = shaderSelect.value
           applyBotShader(this.carProxy, params.botShader, botColorForIndex(0, 1))
-          this.rebuildContactOverlays()
-          this.updateContactUniforms()
         }
       }
 

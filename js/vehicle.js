@@ -5,6 +5,7 @@ import { applyBotShader } from './botShaders.js';
 import { playExplosionSound, playImpactSound } from './sfx.js';
 import { extractCarParts } from './carModels.js';
 import { GROUP_CAR, GROUP_TRACK } from './carCollisions.js';
+import { clearContactOverlay } from './contactOverlay.js';
 
 class Vehicle {
   vehicle
@@ -190,6 +191,7 @@ class Vehicle {
 
   startCollisionGrayOut(durationMs = 1000) {
     this.applyCollisionPushTint(0)
+    clearContactOverlay(this)
     this._grayUntil = performance.now() + durationMs
     if (this._grayBackups) return
     this._grayBackups = []

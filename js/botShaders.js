@@ -26,7 +26,7 @@ function botColorForIndex(i, n) {
   return new THREE.Color().setHSL((i / Math.max(1, n)) % 1, 0.9, 0.55)
 }
 
-const BOT_EXTRA_NAMES = ['__bot_outline', '__bot_inside']
+const BOT_EXTRA_NAMES = ['__bot_outline', '__bot_inside', '__contact_overlay']
 
 function botBodyMeshes(chassis) {
   const meshes = []
