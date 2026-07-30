@@ -62,21 +62,9 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
-      .panel label.row {
-        flex-direction: row;
-        align-items: center;
-        gap: 10px;
-        text-transform: none;
-        letter-spacing: 0;
-        font-size: 13px;
-        color: #ddd;
-      }
-      .panel select,
-      .panel input[type="range"] {
-        width: 100%;
-      }
       .panel select {
         appearance: none;
+        width: 100%;
         padding: 8px 10px;
         border: 1px solid rgba(255, 255, 255, 0.16);
         border-radius: 6px;
@@ -87,14 +75,25 @@
       .panel select:focus {
         outline: 1px solid rgba(255, 255, 255, 0.35);
       }
+      .panel button {
+        appearance: none;
+        padding: 10px 12px;
+        border: 1px solid rgba(255, 80, 90, 0.45);
+        border-radius: 6px;
+        background: #2a1214;
+        color: #ff8a90;
+        font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .panel button:hover {
+        background: #3a181c;
+      }
       .hint {
         margin: 0;
         color: #777;
         font-size: 11px;
-      }
-      .value {
-        color: #aaa;
-        font-variant-numeric: tabular-nums;
       }
     </style>
   </head>
@@ -110,28 +109,9 @@
         <select id="shader-select"></select>
       </label>
 
-      <h2>Contact heat</h2>
-      <label class="row">
-        <input id="contact-enabled" type="checkbox" checked />
-        Paint + fade
-      </label>
-      <label>
-        Depth <span id="depth-value" class="value">0.40</span>
-        <input id="contact-depth" type="range" min="0.02" max="1.5" step="0.01" value="0.4" />
-      </label>
-      <label>
-        Forward <span id="forward-value" class="value">1.20</span>
-        <input id="contact-forward" type="range" min="0" max="2.5" step="0.01" value="1.2" />
-      </label>
-      <label>
-        Lateral <span id="lateral-value" class="value">0.00</span>
-        <input id="contact-lateral" type="range" min="-1.2" max="1.2" step="0.01" value="0" />
-      </label>
-      <label>
-        Height <span id="height-value" class="value">0.30</span>
-        <input id="contact-height" type="range" min="-0.2" max="1.2" step="0.01" value="0.3" />
-      </label>
-      <p class="hint">drag sphere to paint · red fades out</p>
+      <h2>Heat wave</h2>
+      <button id="heat-btn" type="button">Heat</button>
+      <p class="hint">front → back pulse · drag to orbit</p>
     </div>
     <div id="viewport"></div>
 
@@ -149,22 +129,14 @@
     <script type="module">
       import { CAR_MODELS, getCarModel, extractCarParts, selectScene } from './js/carModels.js'
       import { BOT_SHADERS, applyBotShader, botColorForIndex } from './js/botShaders.js'
-      import { updateContactHeat, clearContactOverlay, disposeContactOverlays } from './js/contactOverlay.js'
+      import { triggerHeatWave, updateContactHeat, disposeContactOverlays } from './js/contactOverlay.js'
 
       const THREE = window.THREE
       const Scene3D = window.Scene3D
       const params = window.params
       const carSelect = document.getElementById('car-select')
       const shaderSelect = document.getElementById('shader-select')
-      const contactEnabled = document.getElementById('contact-enabled')
-      const depthInput = document.getElementById('contact-depth')
-      const forwardInput = document.getElementById('contact-forward')
-      const lateralInput = document.getElementById('contact-lateral')
-      const heightInput = document.getElementById('contact-height')
-      const depthValue = document.getElementById('depth-value')
-      const forwardValue = document.getElementById('forward-value')
-      const lateralValue = document.getElementById('lateral-value')
-      const heightValue = document.getElementById('height-value')
+      const heatBtn = document.getElementById('heat-btn')
 
       for (const model of CAR_MODELS) {
         const opt = document.createElement('option')
@@ -208,125 +180,31 @@
           this.carProxy = null
           this.carGroup = null
           this.autoSpin = false
-          this._worldPoint = new THREE.Vector3()
-          this._worldNormal = new THREE.Vector3()
-          this._raycaster = new THREE.Raycaster()
-          this._pointer = new THREE.Vector2()
-          this._dragPlane = new THREE.Plane()
-          this._dragHit = new THREE.Vector3()
-          this._dragging = false
-
-          this.contactAnchor = new THREE.Group()
-          this.contactAnchor.name = '__contact_anchor'
-          const marker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08, 16, 12),
-            new THREE.MeshBasicMaterial({ color: 0xff2244 }),
-          )
-          marker.name = '__contact_marker'
-          this.contactMarker = marker
-          this.contactAnchor.add(marker)
-
-          const normalGeom = new THREE.ConeGeometry(0.05, 0.28, 8)
-          const normalMat = new THREE.MeshBasicMaterial({ color: 0xff6688 })
-          this.contactArrow = new THREE.Mesh(normalGeom, normalMat)
-          this.contactArrow.rotation.x = Math.PI / 2
-          this.contactArrow.position.z = -0.2
-          this.contactAnchor.add(this.contactArrow)
+          this._waveOrigin = new THREE.Vector3()
+          this._waveDir = new THREE.Vector3()
 
           this.controls = orbitControls
           this.controls.target.set(0, 0.45, 0)
           this.controls.enableDamping = true
 
-          this._onPointerDown = (e) => this.onPointerDown(e)
-          this._onPointerMove = (e) => this.onPointerMove(e)
-          this._onPointerUp = () => this.onPointerUp()
-          this.renderer.domElement.addEventListener('pointerdown', this._onPointerDown)
-          window.addEventListener('pointermove', this._onPointerMove)
-          window.addEventListener('pointerup', this._onPointerUp)
-
           await this.showCar(carSelect.value)
           this.applyShader()
-          this.syncContactFromUi()
         }
 
-        setPointer(event) {
-          const rect = this.renderer.domElement.getBoundingClientRect()
-          this._pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-          this._pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-        }
-
-        onPointerDown(event) {
-          if (!contactEnabled.checked || !this.contactMarker) return
-          this.setPointer(event)
-          this._raycaster.setFromCamera(this._pointer, this.camera)
-          const hits = this._raycaster.intersectObject(this.contactMarker, false)
-          if (!hits.length) return
-          this._dragging = true
-          this.controls.enabled = false
-          this.contactAnchor.getWorldPosition(this._worldPoint)
-          const camDir = new THREE.Vector3()
-          this.camera.getWorldDirection(camDir)
-          this._dragPlane.setFromNormalAndCoplanarPoint(camDir.negate(), this._worldPoint)
-        }
-
-        onPointerMove(event) {
-          if (!this._dragging || !this.carGroup) return
-          this.setPointer(event)
-          this._raycaster.setFromCamera(this._pointer, this.camera)
-          if (!this._raycaster.ray.intersectPlane(this._dragPlane, this._dragHit)) return
-          this.carGroup.worldToLocal(this._dragHit)
-          this.contactAnchor.position.copy(this._dragHit)
-          lateralInput.value = this.contactAnchor.position.x.toFixed(2)
-          heightInput.value = this.contactAnchor.position.y.toFixed(2)
-          forwardInput.value = Math.max(0, this.contactAnchor.position.z).toFixed(2)
-          this.syncContactLabels()
-        }
-
-        onPointerUp() {
-          if (!this._dragging) return
-          this._dragging = false
-          this.controls.enabled = true
-        }
-
-        syncContactLabels() {
-          depthValue.textContent = Number(depthInput.value).toFixed(2)
-          forwardValue.textContent = Number(forwardInput.value).toFixed(2)
-          lateralValue.textContent = Number(lateralInput.value).toFixed(2)
-          heightValue.textContent = Number(heightInput.value).toFixed(2)
-        }
-
-        syncContactFromUi() {
-          if (!this.contactAnchor) return
-          this.contactAnchor.position.set(
-            Number(lateralInput.value),
-            Number(heightInput.value),
-            Number(forwardInput.value),
-          )
-          this.syncContactLabels()
-          this.contactAnchor.visible = contactEnabled.checked
-          if (!contactEnabled.checked && this.carProxy) clearContactOverlay(this.carProxy)
-        }
-
-        currentContact() {
-          if (!contactEnabled.checked || !this.contactAnchor || !this.carGroup) return null
-          this.contactAnchor.updateMatrixWorld(true)
+        fireHeatWave() {
+          if (!this.carProxy || !this.carGroup) return
           this.carGroup.updateMatrixWorld(true)
-          this.contactAnchor.getWorldPosition(this._worldPoint)
-          this._worldNormal.set(0, 0, -1).transformDirection(this.carGroup.matrixWorld).normalize()
-          return {
-            point: this._worldPoint,
-            normal: this._worldNormal,
-            depth: Number(depthInput.value),
-          }
+          // Origin at nose, direction toward tail (car local −Z), same as front→rear COM axis.
+          this._waveOrigin.set(0, 0.35, 1.35).applyMatrix4(this.carGroup.matrixWorld)
+          this._waveDir.set(0, 0, -1).transformDirection(this.carGroup.matrixWorld)
+          triggerHeatWave(this.carProxy, this._waveOrigin, this._waveDir)
         }
 
         update(_time, delta) {
           if (this.autoSpin) this.pivot.rotation.y += (delta / 1000) * 0.5
           this.controls?.update()
 
-          if (this.carProxy) {
-            updateContactHeat(this.carProxy, this.currentContact(), delta / 1000)
-          }
+          if (this.carProxy) updateContactHeat(this.carProxy, delta / 1000)
 
           if ((params.botShader === 'digital' || params.botShader === 'glitch' || params.botShader === 'waves') && this.carProxy) {
             const t = performance.now() * 0.001
@@ -349,7 +227,6 @@
 
         clearPivot() {
           if (this.carProxy) disposeContactOverlays(this.carProxy)
-          if (this.contactAnchor.parent) this.contactAnchor.parent.remove(this.contactAnchor)
           while (this.pivot.children.length) {
             this.pivot.remove(this.pivot.children[0])
           }
@@ -399,9 +276,7 @@
             visualRoot: entry.visualRoot,
             wheelMeshes: entry.wheelMeshes,
           }
-          entry.group.add(this.contactAnchor)
           this.applyShader()
-          this.syncContactFromUi()
         }
 
         applyShader() {
@@ -424,9 +299,7 @@
 
       carSelect.addEventListener('change', () => scene()?.showCar(carSelect.value))
       shaderSelect.addEventListener('change', () => scene()?.applyShader())
-      for (const el of [contactEnabled, depthInput, forwardInput, lateralInput, heightInput]) {
-        el.addEventListener('input', () => scene()?.syncContactFromUi())
-      }
+      heatBtn.addEventListener('click', () => scene()?.fireHeatWave())
     </script>
   </body>
 </html>

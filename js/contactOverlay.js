@@ -1,10 +1,12 @@
-// Contact heat paint: verts in the penetration slab get heated, then fade back.
-// Avoids noisy tracking of jittery Ammo contact points.
+// One-shot heat wave along an axis (front car → rear car). Paints verts under the
+// traveling band, then fades — no Ammo contact points.
 
 export const CONTACT_OVERLAY_NAME = '__contact_overlay'
 
-const PAINT_SMOOTH = 0.18
-const HEAT_FADE_PER_SEC = 2.8
+const HEAT_FADE_PER_SEC = 2.4
+const WAVE_SPEED = 7.5
+const WAVE_WIDTH = 0.55
+const WAVE_TRAVEL = 5.5
 
 function makeContactOverlayMaterial() {
   return new THREE.ShaderMaterial({
@@ -51,11 +53,8 @@ function ensureContactOverlays(vehicle) {
   if (vehicle._contactOverlays?.length) return
   vehicle._contactMaterial = makeContactOverlayMaterial()
   vehicle._contactOverlays = []
-  vehicle._smoothContactPoint = new THREE.Vector3()
-  vehicle._smoothContactNormal = new THREE.Vector3(0, 0, -1)
-  vehicle._smoothContactDepth = 0
-  vehicle._contactSmoothReady = false
   vehicle._heatWorldPos = new THREE.Vector3()
+  vehicle._heatWave = null
 
   const roots = [vehicle.visualRoot, ...(vehicle.wheelMeshes ?? [])]
   for (const root of roots) {
@@ -73,28 +72,48 @@ function ensureContactOverlays(vehicle) {
   }
 }
 
-function updateContactHeat(vehicle, contact, dt = 1 / 60) {
+function hasActiveHeatWave(vehicle) {
+  return !!vehicle._heatWave?.active
+}
+
+// origin: world start (near front car / nose). direction: front → rear (into the rear car).
+function triggerHeatWave(vehicle, origin, direction, {
+  speed = WAVE_SPEED,
+  width = WAVE_WIDTH,
+  travel = WAVE_TRAVEL,
+} = {}) {
+  ensureContactOverlays(vehicle)
+  const dir = direction.clone()
+  dir.y = 0
+  if (dir.lengthSq() < 1e-8) dir.set(0, 0, -1)
+  else dir.normalize()
+
+  vehicle._heatWave = {
+    origin: origin.clone(),
+    dir,
+    t: -width,
+    speed,
+    width,
+    maxT: travel,
+    active: true,
+  }
+}
+
+function updateContactHeat(vehicle, dt = 1 / 60) {
   ensureContactOverlays(vehicle)
   const fade = Math.exp(-HEAT_FADE_PER_SEC * dt)
-  const paint = !!(contact && contact.depth > 1e-4)
-
-  if (paint) {
-    if (!vehicle._contactSmoothReady) {
-      vehicle._smoothContactPoint.copy(contact.point)
-      vehicle._smoothContactNormal.copy(contact.normal).normalize()
-      vehicle._smoothContactDepth = contact.depth
-      vehicle._contactSmoothReady = true
-    } else {
-      vehicle._smoothContactPoint.lerp(contact.point, PAINT_SMOOTH)
-      vehicle._smoothContactNormal.lerp(contact.normal, PAINT_SMOOTH).normalize()
-      vehicle._smoothContactDepth += (contact.depth - vehicle._smoothContactDepth) * PAINT_SMOOTH
-    }
+  const wave = vehicle._heatWave
+  if (wave?.active) {
+    wave.t += wave.speed * dt
+    if (wave.t > wave.maxT) wave.active = false
   }
 
-  const C = vehicle._smoothContactPoint
-  const N = vehicle._smoothContactNormal
-  const D = Math.max(vehicle._smoothContactDepth, 0)
   const worldPos = vehicle._heatWorldPos
+  const painting = !!(wave?.active)
+  const O = wave?.origin
+  const D = wave?.dir
+  const crest = wave?.t ?? 0
+  const halfW = wave?.width ?? 0
   let anyHot = false
 
   for (const overlay of vehicle._contactOverlays) {
@@ -108,10 +127,17 @@ function updateContactHeat(vehicle, contact, dt = 1 / 60) {
 
     for (let i = 0; i < pos.count; i++) {
       let h = arr[i] * fade
-      if (paint && D > 1e-4) {
+      if (painting) {
         worldPos.fromBufferAttribute(pos, i).applyMatrix4(mw)
-        const s = (worldPos.x - C.x) * N.x + (worldPos.y - C.y) * N.y + (worldPos.z - C.z) * N.z
-        if (s <= 0 && s >= -D) h = Math.max(h, 1)
+        const along =
+          (worldPos.x - O.x) * D.x +
+          (worldPos.y - O.y) * D.y +
+          (worldPos.z - O.z) * D.z
+        const dist = Math.abs(along - crest)
+        if (dist < halfW) {
+          const falloff = 1 - dist / halfW
+          h = Math.max(h, falloff * falloff)
+        }
       }
       arr[i] = h
       if (h > 0.02) anyHot = true
@@ -120,7 +146,7 @@ function updateContactHeat(vehicle, contact, dt = 1 / 60) {
     overlay.visible = anyHot
   }
 
-  if (!paint && !anyHot) vehicle._contactSmoothReady = false
+  if (!painting && !anyHot) vehicle._heatWave = null
 }
 
 function clearContactOverlay(vehicle) {
@@ -133,7 +159,7 @@ function clearContactOverlay(vehicle) {
     }
     overlay.visible = false
   }
-  vehicle._contactSmoothReady = false
+  vehicle._heatWave = null
 }
 
 function disposeContactOverlays(vehicle) {
@@ -143,12 +169,14 @@ function disposeContactOverlays(vehicle) {
   }
   vehicle._contactOverlays = null
   vehicle._contactMaterial = null
-  vehicle._contactSmoothReady = false
+  vehicle._heatWave = null
 }
 
 export {
   makeContactOverlayMaterial,
   ensureContactOverlays,
+  triggerHeatWave,
+  hasActiveHeatWave,
   updateContactHeat,
   clearContactOverlay,
   disposeContactOverlays,

@@ -1,4 +1,4 @@
-import { updateContactHeat, clearContactOverlay } from './contactOverlay.js'
+import { updateContactHeat, clearContactOverlay, triggerHeatWave, hasActiveHeatWave } from './contactOverlay.js'
 
 export const GROUP_TRACK = 1
 export const GROUP_CAR = 2
@@ -137,14 +137,12 @@ function softPushRear(rear, front, contact) {
   rear.collisionMesh.body.ammo.applyCentralForce(btForce)
   Ammo.destroy(btForce)
 
-  if (!contact?.point) return
-  const point = rear._contactPoint ?? (rear._contactPoint = new THREE.Vector3())
-  const normal = rear._contactNormal ?? (rear._contactNormal = new THREE.Vector3())
-  point.set(contact.point.x, contact.point.y, contact.point.z)
-  normal.set(contact.normalOnB.x, contact.normalOnB.y, contact.normalOnB.z)
-  // normalOnB points toward A; flip when rear is B so normal always points into rear.
-  if (rear.carGhostUserIndex === contact.indexB) normal.negate()
-  rear._desiredContact = { point, normal, depth }
+  if (!hasActiveHeatWave(rear)) {
+    const origin = front.collisionMesh.position
+    const dir = rear._waveDir ?? (rear._waveDir = new THREE.Vector3())
+    dir.set(nx, 0, nz)
+    triggerHeatWave(rear, origin, dir)
+  }
 }
 
 // TODO do we need a class?
@@ -178,7 +176,6 @@ class CarCollisionManager {
 
     for (const vehicle of this.vehicles) {
       vehicle._desiredPushTint = 0
-      vehicle._desiredContact = null
     }
 
     collectPairContacts(this.physicsWorld, this._pairContacts)
@@ -215,7 +212,7 @@ class CarCollisionManager {
 
     for (const vehicle of this.vehicles) {
       vehicle.applyCollisionPushTint(vehicle._desiredPushTint)
-      updateContactHeat(vehicle, vehicle._desiredContact, dt)
+      updateContactHeat(vehicle, dt)
       vehicle.updateCollisionGrayOut()
       syncCarGhost(vehicle)
     }
