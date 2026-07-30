@@ -116,6 +116,7 @@ function softPushRear(rear, front, depth) {
   const btForce = new Ammo.btVector3(nx * force, 0, nz * force)
   rear.collisionMesh.body.ammo.applyCentralForce(btForce)
   Ammo.destroy(btForce)
+  rear._desiredPushTint = Math.max(rear._desiredPushTint, depthScale)
 }
 
 // TODO do we need a class?
@@ -137,12 +138,16 @@ class CarCollisionManager {
 
   update() {
     if (!params.carCollisionEnabled) {
-      for (const vehicle of this.vehicles) vehicle.updateCollisionGrayOut()
+      for (const vehicle of this.vehicles) {
+        vehicle.applyCollisionPushTint(0)
+        vehicle.updateCollisionGrayOut()
+      }
       carCollisionDebug.overlapping = false
       carCollisionDebug.branch = 'none'
       return
     }
 
+    for (const vehicle of this.vehicles) vehicle._desiredPushTint = 0
 
     collectPairDepths(this.physicsWorld, this._pairDepths)
 
@@ -176,7 +181,8 @@ class CarCollisionManager {
       carCollisionDebug.branch = 'none'
     }
 
-    for (const vehicle of this.vehicles){
+    for (const vehicle of this.vehicles) {
+      vehicle.applyCollisionPushTint(vehicle._desiredPushTint)
       vehicle.updateCollisionGrayOut()
       syncCarGhost(vehicle)
     }

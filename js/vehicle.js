@@ -133,6 +133,9 @@ class Vehicle {
     })
     this._grayUntil = 0
     this._grayBackups = null
+    this._pushTintBackups = null
+    this._pushTintAmount = 0
+    this._desiredPushTint = 0
     this.tcsIndicator = document.getElementById('tcs-indicator')
     this.escIndicator = document.getElementById('esc-indicator')
 
@@ -186,6 +189,7 @@ class Vehicle {
   }
 
   startCollisionGrayOut(durationMs = 1000) {
+    this.applyCollisionPushTint(0)
     this._grayUntil = performance.now() + durationMs
     if (this._grayBackups) return
     this._grayBackups = []
@@ -221,6 +225,51 @@ class Vehicle {
       backup.material.depthWrite = backup.depthWrite
     }
     this._grayBackups = null
+  }
+
+  applyCollisionPushTint(amount) {
+    amount = Math.min(1, Math.max(0, amount))
+    if (this._grayBackups) {
+      this._pushTintAmount = 0
+      this._pushTintBackups = null
+      return
+    }
+    if (amount === this._pushTintAmount && (amount === 0) === !this._pushTintBackups) return
+
+    if (amount <= 0) {
+      for (const backup of this._pushTintBackups ?? []) {
+        if (backup.color && backup.material.color) backup.material.color.copy(backup.color)
+      }
+      this._pushTintBackups = null
+      this._pushTintAmount = 0
+      return
+    }
+
+    if (!this._pushTintBackups) {
+      this._pushTintBackups = []
+      for (const root of this._collisionVisualRoots()) {
+        root.traverse(child => {
+          if (!child.isMesh || !child.material || child.userData.isCollisionMesh) return
+          const materials = Array.isArray(child.material) ? child.material : [child.material]
+          for (const material of materials) {
+            if (!material.color) continue
+            this._pushTintBackups.push({
+              material,
+              color: material.color.clone(),
+            })
+          }
+        })
+      }
+    }
+
+    for (const backup of this._pushTintBackups) {
+      backup.material.color.setRGB(
+        backup.color.r + (1 - backup.color.r) * amount,
+        backup.color.g * (1 - amount),
+        backup.color.b * (1 - amount),
+      )
+    }
+    this._pushTintAmount = amount
   }
 
   syncBodyTransform(position, quaternion) {

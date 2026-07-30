@@ -153,7 +153,7 @@ const carCollisionDebug = {
 gui.useLocalStorage = true
 gui.remember(params)
 
-gui.add(params, 'botShader', ['none', 'outline', 'fresnel', 'solid', 'xray']).onChange(() => window.refreshBotShader?.())
+gui.add(params, 'botShader', ['none', 'outline', 'fresnel', 'solid', 'xray', 'digital', 'glitch', 'waves']).onChange(() => window.refreshBotShader?.())
 gui.add(params, 'botOutlineThickness', 0.005, 0.06).step(0.001).onChange(() => window.refreshBotShader?.())
 gui.add(params, 'smokeEnabled')
 const soundVolumeController = gui.add(params, 'soundVolume', 0, 100).step(1)

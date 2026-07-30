@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Car Shader Test</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0a0a0a;
+        color: #ececec;
+        font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      #viewport {
+        position: fixed;
+        inset: 0;
+      }
+      #viewport canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+      }
+      .panel {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px 18px;
+        border-radius: 10px;
+        background:
+          repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 4px),
+          linear-gradient(180deg, #171717 0%, #0f0f0f 100%);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.04),
+          0 18px 40px rgba(0, 0, 0, 0.55);
+        min-width: 240px;
+      }
+      .panel h1 {
+        margin: 0 0 4px;
+        font: 900 15px/1 "Arial Black", Arial, sans-serif;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .panel h2 {
+        margin: 8px 0 0;
+        font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.1em;
+        color: #888;
+        text-transform: uppercase;
+      }
+      .panel label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        color: #b8b8b8;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .panel label.row {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        text-transform: none;
+        letter-spacing: 0;
+        font-size: 13px;
+        color: #ddd;
+      }
+      .panel select,
+      .panel input[type="range"] {
+        width: 100%;
+      }
+      .panel select {
+        appearance: none;
+        padding: 8px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 6px;
+        background: #1c1c1c;
+        color: #fff;
+        font: 13px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .panel select:focus {
+        outline: 1px solid rgba(255, 255, 255, 0.35);
+      }
+      .hint {
+        margin: 0;
+        color: #777;
+        font-size: 11px;
+      }
+      .value {
+        color: #aaa;
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="panel">
+      <h1>Car Shader</h1>
+      <label>
+        Model
+        <select id="car-select"></select>
+      </label>
+      <label>
+        Shader
+        <select id="shader-select"></select>
+      </label>
+
+      <h2>Contact clip</h2>
+      <label class="row">
+        <input id="contact-enabled" type="checkbox" checked />
+        Red overlay
+      </label>
+      <label>
+        Depth <span id="depth-value" class="value">0.40</span>
+        <input id="contact-depth" type="range" min="0.02" max="1.5" step="0.01" value="0.4" />
+      </label>
+      <label>
+        Forward <span id="forward-value" class="value">1.20</span>
+        <input id="contact-forward" type="range" min="0" max="2.5" step="0.01" value="1.2" />
+      </label>
+      <label>
+        Lateral <span id="lateral-value" class="value">0.00</span>
+        <input id="contact-lateral" type="range" min="-1.2" max="1.2" step="0.01" value="0" />
+      </label>
+      <label>
+        Height <span id="height-value" class="value">0.30</span>
+        <input id="contact-height" type="range" min="-0.2" max="1.2" step="0.01" value="0.3" />
+      </label>
+      <p class="hint">drag red sphere · orbit/zoom as usual</p>
+    </div>
+    <div id="viewport"></div>
+
+    <script src="lib/enable3d.framework.0.25.4.min.js"></script>
+    <script>
+      const { THREE, Scene3D, Project } = ENABLE3D
+      window.THREE = THREE
+      window.Scene3D = Scene3D
+      window.Project = Project
+      window.params = {
+        botShader: 'none',
+        botOutlineThickness: 0.02,
+      }
+    </script>
+    <script type="module">
+      import { CAR_MODELS, getCarModel, extractCarParts, selectScene } from './js/carModels.js'
+      import { BOT_SHADERS, applyBotShader, botColorForIndex } from './js/botShaders.js'
+
+      const THREE = window.THREE
+      const Scene3D = window.Scene3D
+      const params = window.params
+      const carSelect = document.getElementById('car-select')
+      const shaderSelect = document.getElementById('shader-select')
+      const contactEnabled = document.getElementById('contact-enabled')
+      const depthInput = document.getElementById('contact-depth')
+      const forwardInput = document.getElementById('contact-forward')
+      const lateralInput = document.getElementById('contact-lateral')
+      const heightInput = document.getElementById('contact-height')
+      const depthValue = document.getElementById('depth-value')
+      const forwardValue = document.getElementById('forward-value')
+      const lateralValue = document.getElementById('lateral-value')
+      const heightValue = document.getElementById('height-value')
+
+      for (const model of CAR_MODELS) {
+        const opt = document.createElement('option')
+        opt.value = model.car_id
+        opt.textContent = model.displayName
+        carSelect.appendChild(opt)
+      }
+      for (const name of BOT_SHADERS) {
+        const opt = document.createElement('option')
+        opt.value = name
+        opt.textContent = name
+        shaderSelect.appendChild(opt)
+      }
+      shaderSelect.value = params.botShader
+
+      function makeContactOverlayMaterial() {
+        return new THREE.ShaderMaterial({
+          uniforms: {
+            contactPoint: { value: new THREE.Vector3() },
+            contactNormal: { value: new THREE.Vector3(0, 0, -1) },
+            depth: { value: 0.4 },
+            color: { value: new THREE.Color(1.0, 0.08, 0.1) },
+            edgeWidth: { value: 0.035 },
+          },
+          vertexShader: `
+            varying vec3 vWorldPos;
+            varying vec3 vViewNormal;
+            varying vec3 vViewPos;
+            void main() {
+              vec4 world = modelMatrix * vec4(position, 1.0);
+              vWorldPos = world.xyz;
+              vec4 mv = modelViewMatrix * vec4(position, 1.0);
+              vViewPos = mv.xyz;
+              vViewNormal = normalize(normalMatrix * normal);
+              gl_Position = projectionMatrix * mv;
+            }
+          `,
+          fragmentShader: `
+            uniform vec3 contactPoint;
+            uniform vec3 contactNormal;
+            uniform float depth;
+            uniform vec3 color;
+            uniform float edgeWidth;
+            varying vec3 vWorldPos;
+            varying vec3 vViewNormal;
+            varying vec3 vViewPos;
+            void main() {
+              vec3 N = normalize(contactNormal);
+              float s = dot(vWorldPos - contactPoint, N);
+              // N points into the car; keep fragments in [-depth, 0]
+              if (s > 0.0 || s < -depth) discard;
+
+              // Contact-plane rim (front of the slab)
+              float planeEdge = 1.0 - smoothstep(0.0, edgeWidth, -s);
+              // Far face of the slab
+              float backEdge = 1.0 - smoothstep(0.0, edgeWidth, depth + s);
+
+              // Mesh silhouette / crease edges inside the slab (screen-space)
+              vec3 vn = normalize(vViewNormal);
+              float ndv = abs(dot(vn, normalize(-vViewPos)));
+              float sil = pow(1.0 - ndv, 2.2);
+              float crease = 1.0 - smoothstep(0.0, 0.35, length(fwidth(vn)));
+              crease = pow(1.0 - crease, 4.0);
+
+              float edge = max(max(planeEdge, backEdge * 0.65), max(sil, crease));
+              if (edge < 0.08) discard;
+
+              gl_FragColor = vec4(color, clamp(edge, 0.0, 1.0));
+            }
+          `,
+          transparent: true,
+          depthWrite: false,
+          depthTest: true,
+          polygonOffset: true,
+          polygonOffsetFactor: -2,
+          polygonOffsetUnits: -2,
+          side: THREE.FrontSide,
+        })
+      }
+
+      class CarShaderTestScene extends Scene3D {
+        constructor() {
+          super({ key: 'carShaderTest' })
+        }
+
+        async create() {
+          const { orbitControls } = await this.warpSpeed('-ground', '-sky', '-light')
+          this.renderer.setClearColor(0x0a0a0a)
+          this.camera.fov = 35
+          this.camera.position.set(4.2, 1.8, 5.8)
+          this.camera.lookAt(0, 0.5, 0)
+          this.camera.updateProjectionMatrix()
+
+          this.scene.add(new THREE.AmbientLight(0xffffff, 1.2))
+          const key = new THREE.DirectionalLight(0xffffff, 1.5)
+          key.position.set(4, 8, 2)
+          this.scene.add(key)
+          const fill = new THREE.DirectionalLight(0xffffff, 0.45)
+          fill.position.set(-4, 2, -3)
+          this.scene.add(fill)
+
+          this.pivot = new THREE.Group()
+          this.scene.add(this.pivot)
+          this.cache = new Map()
+          this.loadToken = 0
+          this.carProxy = null
+          this.carGroup = null
+          this.autoSpin = false
+          this.contactOverlays = []
+          this.contactMaterial = makeContactOverlayMaterial()
+          this._worldPoint = new THREE.Vector3()
+          this._worldNormal = new THREE.Vector3()
+          this._raycaster = new THREE.Raycaster()
+          this._pointer = new THREE.Vector2()
+          this._dragPlane = new THREE.Plane()
+          this._dragHit = new THREE.Vector3()
+          this._dragging = false
+
+          this.contactAnchor = new THREE.Group()
+          this.contactAnchor.name = '__contact_anchor'
+          const marker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.08, 16, 12),
+            new THREE.MeshBasicMaterial({ color: 0xff2244 }),
+          )
+          marker.name = '__contact_marker'
+          this.contactMarker = marker
+          this.contactAnchor.add(marker)
+
+          const normalGeom = new THREE.ConeGeometry(0.05, 0.28, 8)
+          const normalMat = new THREE.MeshBasicMaterial({ color: 0xff6688 })
+          this.contactArrow = new THREE.Mesh(normalGeom, normalMat)
+          this.contactArrow.rotation.x = Math.PI / 2 // point along −Z after placement
+          this.contactArrow.position.z = -0.2
+          this.contactAnchor.add(this.contactArrow)
+
+          this.controls = orbitControls
+          this.controls.target.set(0, 0.45, 0)
+          this.controls.enableDamping = true
+
+          this._onPointerDown = (e) => this.onPointerDown(e)
+          this._onPointerMove = (e) => this.onPointerMove(e)
+          this._onPointerUp = () => this.onPointerUp()
+          this.renderer.domElement.addEventListener('pointerdown', this._onPointerDown)
+          window.addEventListener('pointermove', this._onPointerMove)
+          window.addEventListener('pointerup', this._onPointerUp)
+
+          await this.showCar(carSelect.value)
+          this.applyShader()
+          this.rebuildContactOverlays()
+          this.syncContactFromUi()
+        }
+
+        setPointer(event) {
+          const rect = this.renderer.domElement.getBoundingClientRect()
+          this._pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+          this._pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+        }
+
+        onPointerDown(event) {
+          if (!contactEnabled.checked || !this.contactMarker) return
+          this.setPointer(event)
+          this._raycaster.setFromCamera(this._pointer, this.camera)
+          const hits = this._raycaster.intersectObject(this.contactMarker, false)
+          if (!hits.length) return
+          this._dragging = true
+          this.controls.enabled = false
+          this.contactAnchor.getWorldPosition(this._worldPoint)
+          const camDir = new THREE.Vector3()
+          this.camera.getWorldDirection(camDir)
+          this._dragPlane.setFromNormalAndCoplanarPoint(camDir.negate(), this._worldPoint)
+        }
+
+        onPointerMove(event) {
+          if (!this._dragging || !this.carGroup) return
+          this.setPointer(event)
+          this._raycaster.setFromCamera(this._pointer, this.camera)
+          if (!this._raycaster.ray.intersectPlane(this._dragPlane, this._dragHit)) return
+          this.carGroup.worldToLocal(this._dragHit)
+          this.contactAnchor.position.copy(this._dragHit)
+          lateralInput.value = this.contactAnchor.position.x.toFixed(2)
+          heightInput.value = this.contactAnchor.position.y.toFixed(2)
+          forwardInput.value = Math.max(0, this.contactAnchor.position.z).toFixed(2)
+          this.syncContactLabels()
+          this.updateContactUniforms()
+        }
+
+        onPointerUp() {
+          if (!this._dragging) return
+          this._dragging = false
+          this.controls.enabled = true
+        }
+
+        syncContactLabels() {
+          depthValue.textContent = Number(depthInput.value).toFixed(2)
+          forwardValue.textContent = Number(forwardInput.value).toFixed(2)
+          lateralValue.textContent = Number(lateralInput.value).toFixed(2)
+          heightValue.textContent = Number(heightInput.value).toFixed(2)
+        }
+
+        syncContactFromUi() {
+          if (!this.contactAnchor) return
+          this.contactAnchor.position.set(
+            Number(lateralInput.value),
+            Number(heightInput.value),
+            Number(forwardInput.value),
+          )
+          this.syncContactLabels()
+          this.updateContactUniforms()
+          const on = contactEnabled.checked
+          this.contactAnchor.visible = on
+          for (const overlay of this.contactOverlays) overlay.visible = on
+        }
+
+        updateContactUniforms() {
+          if (!this.contactAnchor || !this.carGroup) return
+          this.contactAnchor.updateMatrixWorld(true)
+          this.contactAnchor.getWorldPosition(this._worldPoint)
+          // Normal into the car: car local −Z
+          this._worldNormal.set(0, 0, -1).transformDirection(this.carGroup.matrixWorld).normalize()
+          const u = this.contactMaterial.uniforms
+          u.contactPoint.value.copy(this._worldPoint)
+          u.contactNormal.value.copy(this._worldNormal)
+          u.depth.value = Number(depthInput.value)
+        }
+
+        clearContactOverlays() {
+          for (const overlay of this.contactOverlays) {
+            overlay.parent?.remove(overlay)
+            overlay.geometry = null
+            overlay.material = null
+          }
+          this.contactOverlays = []
+        }
+
+        rebuildContactOverlays() {
+          this.clearContactOverlays()
+          if (!this.carProxy) return
+          const addOverlay = (mesh) => {
+            if (!mesh.isMesh || mesh.userData.isCollisionMesh) return
+            if (mesh.name?.startsWith('__')) return
+            const overlay = new THREE.Mesh(mesh.geometry, this.contactMaterial)
+            overlay.name = '__contact_overlay'
+            overlay.renderOrder = 1000
+            overlay.visible = contactEnabled.checked
+            mesh.add(overlay)
+            this.contactOverlays.push(overlay)
+          }
+          this.carProxy.visualRoot.traverse(addOverlay)
+          for (const wheel of this.carProxy.wheelMeshes ?? []) wheel.traverse(addOverlay)
+        }
+
+        update(_time, delta) {
+          if (this.autoSpin) this.pivot.rotation.y += (delta / 1000) * 0.5
+          this.controls?.update()
+          this.updateContactUniforms()
+
+          if ((params.botShader === 'digital' || params.botShader === 'glitch' || params.botShader === 'waves') && this.carProxy) {
+            const t = performance.now() * 0.001
+            let inv = null
+            if (params.botShader === 'waves') {
+              this.carProxy.visualRoot.updateMatrixWorld(true)
+              inv = new THREE.Matrix4().copy(this.carProxy.visualRoot.matrixWorld).invert()
+            }
+            const applyTime = (root) => root.traverse(mesh => {
+              if (!mesh.isMesh || !mesh.userData.botMaterial?.uniforms?.time) return
+              mesh.userData.botMaterial.uniforms.time.value = t
+              if (inv && mesh.userData.botMaterial.uniforms.carWorldInverse) {
+                mesh.userData.botMaterial.uniforms.carWorldInverse.value.copy(inv)
+              }
+            })
+            applyTime(this.carProxy.visualRoot)
+            for (const wheel of this.carProxy.wheelMeshes ?? []) applyTime(wheel)
+          }
+        }
+
+        clearPivot() {
+          this.clearContactOverlays()
+          if (this.contactAnchor.parent) this.contactAnchor.parent.remove(this.contactAnchor)
+          while (this.pivot.children.length) {
+            this.pivot.remove(this.pivot.children[0])
+          }
+          this.carProxy = null
+          this.carGroup = null
+        }
+
+        async showCar(carId) {
+          this.loadToken += 1
+          const token = this.loadToken
+          const carModel = getCarModel(carId)
+
+          let entry = this.cache.get(carId)
+          if (!entry) {
+            const gltf = await this.load.gltf(carModel.file)
+            if (token !== this.loadToken) return
+            const prefab = selectScene(carModel, gltf).clone(true)
+            const { collisionMesh, visualRoot, wheels } = extractCarParts(prefab, carModel)
+            collisionMesh.visible = false
+
+            const wheelMeshes = [
+              wheels.frontLeft,
+              wheels.frontRight,
+              wheels.rearLeft,
+              wheels.rearRight,
+            ]
+            const group = new THREE.Group()
+            group.add(visualRoot)
+            for (const wheel of wheelMeshes) group.add(wheel)
+
+            const box = new THREE.Box3().setFromObject(group)
+            const size = box.getSize(new THREE.Vector3())
+            const center = box.getCenter(new THREE.Vector3())
+            group.position.sub(center)
+            group.position.y += size.y * 0.05
+            group.scale.setScalar(3.4 / Math.max(size.x, size.y, size.z, 0.001))
+
+            entry = { group, visualRoot, wheelMeshes, size }
+            this.cache.set(carId, entry)
+          }
+          if (token !== this.loadToken) return
+
+          this.clearPivot()
+          this.pivot.add(entry.group)
+          this.carGroup = entry.group
+          this.carProxy = {
+            visualRoot: entry.visualRoot,
+            wheelMeshes: entry.wheelMeshes,
+          }
+          entry.group.add(this.contactAnchor)
+          this.applyShader()
+          this.rebuildContactOverlays()
+          this.syncContactFromUi()
+        }
+
+        applyShader() {
+          if (!this.carProxy) return
+          this.clearContactOverlays()
+          params.botShader = shaderSelect.value
+          applyBotShader(this.carProxy, params.botShader, botColorForIndex(0, 1))
+          this.rebuildContactOverlays()
+          this.updateContactUniforms()
+        }
+      }
+
+      const project = new window.Project({
+        scenes: [CarShaderTestScene],
+        antialias: true,
+        parent: 'viewport',
+      })
+
+      function scene() {
+        return project.scenes.get('carShaderTest')
+      }
+
+      carSelect.addEventListener('change', () => scene()?.showCar(carSelect.value))
+      shaderSelect.addEventListener('change', () => scene()?.applyShader())
+      for (const el of [contactEnabled, depthInput, forwardInput, lateralInput, heightInput]) {
+        el.addEventListener('input', () => scene()?.syncContactFromUi())
+      }
+    </script>
+  </body>
+</html>
