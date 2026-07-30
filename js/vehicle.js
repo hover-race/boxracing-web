@@ -271,6 +271,19 @@ class Vehicle {
       'escLightOffTimeoutId'
     )
 
+    const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
+    this.speedometer.textContent = `${speed.toFixed(0)} mph`
+
+    // Update speed display in dat.gui
+    vehicleParams.speed = speed
+
+    this.updateAccelerometer(dt)
+
+    this.particles.updateSmoke(dt)
+    this.updateSound()
+  }
+
+  syncVisualTransforms() {
     let tm, p, q, i
     const n = this.vehicle.getNumWheels()
     for (i = 0; i < n; i++) {
@@ -291,17 +304,6 @@ class Vehicle {
     this.collisionMesh.quaternion.set(q.x(), q.y(), q.z(), q.w())
     this.visualRoot.position.set(p.x(), p.y(), p.z())
     this.visualRoot.quaternion.set(q.x(), q.y(), q.z(), q.w())
-    
-    const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
-    this.speedometer.textContent = `${speed.toFixed(0)} mph`
-
-    // Update speed display in dat.gui
-    vehicleParams.speed = speed
-
-    this.updateAccelerometer(dt)
-
-    this.particles.updateSmoke(dt)
-    this.updateSound()
   }
 
   updateAccelerometer(dt) {

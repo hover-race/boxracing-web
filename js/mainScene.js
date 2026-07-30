@@ -15,7 +15,7 @@ import { AutoSteer } from './autoSteer.js';
 import { centerlineFromTrack } from './trackCenterline.js';
 import { ExplosionFX } from './explosionFx.js';
 import { CAR_MODELS, getCarModel, selectScene } from './carModels.js';
-import { CarCollisionManager, GROUP_TRACK, GROUP_CAR } from './carCollisions.js';
+import { CarCollisionManager, GROUP_TRACK, GROUP_CAR, syncCarGhost } from './carCollisions.js';
 
 export class MainScene extends Scene3D {
   constructor() {
@@ -375,6 +375,7 @@ export class MainScene extends Scene3D {
 
 
   update(time, deltaTime) {
+    this._deltaTime = deltaTime
     if (deltaTime > 0) {
       this._fpsFrames++
       this._fpsAccum += deltaTime
@@ -437,8 +438,6 @@ export class MainScene extends Scene3D {
     // Update replay player if playing
     if (this.replayPlayer && this.replayPlayer.isPlaying) {
       this.replayPlayer.update(this.car);
-    } else {
-      this.updateCamera(deltaTime);
     }
     
     // Update star system
@@ -460,7 +459,13 @@ export class MainScene extends Scene3D {
   }
 
   preRender() {
+    if (this.car) this.car.syncVisualTransforms()
+    for (const { car } of this.bots ?? []) car.syncVisualTransforms()
+    for (const vehicle of this.carCollisionManager?.vehicles ?? []) syncCarGhost(vehicle)
 
+    if (!(this.replayPlayer && this.replayPlayer.isPlaying)) {
+      this.updateCamera(this._deltaTime || 0)
+    }
   }
 
   updateCamera(deltaTime) {
