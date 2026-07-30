@@ -323,14 +323,14 @@ function showHudToast(message) {
 }
 
 function driverAidsEnabled() {
-  return params.tractionControl && params.spinPrevention && params.steeringAssist
+  // tractionControl is too restrictive — keep it off the TC HUD switch
+  return params.spinPrevention && params.steeringAssist
 }
 
 function setDriverAids(enabled) {
-  params.tractionControl = enabled
+  // tractionControl is too restrictive — keep it off the TC HUD switch
   params.spinPrevention = enabled
   params.steeringAssist = enabled
-  tcController.updateDisplay()
   spinPreventionController.updateDisplay()
   steeringAssistController.updateDisplay()
 }
