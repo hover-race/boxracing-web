@@ -17,24 +17,10 @@ function ensureGhostPairCallback(physicsWorld) {
   ghostPairCallbackInstalled = true
 }
 
-function createConvexHullShape(geometry) {
-  const shape = new Ammo.btConvexHullShape()
-  const pos = geometry.attributes.position
-  const v = new Ammo.btVector3()
-  for (let i = 0; i < pos.count; i++) {
-    v.setValue(pos.getX(i), pos.getY(i), pos.getZ(i))
-    shape.addPoint(v, true)
-  }
-  Ammo.destroy(v)
-  shape.recalcLocalAabb()
-  return shape
-}
-
 function attachCarGhost(vehicle) {
   ensureGhostPairCallback(vehicle.physics.physicsWorld)
 
-  const geometry = vehicle.collisionMesh.geometry
-  const shape = createConvexHullShape(geometry)
+  const shape = vehicle.collisionMesh.body.ammo.getCollisionShape()
   const ghost = new Ammo.btPairCachingGhostObject()
   ghost.setCollisionShape(shape)
   ghost.setCollisionFlags(CF_NO_CONTACT_RESPONSE)
@@ -45,14 +31,13 @@ function attachCarGhost(vehicle) {
 
   vehicle.physics.physicsWorld.addCollisionObject(ghost, GROUP_CAR_SENSOR, GROUP_CAR_SENSOR)
   vehicle.carGhost = ghost
-  vehicle.carGhostShape = shape
   vehicle.carGhostUserIndex = userIndex
   syncCarGhost(vehicle)
 }
 
 function syncCarGhost(vehicle) {
   if (!vehicle.carGhost) return
-  vehicle.carGhost.setWorldTransform(vehicle.collisionMesh.body.ammo.getWorldTransform())
+  vehicle.carGhost.setWorldTransform(vehicle.vehicle.getChassisWorldTransform())
 }
 
 function horizontalForward(vehicle, out) {
@@ -162,7 +147,7 @@ class CarCollisionManager {
     this.vehicles.push(vehicle)
   }
 
-  update(dt = 1 / 60) {
+  postPhysicsUpdate(dt = 1 / 60) {
     if (!params.carCollisionEnabled) {
       for (const vehicle of this.vehicles) {
         vehicle.applyCollisionPushTint(0)
@@ -214,6 +199,9 @@ class CarCollisionManager {
       vehicle.applyCollisionPushTint(vehicle._desiredPushTint)
       updateContactHeat(vehicle, dt)
       vehicle.updateCollisionGrayOut()
+    }
+
+    for (const vehicle of this.vehicles) {
       syncCarGhost(vehicle)
     }
   }

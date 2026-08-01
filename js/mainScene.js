@@ -15,7 +15,7 @@ import { AutoSteer } from './autoSteer.js';
 import { centerlineFromTrack } from './trackCenterline.js';
 import { ExplosionFX } from './explosionFx.js';
 import { CAR_MODELS, getCarModel, selectScene } from './carModels.js';
-import { CarCollisionManager, GROUP_TRACK, GROUP_CAR, syncCarGhost } from './carCollisions.js';
+import { CarCollisionManager, GROUP_TRACK, GROUP_CAR } from './carCollisions.js';
 
 export class MainScene extends Scene3D {
   constructor() {
@@ -408,7 +408,6 @@ export class MainScene extends Scene3D {
     this.car.update(vehicleInputs);
     this.autoSteer?.patchWheelLog(vehicleParams.wheelSteerAngle);
     this.car.updateTireMarks();
-    this.carCollisionManager?.update(deltaTime / 1000)
 
     this.explosionFx.update(deltaTime / 1000);
     if (params.explosionEnabled && !this.car.exploding && this.car.updateDamage(deltaTime / 1000, this.explosionFx)) {
@@ -451,7 +450,7 @@ export class MainScene extends Scene3D {
   preRender() {
     if (this.car) this.car.syncVisualTransforms()
     for (const { car } of this.bots ?? []) car.syncVisualTransforms()
-    for (const vehicle of this.carCollisionManager?.vehicles ?? []) syncCarGhost(vehicle)
+    this.carCollisionManager?.postPhysicsUpdate((this._deltaTime || 0) / 1000)
 
     if (!(this.replayPlayer && this.replayPlayer.isPlaying)) {
       this.updateCamera(this._deltaTime || 0)
