@@ -151,11 +151,24 @@ export class MainScene extends Scene3D {
     this.carCollisionManager = new CarCollisionManager(this.physics.physicsWorld)
     this.physics.carCollisionManager = this.carCollisionManager
 
+    this.racingLines = await Promise.all([
+      RacingLine.load('laps/lap-2.json'),
+      RacingLine.load('laps/lap-3.json'),
+    ])
+    this.trackCenterline = centerlineFromTrack(track)
+    if (!this.trackCenterline) throw new Error('Failed to extract track centerline')
+    console.log('Track centerline:', this.trackCenterline.count, 'points,', this.trackCenterline.length.toFixed(0), 'm')
+
+    const botCount = params.numBots
+    const useRaceGrid = params.numLaps > 0 && params.debugSpawnU < 0
+    const raceGrid = useRaceGrid ? this.buildRaceGrid(botCount) : null
+    const playerTransform = raceGrid?.playerTransform ?? this.startTransform
+
     const selectedCarModel = getCarModel(params.car_id)
     const selectedPrefab = this.carModels.get(selectedCarModel.car_id).prefab
     this.car = await Vehicle.setup(
       this,
-      this.startTransform,
+      playerTransform,
       selectedPrefab.clone(true),
       selectedCarModel
     )
@@ -168,18 +181,7 @@ export class MainScene extends Scene3D {
     this.cameraSwitcher.initFollow(this.camera, this.car.visualRoot);
     window.bindCameraSwitcherToGui?.(this.cameraSwitcher)
     
-    // Initialize checkpoint manager with the car
-    this.checkpointManager.init(this.car)
-
-    // Load the recorded racing lines and create a debug bot that can drive the
-    // player car, following whichever lap is closest (switchable mid-lap).
-    this.racingLines = await Promise.all([
-      RacingLine.load('laps/lap-2.json'),
-      RacingLine.load('laps/lap-3.json'),
-    ])
-    this.trackCenterline = centerlineFromTrack(track)
-    if (!this.trackCenterline) throw new Error('Failed to extract track centerline')
-    console.log('Track centerline:', this.trackCenterline.count, 'points,', this.trackCenterline.length.toFixed(0), 'm')
+    this.checkpointManager.init(this.car, { totalLaps: params.numLaps })
     this.autoSteer = new AutoSteer([this.trackCenterline])
     if (params.debugSpawnU >= 0) {
       const backU = params.debugSpawnBackM / this.trackCenterline.length;
@@ -197,38 +199,26 @@ export class MainScene extends Scene3D {
     }
 
     this.bots = []
-    const botCount = params.numBots
     if (botCount > 0) {
-      const gridBot = new Bot(this.racingLines)
-      const gridCarModel = CAR_MODELS[Math.floor(Math.random() * CAR_MODELS.length)]
-      this.bots.push({
-        car: await Vehicle.setup(
-          this,
-          this.botStartTransform,
-          this.carModels.get(gridCarModel.car_id).prefab.clone(true),
-          gridCarModel,
-          { recordReplay: false, isBot: true, botColor: botColorForIndex(0, botCount) }
-        ),
-        bot: gridBot,
-      })
-
-      const spawnLine = this.racingLines[0]
-      for (let i = 0; i < botCount - 1; i++) {
-        const u = 0.05 + Math.random() * 0.9
-        const transform = MainScene.transformOnLine(spawnLine, u)
+      for (let i = 0; i < botCount; i++) {
+        const botSpawn = raceGrid?.botSpawns[i]
+        const transform = botSpawn?.transform ?? this.botStartTransform
         const bot = new Bot(this.racingLines)
         const botCarModel = CAR_MODELS[Math.floor(Math.random() * CAR_MODELS.length)]
-        for (const lap of bot.laps) lap.u = u
-        this.bots.push({
-          car: await Vehicle.setup(
-            this,
-            transform,
-            this.carModels.get(botCarModel.car_id).prefab.clone(true),
-            botCarModel,
-            { recordReplay: false, isBot: true, botColor: botColorForIndex(i + 1, botCount) }
-          ),
-          bot,
-        })
+        if (botSpawn) {
+          for (const lap of bot.laps) {
+            lap.u = lap.line.project(transform.position.x, transform.position.z)
+          }
+        }
+        const botCar = await Vehicle.setup(
+          this,
+          transform,
+          this.carModels.get(botCarModel.car_id).prefab.clone(true),
+          botCarModel,
+          { recordReplay: false, isBot: true, botColor: botColorForIndex(i, botCount) }
+        )
+        this.checkpointManager.registerRacer(botCar, { name: `Bot ${i + 1}` })
+        this.bots.push({ car: botCar, bot })
       }
     }
 
@@ -472,6 +462,34 @@ export class MainScene extends Scene3D {
     if (this.cameraSwitcher) {
       this.cameraSwitcher.update(this.camera, this.car.visualRoot, deltaTime);
     }
+  }
+
+  buildRaceGrid(botCount, spacingM = 8) {
+    const startU = this.trackCenterline.project(
+      this.startTransform.position.x,
+      this.startTransform.position.z
+    )
+    const playerTransform = MainScene.transformOnLine(
+      this.trackCenterline,
+      startU,
+      params.spawnAngle
+    )
+
+    const spawnLine = this.racingLines[0]
+    const botStartU = spawnLine.project(
+      this.startTransform.position.x,
+      this.startTransform.position.z
+    )
+    const botSpawns = []
+    for (let i = 0; i < botCount; i++) {
+      let u = botStartU - ((i + 1) * spacingM / spawnLine.length)
+      if (u < 0) u += 1
+      botSpawns.push({
+        transform: MainScene.transformOnLine(spawnLine, u, params.spawnAngle),
+        u,
+      })
+    }
+    return { playerTransform, botSpawns }
   }
 
   static transformOnLine(line, u, angleDeg = 0) {

@@ -9,6 +9,9 @@ function selectCar(scene) {
   function finish(carId) {
     params.car_id = carId
     localStorage.setItem('car_id', carId)
+    params.offlinePlay = true
+    params.numBots = 4
+    params.botDrive = true
     overlay.remove()
     return carId
   }

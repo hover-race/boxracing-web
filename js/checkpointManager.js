@@ -1,93 +1,93 @@
 class CheckpointManager {
-  // This is an oval track.
-  // There is a start/finish line and one checkpoint.
-  // The start/finish line must be crossed first to start the lap timer.
-  // Then the checkpoint must be crossed, and the start/finish line must be crossed again to complete the lap.
-  
+  // Oval track: start/finish line + one checkpoint.
+  // Sequence: finish (start lap) -> checkpoint -> finish (complete lap).
+
   constructor(scene) {
     this.DEBUG_MESHES = false;
 
     this.scene = scene;
     this.checkpoints = [];
     this.finishLine = null;
-    this.checkpointCount = 0;
+    this.racers = [];
+    this.chassisToRacer = new Map();
+    this.playerRacer = null;
+    this.totalLaps = 5;
+    this.raceFinished = false;
     this.lapTimes = [];
     this.currentLapStartTime = 0;
     this.bestLapTime = Infinity;
-    this.currentLap = 0;
-    this.checkpointsPassed = new Set();
-    this.finishLinePassed = false;
-    this.lapCompleted = false;
-    this.lastCheckpoint = null;
-    this.lastCheckpointTime = 0;
-    this.lastLapTime = 0;
     this.lapPathRecorder = null;
-    
-    // UI elements
-    this.lapCountElement = document.getElementById('lap-count');
+
+    this.lapCountElement = document.getElementById('lap-counter');
     this.currentLapTimeElement = document.getElementById('current-lap-time');
     this.bestLapTimeElement = document.getElementById('best-lap-time');
-    
-    // Start update loop for current lap timer
+
     this.updateTimerInterval = setInterval(() => this.updateCurrentLapTime(), 100);
   }
 
-  /**
-   * Initialize the checkpoint manager with the player's car
-   * @param {Vehicle} car - The player's car
-   */
-  init(car) {
-    this.car = car;
-    this.checkpointProgress = 0; // Start with progress 0
-    this.lapCount = 0;
+  init(car, { totalLaps = 5 } = {}) {
+    this.totalLaps = totalLaps;
+    this.raceFinished = false;
+    this.registerRacer(car, { isPlayer: true, name: 'Player' });
     this.bestLapTime = Infinity;
-    this.resetLapTimer(); // Reset timer display and start time
-    // Update UI elements to initial state
-    if (this.lapCountElement) {
-      this.lapCountElement.textContent = `Lap: ${this.lapCount}`;
-    }
+    this.resetLapTimer();
+    this.updatePlayerLapDisplay();
     if (this.bestLapTimeElement) {
       this.bestLapTimeElement.textContent = `Best: ${this.formatTime(this.bestLapTime)}`;
     }
-    console.log("CheckpointManager initialized and reset");
   }
 
-  /**
-   * Format milliseconds as a readable time string (M:SS.mmm)
-   * @param {number} timeMs - Time in milliseconds
-   * @returns {string} Formatted time string
-   */
+  registerRacer(vehicle, { isPlayer = false, name = 'Racer' } = {}) {
+    const racer = {
+      vehicle,
+      isPlayer,
+      name,
+      checkpointProgress: 0,
+      lapCount: 0,
+      finished: false,
+    };
+    this.racers.push(racer);
+    this.chassisToRacer.set(vehicle.chassis, racer);
+    if (isPlayer) this.playerRacer = racer;
+    return racer;
+  }
+
+  racerForChassis(chassis) {
+    return this.chassisToRacer.get(chassis) ?? null;
+  }
+
+  getLapCount(vehicle) {
+    const racer = this.chassisToRacer.get(vehicle.chassis);
+    return racer ? racer.lapCount : 0;
+  }
+
+  getAllLapCounts() {
+    return this.racers.map(r => ({ name: r.name, lapCount: r.lapCount, finished: r.finished }));
+  }
+
   formatTime(timeMs) {
     if (timeMs === Infinity || timeMs === 0) {
       return '--:--.---';
     }
-    
+
     const minutes = Math.floor(timeMs / 60000);
     const seconds = Math.floor((timeMs % 60000) / 1000);
     const milliseconds = Math.floor(timeMs % 1000);
-    
+
     return `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
   }
 
-  /**
-   * Update the current lap timer display
-   */
   updateCurrentLapTime() {
-    if (this.currentLapStartTime === 0 || this.checkpointProgress === 0) {
+    if (!this.playerRacer || this.currentLapStartTime === 0 || this.playerRacer.checkpointProgress === 0) {
       return;
     }
-    
-    const currentTime = performance.now();
-    const lapTime = currentTime - this.currentLapStartTime;
-    
+
+    const lapTime = performance.now() - this.currentLapStartTime;
     if (this.currentLapTimeElement) {
       this.currentLapTimeElement.textContent = `Current: ${this.formatTime(lapTime)}`;
     }
   }
 
-  /**
-   * Reset the lap timer
-   */
   resetLapTimer() {
     this.currentLapStartTime = 0;
     if (this.currentLapTimeElement) {
@@ -95,72 +95,102 @@ class CheckpointManager {
     }
   }
 
-  /**
-   * Start timing a new lap
-   */
   startLapTimer() {
     this.currentLapStartTime = performance.now();
   }
 
-  /**
-   * Complete the current lap and record time
-   */
-  completeLap() {
-    if (this.currentLapStartTime === 0) {
-      return;
-    }
-    
-    const currentTime = performance.now();
-    this.lastLapTime = currentTime - this.currentLapStartTime;
-    
-    // Check if this is a new best lap
-    const isNewBest = this.lastLapTime < this.bestLapTime;
+  updatePlayerLapDisplay() {
+    if (!this.lapCountElement || !this.playerRacer) return;
+    const { lapCount, finished } = this.playerRacer;
+    const current = finished
+      ? this.totalLaps
+      : Math.min(lapCount + 1, this.totalLaps);
+    this.lapCountElement.textContent = `Lap ${current}/${this.totalLaps}`;
+  }
+
+  completePlayerLap() {
+    if (this.currentLapStartTime === 0) return;
+
+    const lastLapTime = performance.now() - this.currentLapStartTime;
+    const isNewBest = lastLapTime < this.bestLapTime;
     if (isNewBest) {
-      this.bestLapTime = this.lastLapTime;
+      this.bestLapTime = lastLapTime;
       if (this.bestLapTimeElement) {
         this.bestLapTimeElement.textContent = `Best: ${this.formatTime(this.bestLapTime)}`;
-        
-        // Highlight the new best time with animation
-        this.bestLapTimeElement.style.color = '#00ff00';
-        this.bestLapTimeElement.style.fontSize = '22px';
-        this.bestLapTimeElement.style.transition = 'all 0.3s ease';
-        
-        setTimeout(() => {
-          this.bestLapTimeElement.style.color = 'white';
-          this.bestLapTimeElement.style.fontSize = '18px';
-        }, 2000);
       }
     }
-    
-    // Update lap count display with animation
-    if (this.lapCountElement) {
-      this.lapCount++;
-      this.lapCountElement.textContent = `Lap: ${this.lapCount}`;
-      this.lapCountElement.style.color = '#ffff00';
-      this.lapCountElement.style.fontSize = '20px';
-      this.lapCountElement.style.transition = 'all 0.3s ease';
-      
-      setTimeout(() => {
-        this.lapCountElement.style.color = 'white';
-        this.lapCountElement.style.fontSize = '18px';
-      }, 1500);
-    }
-    
-    // Display lap completion message
-    this.showLapCompletionMessage(isNewBest);
-    
-    console.log(`Lap ${this.lapCount} completed in ${this.formatTime(this.lastLapTime)}`);
-    
-    // Reset timer for next lap
+
+    this.showLapCompletionMessage(isNewBest, lastLapTime);
     this.currentLapStartTime = performance.now();
   }
-  
-  /**
-   * Display a temporary message when a lap is completed
-   * @param {boolean} isNewBest - Whether this was a new best lap time
-   */
-  showLapCompletionMessage(isNewBest) {
-    // Create or get the message element
+
+  onFinishLineCross(racer) {
+    if (racer.finished) return;
+
+    if (racer.checkpointProgress === 0) {
+      racer.checkpointProgress = 1;
+      if (racer.isPlayer) {
+        this.startLapTimer();
+        if (this.lapPathRecorder) this.lapPathRecorder.startLap();
+      }
+    } else if (racer.checkpointProgress === 2) {
+      racer.lapCount++;
+      racer.checkpointProgress = 1;
+
+      if (racer.isPlayer) {
+        this.completePlayerLap();
+        this.updatePlayerLapDisplay();
+        if (this.lapPathRecorder) this.lapPathRecorder.finishLap();
+
+        if (racer.lapCount >= this.totalLaps) {
+          this.finishRace(racer);
+        }
+      } else if (racer.lapCount >= this.totalLaps) {
+        racer.finished = true;
+      }
+    }
+  }
+
+  onCheckpointCross(racer) {
+    if (racer.finished) return;
+    if (racer.checkpointProgress === 1) {
+      racer.checkpointProgress = 2;
+      if (racer.isPlayer) this.showCheckpointMessage();
+    }
+  }
+
+  finishRace(racer) {
+    racer.finished = true;
+    this.raceFinished = true;
+    this.updatePlayerLapDisplay();
+    params.botDrive = false;
+    this.showRaceFinishedMessage();
+  }
+
+  showRaceFinishedMessage() {
+    let messageElement = document.getElementById('race-finished-message');
+    if (!messageElement) {
+      messageElement = document.createElement('div');
+      messageElement.id = 'race-finished-message';
+      messageElement.style.position = 'fixed';
+      messageElement.style.top = '40%';
+      messageElement.style.left = '50%';
+      messageElement.style.transform = 'translate(-50%, -50%)';
+      messageElement.style.color = '#4caf50';
+      messageElement.style.fontFamily = "'Press Start 2P', monospace";
+      messageElement.style.fontSize = 'clamp(16px, 3vw, 28px)';
+      messageElement.style.fontWeight = 'bold';
+      messageElement.style.textAlign = 'center';
+      messageElement.style.background = 'rgba(0, 0, 0, 0.8)';
+      messageElement.style.padding = '24px 32px';
+      messageElement.style.borderRadius = '10px';
+      messageElement.style.zIndex = '2000';
+      document.body.appendChild(messageElement);
+    }
+    messageElement.textContent = 'RACE FINISHED!';
+  }
+
+  showLapCompletionMessage(isNewBest, lastLapTime) {
     let messageElement = document.getElementById('lap-completion-message');
     if (!messageElement) {
       messageElement = document.createElement('div');
@@ -182,35 +212,23 @@ class CheckpointManager {
       messageElement.style.transition = 'opacity 0.5s ease';
       document.body.appendChild(messageElement);
     }
-    
-    // Set message text based on whether it's a new best lap
+
     if (isNewBest) {
-      messageElement.innerHTML = `🏆 NEW BEST LAP! 🏆<br>${this.formatTime(this.lastLapTime)}`;
+      messageElement.innerHTML = `🏆 NEW BEST LAP! 🏆<br>${this.formatTime(lastLapTime)}`;
       messageElement.style.color = '#00ff00';
     } else {
-      messageElement.innerHTML = `✅ LAP COMPLETE!<br>${this.formatTime(this.lastLapTime)}`;
+      messageElement.innerHTML = `✅ LAP COMPLETE!<br>${this.formatTime(lastLapTime)}`;
       messageElement.style.color = 'white';
     }
-    
-    // Show message with fade in/out animation
+
     messageElement.style.opacity = '1';
-    
-    // Clear any existing timeout
-    if (this.messageTimeout) {
-      clearTimeout(this.messageTimeout);
-    }
-    
-    // Hide message after delay
+    clearTimeout(this.messageTimeout);
     this.messageTimeout = setTimeout(() => {
       messageElement.style.opacity = '0';
     }, 3000);
   }
-  
-  /**
-   * Show a checkpoint passed message
-   */
+
   showCheckpointMessage() {
-    // Create or get the message element
     let messageElement = document.getElementById('checkpoint-message');
     if (!messageElement) {
       messageElement = document.createElement('div');
@@ -232,33 +250,17 @@ class CheckpointManager {
       messageElement.style.transition = 'opacity 0.5s ease';
       document.body.appendChild(messageElement);
     }
-    
-    // Set message text
+
     messageElement.textContent = '🔵 CHECKPOINT PASSED!';
-    
-    // Show message with fade in/out animation
     messageElement.style.opacity = '1';
-    
-    // Clear any existing timeout
-    if (this.checkpointMessageTimeout) {
-      clearTimeout(this.checkpointMessageTimeout);
-    }
-    
-    // Hide message after delay
+    clearTimeout(this.checkpointMessageTimeout);
     this.checkpointMessageTimeout = setTimeout(() => {
       messageElement.style.opacity = '0';
     }, 2000);
   }
 
-  /**
-   * Set up a finish line trigger at the given position
-   * @param {THREE.Object3D} cube - The finish line volume object
-   */
   setupFinishLine(cube) {
-    console.log('Setting up finish line trigger at', cube.position);
-    
     if (this.DEBUG_MESHES) {
-      // Create a visible mesh for debugging purposes
       const geometry = new THREE.BoxGeometry(
         cube.scale.x * 2,
         cube.scale.y * 2,
@@ -273,82 +275,41 @@ class CheckpointManager {
       visibleMesh.position.copy(cube.position);
       visibleMesh.quaternion.copy(cube.quaternion);
       this.scene.scene.add(visibleMesh);
-  }
-    
-    // Create a ghost object with physics for collision detection
+    }
+
     const ghostObject = new THREE.Object3D();
     ghostObject.position.copy(cube.position);
     ghostObject.quaternion.copy(cube.quaternion);
     this.scene.scene.add(ghostObject);
-    
-    // Add physics to the ghost object (as a trigger volume)
+
     this.scene.physics.add.existing(ghostObject, {
       shape: 'box',
       width: cube.scale.x * 2,
       height: cube.scale.y * 2,
       depth: cube.scale.z * 2,
-      mass: 0,  // Static object
-      collisionFlags: 4  // CF_NO_CONTACT_RESPONSE - ghost object
+      mass: 0,
+      collisionFlags: 4
     });
-    
-    // Set up collision detection
-    const self = this; // Store reference to this for use in closure
-    const finishLineBody = ghostObject.body;
-    finishLineBody.on.collision((otherObject, event) => {
-      if (otherObject === self.car.chassis) {
-        if (event === 'start') {
-          if (self.checkpointProgress === 0) {
-            // Starting a new lap
-            console.log('TRIGGER: Car crossed the start line!');
-            self.checkpointProgress = 1;
-            self.startLapTimer();
-            if (self.lapPathRecorder) self.lapPathRecorder.startLap();
-          } else if (self.checkpointProgress === 2) {
-            // Completed a lap (crossed finish after checkpoint)
-            self.lapCount++;
-            console.log(`TRIGGER: Lap ${self.lapCount} completed!`);
-            self.checkpointProgress = 1; // Reset to 1 to start next lap
-            self.completeLap();
-            if (self.lapPathRecorder) self.lapPathRecorder.finishLap();
-          } else {
-            console.log('Finish line crossed but not in sequence - must cross checkpoint first');
-          }
-          
-          if (this.DEBUG_MESHES) {
-            // Flash the finish line mesh for visual feedback
-            const originalOpacity = material.opacity;
-            material.opacity = 0.9;
-            setTimeout(() => {
-              material.opacity = originalOpacity;
-            }, 300);
-          }
-        }
-      }
+
+    const self = this;
+    ghostObject.body.on.collision((otherObject, event) => {
+      if (event !== 'start') return;
+      const racer = self.racerForChassis(otherObject);
+      if (racer) self.onFinishLineCross(racer);
     });
-    
-    // Store the finish line references
-    this.finishLine = {
-      ghost: ghostObject,
-    };
+
+    this.finishLine = { ghost: ghostObject };
   }
 
-  /**
-   * Set up a checkpoint trigger at the given position
-   * @param {THREE.Object3D} cube - The checkpoint volume object
-   * @param {number} checkpointIndex - The index of this checkpoint
-   */
   setupCheckpoint(cube, checkpointIndex = 1) {
-    console.log('Setting up checkpoint trigger at', cube.position);
-    
     if (this.DEBUG_MESHES) {
-      // Create a visible mesh for debugging purposes
       const geometry = new THREE.BoxGeometry(
         cube.scale.x * 2,
         cube.scale.y * 2,
         cube.scale.z * 2
       );
       const material = new THREE.MeshBasicMaterial({
-        color: 0x0000ff,  // Blue color to distinguish from finish line
+        color: 0x0000ff,
         transparent: true,
         opacity: 0.5
       });
@@ -357,118 +318,61 @@ class CheckpointManager {
       visibleMesh.quaternion.copy(cube.quaternion);
       this.scene.scene.add(visibleMesh);
     }
-    
-    // Create a ghost object with physics for collision detection
+
     const ghostObject = new THREE.Object3D();
     ghostObject.position.copy(cube.position);
     ghostObject.quaternion.copy(cube.quaternion);
     this.scene.scene.add(ghostObject);
-    
-    // Add physics to the ghost object (as a trigger volume)
+
     this.scene.physics.add.existing(ghostObject, {
       shape: 'box',
       width: cube.scale.x * 2,
       height: cube.scale.y * 2,
       depth: cube.scale.z * 2,
-      mass: 0,  // Static object
-      collisionFlags: 4  // CF_NO_CONTACT_RESPONSE - ghost object
+      mass: 0,
+      collisionFlags: 4
     });
-    
-    // Set up collision detection
-    const self = this; // Store reference to this for use in closure
-    const checkpointBody = ghostObject.body;
-    checkpointBody.on.collision((otherObject, event) => {
-      if (otherObject === self.car.chassis) {
-        if (event === 'start') {
-          // Only count checkpoint if player has crossed the start/finish line
-          if (self.checkpointProgress === 1) {
-            console.log('TRIGGER: Car crossed checkpoint!');
-            self.checkpointProgress = 2; // Mark checkpoint as crossed
-            
-            // Show checkpoint message
-            self.showCheckpointMessage();
-            
-            // Flash the checkpoint mesh for visual feedback
-            if (this.DEBUG_MESHES) {
-              const originalOpacity = material.opacity;
-              material.opacity = 0.9;
-              setTimeout(() => {
-                material.opacity = originalOpacity;
-              }, 300);
-            }
-          } else {
-            console.log('Checkpoint crossed but not in sequence - must cross finish line first');
-          }
-        }
-      }
+
+    const self = this;
+    ghostObject.body.on.collision((otherObject, event) => {
+      if (event !== 'start') return;
+      const racer = self.racerForChassis(otherObject);
+      if (racer) self.onCheckpointCross(racer);
     });
-    
-    // Store the checkpoint reference
+
     this.checkpoints.push({
       index: checkpointIndex,
       ghost: ghostObject,
     });
   }
 
-  /**
-   * Get the current lap count
-   * @returns {number} The current lap count
-   */
-  getLapCount() {
-    return this.lapCount;
-  }
-
-  /**
-   * Reset the lap and checkpoint tracking
-   */
   reset() {
-    this.checkpointProgress = 0;
-    this.lapCount = 0;
+    for (const racer of this.racers) {
+      racer.checkpointProgress = 0;
+      racer.lapCount = 0;
+      racer.finished = false;
+    }
+    this.raceFinished = false;
     this.resetLapTimer();
     this.bestLapTime = Infinity;
-    
-    // Update UI
-    if (this.lapCountElement) {
-      this.lapCountElement.textContent = 'Lap: 0';
-    }
+    this.updatePlayerLapDisplay();
     if (this.bestLapTimeElement) {
       this.bestLapTimeElement.textContent = 'Best: --:--.---';
     }
-    
-    console.log("Checkpoint progress and lap count reset");
   }
-  
-  /**
-   * Clean up resources when no longer needed
-   */
+
   cleanup() {
-    // Clear timer interval
     if (this.updateTimerInterval) {
       clearInterval(this.updateTimerInterval);
     }
-    
-    // Clear message timeouts
-    if (this.messageTimeout) {
-      clearTimeout(this.messageTimeout);
-    }
-    if (this.checkpointMessageTimeout) {
-      clearTimeout(this.checkpointMessageTimeout);
-    }
-    
-    // Remove UI elements
-    const uiElements = [
-      'lap-info-container', 
-      'lap-completion-message', 
-      'checkpoint-message'
-    ];
-    
-    uiElements.forEach(id => {
+    clearTimeout(this.messageTimeout);
+    clearTimeout(this.checkpointMessageTimeout);
+
+    for (const id of ['lap-completion-message', 'checkpoint-message', 'race-finished-message']) {
       const element = document.getElementById(id);
-      if (element && element.parentNode) {
-        element.parentNode.removeChild(element);
-      }
-    });
+      element?.remove();
+    }
   }
 }
 
-export { CheckpointManager }; 
+export { CheckpointManager };
