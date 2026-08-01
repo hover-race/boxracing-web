@@ -5,6 +5,7 @@ export const GROUP_CAR = 2
 export const GROUP_CAR_SENSOR = 4
 
 const CF_NO_CONTACT_RESPONSE = 4
+const MIN_CONTACT_DEPTH = 0.01
 
 let nextGhostUserIndex = 1
 const vehiclesByGhostUserIndex = new Map()
@@ -79,7 +80,7 @@ function collectPairContacts(physicsWorld, out) {
       bestPt = { x: p.x(), y: p.y(), z: p.z() }
       bestN = { x: n.x(), y: n.y(), z: n.z() }
     }
-    if (bestDepth > 0 && bestPt) {
+    if (bestDepth > MIN_CONTACT_DEPTH && bestPt) {
       out.set(pairKey(indexA, indexB), {
         depth: bestDepth,
         point: bestPt,
@@ -122,7 +123,7 @@ function softPushRear(rear, front, contact) {
   rear.collisionMesh.body.ammo.applyCentralForce(btForce)
   Ammo.destroy(btForce)
 
-  if (!hasActiveHeatWave(rear)) {
+  if (!hasActiveHeatWave(rear) && depth > MIN_CONTACT_DEPTH) {
     const origin = front.collisionMesh.position
     const dir = rear._waveDir ?? (rear._waveDir = new THREE.Vector3())
     dir.set(nx, 0, nz)
@@ -163,10 +164,8 @@ class CarCollisionManager {
       vehicle._desiredPushTint = 0
     }
 
-    collectPairContacts(this.physicsWorld, this._pairContacts)
-
     const handled = new Set()
-    let resolved = false
+    const pairs = []
     for (const vehicle of this.vehicles) {
       if (vehicle.exploding || !vehicle.carGhost) continue
       const n = vehicle.carGhost.getNumOverlappingObjects()
@@ -179,9 +178,15 @@ class CarCollisionManager {
         const key = pairKey(vehicle.carGhostUserIndex, other.carGhostUserIndex)
         if (handled.has(key)) continue
         handled.add(key)
+        pairs.push([vehicle, other, key])
+      }
+    }
 
-        this.resolvePair(vehicle, other, this._pairContacts.get(key) ?? null)
-        resolved = true
+    let resolved = false
+    if (pairs.length) {
+      collectPairContacts(this.physicsWorld, this._pairContacts)
+      for (const [a, b, key] of pairs) {
+        if (this.resolvePair(a, b, this._pairContacts.get(key) ?? null)) resolved = true
       }
     }
 
@@ -208,6 +213,8 @@ class CarCollisionManager {
 
   resolvePair(a, b, contact) {
     const depth = contact?.depth ?? 0
+    if (depth <= MIN_CONTACT_DEPTH) return false
+
     const speedA = Math.abs(a.getSpeed())
     const speedB = Math.abs(b.getSpeed())
     const speedDiff = speedDiffRatio(a, b)
@@ -226,17 +233,18 @@ class CarCollisionManager {
       carCollisionDebug.branch = 'speedDiffGray'
       if (a !== this.localVehicle) a.startCollisionGrayOut(1000)
       if (b !== this.localVehicle) b.startCollisionGrayOut(1000)
-      return
+      return true
     }
 
     if (fwdDot <= params.carCollisionSameDirDot) {
       carCollisionDebug.branch = 'oppositeDirSkip'
-      return
+      return true
     }
 
     carCollisionDebug.branch = 'softPushRear'
     const { rear, front } = rearAndFront(a, b, fwdA, fwdB)
     softPushRear(rear, front, contact)
+    return true
   }
 }
 
