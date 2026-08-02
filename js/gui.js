@@ -21,7 +21,8 @@ const inputControls = {
   steering: 0,
   throttle: 0,
   brake: 0,
-  handbrake: 0
+  handbrake: 0,
+  enabled: false,
 }
 
 // Player identity (used by Vehicle.serialize / networking)

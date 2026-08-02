@@ -129,6 +129,24 @@ canvas {
     letter-spacing: 0.05em;
 }
 
+#race-countdown {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(48px, 12vw, 96px);
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    pointer-events: none;
+}
+
+#race-countdown.visible {
+    display: flex;
+}
+
 #hud-bottom-left {
     position: fixed;
     bottom: 20px;
