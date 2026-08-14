@@ -14,6 +14,32 @@ function selectCar(scene) {
     applyPlayerName(name)
   })
 
+  const nameCaret = document.getElementById('player-name-caret')
+  const nameMeasure = document.createElement('canvas').getContext('2d')
+
+  function updateNameCaret() {
+    if (document.activeElement !== nameInput || nameInput.selectionStart !== nameInput.selectionEnd) {
+      nameCaret.classList.remove('is-on')
+      return
+    }
+    const cs = getComputedStyle(nameInput)
+    nameMeasure.font = cs.font
+    const ch = nameMeasure.measureText('M').width
+    const before = nameMeasure.measureText(nameInput.value.slice(0, nameInput.selectionStart)).width
+    const total = nameMeasure.measureText(nameInput.value).width
+    const padLeft = parseFloat(cs.paddingLeft)
+    const inner = nameInput.clientWidth - padLeft - parseFloat(cs.paddingRight)
+    nameCaret.style.width = `${ch}px`
+    nameCaret.style.left = `${padLeft + (inner - total) / 2 + before}px`
+    nameCaret.classList.add('is-on')
+  }
+
+  nameInput.addEventListener('focus', updateNameCaret)
+  nameInput.addEventListener('click', updateNameCaret)
+  nameInput.addEventListener('keyup', updateNameCaret)
+  nameInput.addEventListener('input', updateNameCaret)
+  document.addEventListener('selectionchange', updateNameCaret)
+
   function finish(carId) {
     applyPlayerName(nameInput.value)
     params.car_id = carId
@@ -51,9 +77,21 @@ function selectCar(scene) {
   updateSelection()
 
   return new Promise(resolve => {
-    startButton.addEventListener('click', () => {
+    let started = false
+    const start = () => {
+      if (started) return
+      started = true
       resolve(finish(selectedCar.car_id))
-    }, { once: true })
+    }
+    startButton.addEventListener('click', start)
+    overlay.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return
+      e.preventDefault()
+      start()
+    })
+    nameInput.focus()
+    nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length)
+    updateNameCaret()
   })
 }
 

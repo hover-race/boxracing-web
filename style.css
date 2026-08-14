@@ -104,8 +104,14 @@ canvas {
     color: rgba(255, 255, 255, 0.7);
 }
 
-#player-name-input {
+#player-name-box {
+    position: relative;
     width: min(320px, 100%);
+    font: 400 14px/1.6 'Press Start 2P', monospace;
+}
+
+#player-name-input {
+    width: 100%;
     box-sizing: border-box;
     padding: 12px 14px;
     border: 2px solid rgba(255, 255, 255, 0.2);
@@ -114,12 +120,33 @@ canvas {
     color: #fff;
     font: 400 14px/1.6 'Press Start 2P', monospace;
     text-align: center;
+    caret-color: transparent;
 }
 
 #player-name-input:focus {
     outline: none;
     border-color: #4caf50;
     box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.25);
+}
+
+#player-name-caret {
+    position: absolute;
+    top: 50%;
+    width: 1em;
+    height: 1.15em;
+    margin-top: -0.58em;
+    background: #fff;
+    pointer-events: none;
+    display: none;
+    animation: player-name-caret 1s step-end infinite;
+}
+
+#player-name-box:focus-within #player-name-caret.is-on {
+    display: block;
+}
+
+@keyframes player-name-caret {
+    50% { background: transparent; }
 }
 
 #car-selection-start {
@@ -217,8 +244,7 @@ canvas {
 
 #lap-time-whole,
 .lap-time-dot,
-.lap-time-frac,
-.race-hud-racer-gap {
+.lap-time-frac {
     font-family: 'Fragment Mono', ui-monospace, monospace;
     font-style: normal;
     font-variant-numeric: tabular-nums;
@@ -226,9 +252,12 @@ canvas {
 
 #race-hud-standings {
     margin-top: 10px;
-    padding-top: 8px;
-    border-top: 1px solid rgba(196, 77, 255, 0.35);
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.45);
     text-align: left;
+    font-family: 'Fragment Mono', ui-monospace, monospace;
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
 }
 
 .race-hud-racer {
@@ -265,7 +294,9 @@ canvas {
     left: 50%;
     transform: translateX(-50%);
     z-index: 5000;
-    display: none;
+    display: block;
+    opacity: 0;
+    visibility: hidden;
     text-align: center;
     padding: 18px 40px 22px;
     border-radius: 12px;
@@ -280,10 +311,19 @@ canvas {
     line-height: 1;
     text-shadow: 0 0 18px rgba(196, 77, 255, 0.55);
     pointer-events: none;
+    transition: opacity 0.75s ease, visibility 0s linear 0.75s;
 }
 
 #race-countdown.visible {
-    display: block;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0s, visibility 0s;
+}
+
+#race-countdown.visible.fade-out {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.75s ease, visibility 0s linear 0.75s;
 }
 
 #hud-bottom-left {

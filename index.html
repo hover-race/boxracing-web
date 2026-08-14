@@ -37,7 +37,10 @@
         <div id="car-selection-options"></div>
         <label id="player-name-field">
           <span>Player name</span>
-          <input id="player-name-input" type="text" maxlength="12" autocomplete="nickname" spellcheck="false" />
+          <span id="player-name-box">
+            <input id="player-name-input" type="text" maxlength="12" autocomplete="nickname" spellcheck="false" />
+            <span id="player-name-caret" aria-hidden="true"></span>
+          </span>
         </label>
         <button id="car-selection-start" type="button">Race</button>
       </div>

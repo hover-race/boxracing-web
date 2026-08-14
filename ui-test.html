@@ -435,10 +435,58 @@
       .font-overpass { font-family: 'Overpass Mono', monospace; font-weight: 700; }
       .font-redhat { font-family: 'Red Hat Mono', monospace; font-weight: 700; }
       .font-inconsolata { font-family: Inconsolata, monospace; font-weight: 700; }
-      .font-press-start { font-family: 'Press Start 2P', monospace; font-size: clamp(12px, 1.8vw, 16px); line-height: 1.6; }
+      body.ui-test-body #race-hud {
+        position: relative;
+        top: auto;
+        right: auto;
+      }
     </style>
   </head>
   <body class="ui-test-body">
+    <div id="race-hud">
+      <div id="race-hud-position">P2</div>
+      <div id="race-hud-player-name">CyanFox</div>
+      <div class="race-hud-row">
+        <span class="race-hud-label">LAP</span>
+        <span id="lap-counter">2/5</span>
+      </div>
+      <div class="race-hud-row race-hud-time">
+        <span class="lap-time-whole">
+          <span class="race-hud-label">TIME</span>
+          <span id="lap-time-whole">1:23</span>
+        </span>
+        <span class="lap-time-dot">.</span>
+        <span id="lap-time-frac" class="lap-time-frac">4</span>
+      </div>
+      <div id="race-hud-standings">
+        <div class="race-hud-racer">
+          <span class="race-hud-racer-pos">P1</span>
+          <span class="race-hud-racer-name">Bot 1</span>
+          <span class="race-hud-racer-gap">—</span>
+        </div>
+        <div class="race-hud-racer is-player">
+          <span class="race-hud-racer-pos">P2</span>
+          <span class="race-hud-racer-name">CyanFox</span>
+          <span class="race-hud-racer-gap">+0.8</span>
+        </div>
+        <div class="race-hud-racer">
+          <span class="race-hud-racer-pos">P3</span>
+          <span class="race-hud-racer-name">Bot 2</span>
+          <span class="race-hud-racer-gap">+1.4</span>
+        </div>
+        <div class="race-hud-racer">
+          <span class="race-hud-racer-pos">P4</span>
+          <span class="race-hud-racer-name">Bot 3</span>
+          <span class="race-hud-racer-gap">+2.1</span>
+        </div>
+        <div class="race-hud-racer">
+          <span class="race-hud-racer-pos">P5</span>
+          <span class="race-hud-racer-name">Bot 4</span>
+          <span class="race-hud-racer-gap">+3.6</span>
+        </div>
+      </div>
+    </div>
+
     <div class="ui-test-panel">
       <div id="tc-toast" class="tc-toast"></div>
       <label class="tc-rocker">
