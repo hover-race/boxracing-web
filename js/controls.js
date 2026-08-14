@@ -1,19 +1,35 @@
+import { on } from './raceEvents.js'
+
 class ControlsManager {
   constructor(scene) {
     this.scene = scene;
     this.joystick = null;
     this.tiltControlsActive = false;
     
-    // Reset input controls to default state
-    inputControls.steering = 0;
-    inputControls.throttle = 0;
-    inputControls.brake = 0;
-    inputControls.handbrake = 0;
+    this.clearInputs();
     
     // Initialize all control methods
     this.setupKeyboardControls();
     this.setupTouchControls();
     this.setupTiltControls();
+    this.setupRaceInputGate();
+  }
+
+  clearInputs() {
+    inputControls.steering = 0;
+    inputControls.throttle = 0;
+    inputControls.brake = 0;
+    inputControls.handbrake = 0;
+  }
+
+  setupRaceInputGate() {
+    on('countdownStart', () => {
+      inputControls.enabled = false;
+      this.clearInputs();
+    });
+    on('raceStart', () => {
+      inputControls.enabled = true;
+    });
   }
   
   setupKeyboardControls() {
@@ -24,6 +40,7 @@ class ControlsManager {
     };
 
     const keyEvent = (e, down) => {
+      if (!inputControls.enabled) return;
       // Don't drive the car while typing into a GUI field; let the input keep the event.
       if (isEditable(e.target)) return;
 
@@ -70,6 +87,7 @@ class ControlsManager {
 
     // Handle joystick events
     this.joystick.on('move', (evt, data) => {
+      if (!inputControls.enabled) return;
       const angle = data.angle.radian;
       const force = Math.min(data.force, 1.0);
       
@@ -137,8 +155,7 @@ class ControlsManager {
     
     // Function to handle device orientation
     const handleOrientation = (event) => {
-      // Only use tilt if controls are active
-      if (!this.tiltControlsActive) return;
+      if (!this.tiltControlsActive || !inputControls.enabled) return;
       vehicleParams.forceDirX = event.alpha;
       vehicleParams.forceDirZ = event.beta;
       vehicleParams.forceDirY = event.gamma;

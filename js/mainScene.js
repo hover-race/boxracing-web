@@ -16,6 +16,8 @@ import { centerlineFromTrack } from './trackCenterline.js';
 import { ExplosionFX } from './explosionFx.js';
 import { CAR_MODELS, getCarModel, selectScene } from './carModels.js';
 import { CarCollisionManager, GROUP_TRACK, GROUP_CAR } from './carCollisions.js';
+import { emit as emitRaceEvent, isRaceStarted } from './raceEvents.js';
+import './countdownHud.js';
 
 export class MainScene extends Scene3D {
   constructor() {
@@ -259,6 +261,8 @@ export class MainScene extends Scene3D {
       })
       this.networkManager.addSender(this.carsender)
     }
+
+    this.startRaceCountdown()
   }
 
   setupDebugStepper() {
@@ -286,29 +290,26 @@ export class MainScene extends Scene3D {
       else drawer.disable()
     }
     window.setPhysicsDebug(params.physicsDebug)
-    this.startRaceCountdown()
   }
 
   startRaceCountdown() {
-    this._countdownRemaining = 0
-    const el = document.getElementById('race-countdown')
-    const numberEl = el?.querySelector('.race-countdown-number')
-    if (!el || !numberEl || params.skipIntro) return
-
-    this._countdownRemaining = 3
-    numberEl.textContent = '3'
-    el.hidden = false
-    clearInterval(this._countdownTimer)
-    this._countdownTimer = setInterval(() => {
-      this._countdownRemaining -= 1
-      if (this._countdownRemaining <= 0) {
-        clearInterval(this._countdownTimer)
-        this._countdownTimer = null
-        el.hidden = true
+    if (params.skipIntro) {
+      emitRaceEvent('raceStart')
+      return
+    }
+    const steps = [3, 2, 1, 0]
+    emitRaceEvent('countdownStart')
+    let i = 0
+    const tick = () => {
+      emitRaceEvent('countdown', steps[i])
+      if (steps[i] === 0) {
+        emitRaceEvent('raceStart')
         return
       }
-      numberEl.textContent = String(this._countdownRemaining)
-    }, 1000)
+      i++
+      setTimeout(tick, 1000)
+    }
+    tick()
   }
 
   _scheduleAutoStop() {
@@ -407,33 +408,37 @@ export class MainScene extends Scene3D {
     if (this._physicsTimer) this._physicsTimer.textContent = this._physicsElapsed.toFixed(1)
     this._scheduleAutoStop();
 
-    const countingDown = this._countdownRemaining > 0
-    if (params.botDrive && this.bots.length && !countingDown) {
+    const idle = { steering: 0, throttle: 0, brake: 0, handbrake: 0 }
+    const raceLive = isRaceStarted()
+
+    if (params.botDrive && this.bots.length && raceLive) {
       for (const { car, bot } of this.bots) {
         car.update(bot.drive(car))
         car.updateTireMarks()
       }
     } else {
-      const idle = { steering: 0, throttle: 0, brake: 0, handbrake: 0 }
-      for (const { car } of this.bots) {
+      for (const { car } of this.bots ?? []) {
         car.update(idle)
       }
     }
 
-    let steering = countingDown ? 0 : inputControls.steering;
-    if (this.autoSteer && !countingDown) {
-      steering = this.autoSteer.drive(this.car, steering, deltaTime);
-    } else {
+    let vehicleInputs = idle
+    if (raceLive) {
+      let steering = inputControls.steering;
+      if (this.autoSteer) {
+        steering = this.autoSteer.drive(this.car, steering, deltaTime);
+      } else {
+        vehicleParams.autoSteerLateral = 0;
+      }
+
+      vehicleInputs = {
+        ...inputControls,
+        throttle: Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput + params.autoThrottle)),
+        steering,
+      }
+    } else if (this.autoSteer) {
       vehicleParams.autoSteerLateral = 0;
     }
-
-    const vehicleInputs = countingDown
-      ? { steering: 0, throttle: 0, brake: 0, handbrake: 0 }
-      : {
-          ...inputControls,
-          throttle: Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput + params.autoThrottle)),
-          steering,
-        }
     this.car.update(vehicleInputs);
     this.autoSteer?.patchWheelLog(vehicleParams.wheelSteerAngle);
     this.car.updateTireMarks();

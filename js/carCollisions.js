@@ -54,12 +54,19 @@ function pairKey(indexA, indexB) {
   return indexA < indexB ? `${indexA}:${indexB}` : `${indexB}:${indexA}`
 }
 
-// Deepest contact per car-ghost pair (depth, point, normalOnB). Normal on B points toward A.
-function collectPairContacts(physicsWorld, out) {
+function maxManifoldDepth(manifold) {
+  let depth = 0
+  const contactCount = manifold.getNumContacts()
+  for (let j = 0; j < contactCount; j++) {
+    depth = Math.max(depth, -manifold.getContactPoint(j).getDistance())
+  }
+  return depth
+}
+
+function collectGhostPairDepths(physicsWorld, pairKeys, out) {
   out.clear()
   const dispatcher = physicsWorld.getDispatcher()
-  const manifoldCount = dispatcher.getNumManifolds()
-  for (let i = 0; i < manifoldCount; i++) {
+  for (let i = 0; i < dispatcher.getNumManifolds(); i++) {
     const manifold = dispatcher.getManifoldByIndexInternal(i)
     const body0 = Ammo.castObject(manifold.getBody0(), Ammo.btCollisionObject)
     const body1 = Ammo.castObject(manifold.getBody1(), Ammo.btCollisionObject)
@@ -67,29 +74,11 @@ function collectPairContacts(physicsWorld, out) {
     const indexB = body1.getUserIndex()
     if (!vehiclesByGhostUserIndex.has(indexA) || !vehiclesByGhostUserIndex.has(indexB)) continue
 
-    let bestDepth = 0
-    let bestPt = null
-    let bestN = null
-    const contactCount = manifold.getNumContacts()
-    for (let j = 0; j < contactCount; j++) {
-      const pt = manifold.getContactPoint(j)
-      const depth = -pt.getDistance()
-      if (depth <= bestDepth) continue
-      bestDepth = depth
-      const p = pt.get_m_positionWorldOnB()
-      const n = pt.get_m_normalWorldOnB()
-      bestPt = { x: p.x(), y: p.y(), z: p.z() }
-      bestN = { x: n.x(), y: n.y(), z: n.z() }
-    }
-    if (bestDepth > MIN_CONTACT_DEPTH && bestPt) {
-      out.set(pairKey(indexA, indexB), {
-        depth: bestDepth,
-        point: bestPt,
-        normalOnB: bestN,
-        indexA,
-        indexB,
-      })
-    }
+    const key = pairKey(indexA, indexB)
+    if (!pairKeys.has(key)) continue
+
+    const depth = maxManifoldDepth(manifold)
+    if (depth > MIN_CONTACT_DEPTH) out.set(key, depth)
   }
 }
 
@@ -105,13 +94,11 @@ function rearAndFront(a, b, fwdA, fwdB) {
   const len = Math.hypot(avgX, avgZ) || 1
   const dx = b.collisionMesh.position.x - a.collisionMesh.position.x
   const dz = b.collisionMesh.position.z - a.collisionMesh.position.z
-  // Positive: B is ahead of A along travel → A is rear.
   if ((dx * avgX + dz * avgZ) / len > 0) return { rear: a, front: b }
   return { rear: b, front: a }
 }
 
-function softPushRear(rear, front, contact) {
-  const depth = contact?.depth ?? 0
+function softPushRear(rear, front, depth) {
   const dx = rear.collisionMesh.position.x - front.collisionMesh.position.x
   const dz = rear.collisionMesh.position.z - front.collisionMesh.position.z
   const len = Math.hypot(dx, dz)
@@ -124,21 +111,19 @@ function softPushRear(rear, front, contact) {
   rear.collisionMesh.body.ammo.applyCentralForce(btForce)
   Ammo.destroy(btForce)
 
-  if (!hasActiveHeatWave(rear) && depth > MIN_CONTACT_DEPTH) {
-    const origin = front.collisionMesh.position
+  if (!hasActiveHeatWave(rear)) {
     const dir = rear._waveDir ?? (rear._waveDir = new THREE.Vector3())
     dir.set(nx, 0, nz)
-    triggerHeatWave(rear, origin, dir)
+    triggerHeatWave(rear, front.collisionMesh.position, dir)
   }
 }
 
-// TODO do we need a class?
 class CarCollisionManager {
   constructor(physicsWorld) {
     this.physicsWorld = physicsWorld
     this.vehicles = []
     this.localVehicle = null
-    this._pairContacts = new Map()
+    this._pairDepths = new Map()
     this._fwdA = new THREE.Vector3()
     this._fwdB = new THREE.Vector3()
     ensureGhostPairCallback(physicsWorld)
@@ -165,29 +150,27 @@ class CarCollisionManager {
       vehicle._desiredPushTint = 0
     }
 
-    const handled = new Set()
+    const pairKeys = new Set()
     const pairs = []
     for (const vehicle of this.vehicles) {
       if (vehicle.exploding || !vehicle.carGhost) continue
       const n = vehicle.carGhost.getNumOverlappingObjects()
       for (let i = 0; i < n; i++) {
-        const otherObj = vehicle.carGhost.getOverlappingObject(i)
-        const otherIndex = otherObj.getUserIndex()
-        const other = vehiclesByGhostUserIndex.get(otherIndex)
+        const other = vehiclesByGhostUserIndex.get(vehicle.carGhost.getOverlappingObject(i).getUserIndex())
         if (!other || other === vehicle || other.exploding) continue
 
         const key = pairKey(vehicle.carGhostUserIndex, other.carGhostUserIndex)
-        if (handled.has(key)) continue
-        handled.add(key)
+        if (pairKeys.has(key)) continue
+        pairKeys.add(key)
         pairs.push([vehicle, other, key])
       }
     }
 
     let resolved = false
     if (pairs.length) {
-      collectPairContacts(this.physicsWorld, this._pairContacts)
+      collectGhostPairDepths(this.physicsWorld, pairKeys, this._pairDepths)
       for (const [a, b, key] of pairs) {
-        if (this.resolvePair(a, b, this._pairContacts.get(key) ?? null)) resolved = true
+        if (this.resolvePair(a, b, this._pairDepths.get(key) ?? 0)) resolved = true
       }
     }
 
@@ -212,8 +195,7 @@ class CarCollisionManager {
     }
   }
 
-  resolvePair(a, b, contact) {
-    const depth = contact?.depth ?? 0
+  resolvePair(a, b, depth) {
     if (depth <= MIN_CONTACT_DEPTH) return false
 
     const speedA = Math.abs(a.getSpeed())
@@ -244,7 +226,7 @@ class CarCollisionManager {
 
     carCollisionDebug.branch = 'softPushRear'
     const { rear, front } = rearAndFront(a, b, fwdA, fwdB)
-    softPushRear(rear, front, contact)
+    softPushRear(rear, front, depth)
     return true
   }
 }
