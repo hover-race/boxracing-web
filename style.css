@@ -129,6 +129,42 @@ canvas {
     letter-spacing: 0.05em;
 }
 
+#race-countdown {
+    position: fixed;
+    top: 16%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5000;
+    text-align: center;
+    padding: 18px 40px 22px;
+    border-radius: 12px;
+    background: rgba(10, 0, 22, 0.72);
+    border: 1px solid rgba(196, 77, 255, 0.4);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    color: #c44dff;
+    font-family: Audiowide, sans-serif;
+    font-style: italic;
+    font-weight: 700;
+    pointer-events: none;
+}
+
+#race-countdown[hidden] {
+    display: none;
+}
+
+.race-countdown-label {
+    font-size: clamp(16px, 2.4vw, 24px);
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 12px rgba(196, 77, 255, 0.45);
+}
+
+.race-countdown-number {
+    margin-top: 8px;
+    font-size: clamp(56px, 10vw, 96px);
+    line-height: 1;
+    text-shadow: 0 0 18px rgba(196, 77, 255, 0.55);
+}
+
 #hud-bottom-left {
     position: fixed;
     bottom: 20px;

@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>UI Test</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Bangers&family=Chakra+Petch:ital,wght@1,700&family=Exo+2:ital,wght@1,800&family=Monoton&family=Pacifico&family=Racing+Sans+One&family=Tilt+Neon&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css" />
     <style>
       body.ui-test-body {
@@ -14,6 +17,9 @@
         justify-content: center;
         gap: 48px;
         background: #0a0a0a;
+        flex-wrap: wrap;
+        padding: 32px 16px;
+        box-sizing: border-box;
       }
 
       .ui-test-panel {
@@ -301,6 +307,95 @@
       .sound-toggle.muted {
         color: #888;
       }
+
+      .font-panel {
+        min-width: min(520px, 92vw);
+        padding: 28px 32px 32px;
+        border-radius: 10px;
+        background:
+          repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 4px),
+          linear-gradient(180deg, #171717 0%, #0f0f0f 100%);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.04),
+          0 18px 40px rgba(0, 0, 0, 0.55);
+      }
+
+      .font-panel h2 {
+        margin: 0 0 14px;
+        color: #888;
+        font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .font-colors {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 22px;
+      }
+
+      .font-color {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 2px solid transparent;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+      }
+
+      .font-color.selected {
+        border-color: #fff;
+      }
+
+      .font-color-custom {
+        width: 34px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid #444;
+        border-radius: 6px;
+        background: #1c1c1c;
+        cursor: pointer;
+      }
+
+      .font-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .font-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .font-name {
+        color: #666;
+        font: 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.04em;
+      }
+
+      .font-sample {
+        margin: 0;
+        line-height: 1.05;
+        font-size: clamp(28px, 4.2vw, 44px);
+        color: var(--font-preview-color, #ff3ec8);
+        text-shadow:
+          0 0 8px color-mix(in srgb, var(--font-preview-color, #ff3ec8) 55%, transparent),
+          2px 3px 0 rgba(0, 0, 0, 0.55);
+      }
+
+      .font-exo { font-family: 'Exo 2', sans-serif; font-style: italic; font-weight: 800; }
+      .font-chakra { font-family: 'Chakra Petch', sans-serif; font-style: italic; font-weight: 700; }
+      .font-audiowide { font-family: Audiowide, sans-serif; font-style: italic; }
+      .font-tilt { font-family: 'Tilt Neon', sans-serif; font-style: italic; }
+      .font-racing { font-family: 'Racing Sans One', sans-serif; font-style: italic; }
+      .font-monoton { font-family: Monoton, cursive; font-style: italic; }
+      .font-pacifico { font-family: Pacifico, cursive; font-style: italic; }
+      .font-bangers { font-family: Bangers, system-ui; font-style: italic; letter-spacing: 0.04em; }
     </style>
   </head>
   <body class="ui-test-body">
@@ -349,6 +444,53 @@
 
       <div id="esc-indicator">ESC</div>
       <div id="tcs-indicator">TCS</div>
+    </div>
+
+    <div class="font-panel">
+      <h2>80s italic fonts</h2>
+      <div class="font-colors" id="font-colors">
+        <button type="button" class="font-color selected" data-color="#ff3ec8" style="background:#ff3ec8" aria-label="Hot pink"></button>
+        <button type="button" class="font-color" data-color="#00f0ff" style="background:#00f0ff" aria-label="Cyan"></button>
+        <button type="button" class="font-color" data-color="#ffe14a" style="background:#ffe14a" aria-label="Yellow"></button>
+        <button type="button" class="font-color" data-color="#ff6a00" style="background:#ff6a00" aria-label="Orange"></button>
+        <button type="button" class="font-color" data-color="#7cff6b" style="background:#7cff6b" aria-label="Lime"></button>
+        <button type="button" class="font-color" data-color="#ffffff" style="background:#ffffff" aria-label="White"></button>
+        <input id="font-color-custom" class="font-color-custom" type="color" value="#ff3ec8" aria-label="Custom color" />
+      </div>
+      <div class="font-stack" id="font-stack">
+        <div class="font-row">
+          <span class="font-name">Exo 2 ExtraBold Italic</span>
+          <p class="font-sample font-exo">Race Start in 3</p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Chakra Petch Bold Italic</span>
+          <p class="font-sample font-chakra">Race Start in 3</p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Audiowide Italic</span>
+          <p class="font-sample font-audiowide">Race Start in 3</p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Tilt Neon Italic</span>
+          <p class="font-sample font-tilt">Race Start in 3</p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Racing Sans One Italic</span>
+          <p class="font-sample font-racing">Race Start in 3</p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Monoton Italic</span>
+          <p class="font-sample font-monoton">Race Start in 3</p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Pacifico Italic</span>
+          <p class="font-sample font-pacifico">Race Start in 3</p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Bangers Italic</span>
+          <p class="font-sample font-bangers">Race Start in 3</p>
+        </div>
+      </div>
     </div>
 
     <script src="lib/enable3d.framework.0.25.4.min.js"></script>
@@ -457,6 +599,27 @@
           cancelAnimationFrame(soundRafId)
           tireSound.update(0, 0.05)
         }
+      })
+
+      const fontStack = document.getElementById('font-stack')
+      const fontColors = document.getElementById('font-colors')
+      const fontColorCustom = document.getElementById('font-color-custom')
+
+      function setFontPreviewColor(color) {
+        fontStack.style.setProperty('--font-preview-color', color)
+        fontColorCustom.value = color
+        for (const button of fontColors.querySelectorAll('.font-color')) {
+          button.classList.toggle('selected', button.dataset.color.toLowerCase() === color.toLowerCase())
+        }
+      }
+
+      fontColors.addEventListener('click', (event) => {
+        const button = event.target.closest('.font-color')
+        if (!button) return
+        setFontPreviewColor(button.dataset.color)
+      })
+      fontColorCustom.addEventListener('input', () => {
+        setFontPreviewColor(fontColorCustom.value)
       })
     </script>
   </body>

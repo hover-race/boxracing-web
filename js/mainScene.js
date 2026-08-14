@@ -283,6 +283,29 @@ export class MainScene extends Scene3D {
       else drawer.disable()
     }
     window.setPhysicsDebug(params.physicsDebug)
+    this.startRaceCountdown()
+  }
+
+  startRaceCountdown() {
+    this._countdownRemaining = 0
+    const el = document.getElementById('race-countdown')
+    const numberEl = el?.querySelector('.race-countdown-number')
+    if (!el || !numberEl || params.skipIntro) return
+
+    this._countdownRemaining = 3
+    numberEl.textContent = '3'
+    el.hidden = false
+    clearInterval(this._countdownTimer)
+    this._countdownTimer = setInterval(() => {
+      this._countdownRemaining -= 1
+      if (this._countdownRemaining <= 0) {
+        clearInterval(this._countdownTimer)
+        this._countdownTimer = null
+        el.hidden = true
+        return
+      }
+      numberEl.textContent = String(this._countdownRemaining)
+    }, 1000)
   }
 
   _scheduleAutoStop() {
@@ -381,7 +404,8 @@ export class MainScene extends Scene3D {
     if (this._physicsTimer) this._physicsTimer.textContent = this._physicsElapsed.toFixed(1)
     this._scheduleAutoStop();
 
-    if (params.botDrive && this.bots.length) {
+    const countingDown = this._countdownRemaining > 0
+    if (params.botDrive && this.bots.length && !countingDown) {
       for (const { car, bot } of this.bots) {
         car.update(bot.drive(car))
         car.updateTireMarks()
@@ -393,18 +417,20 @@ export class MainScene extends Scene3D {
       }
     }
 
-    let steering = inputControls.steering;
-    if (this.autoSteer) {
+    let steering = countingDown ? 0 : inputControls.steering;
+    if (this.autoSteer && !countingDown) {
       steering = this.autoSteer.drive(this.car, steering, deltaTime);
     } else {
       vehicleParams.autoSteerLateral = 0;
     }
 
-    const vehicleInputs = {
-      ...inputControls,
-      throttle: Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput + params.autoThrottle)),
-      steering,
-    }
+    const vehicleInputs = countingDown
+      ? { steering: 0, throttle: 0, brake: 0, handbrake: 0 }
+      : {
+          ...inputControls,
+          throttle: Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput + params.autoThrottle)),
+          steering,
+        }
     this.car.update(vehicleInputs);
     this.autoSteer?.patchWheelLog(vehicleParams.wheelSteerAngle);
     this.car.updateTireMarks();
