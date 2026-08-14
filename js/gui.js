@@ -11,9 +11,22 @@ window.addEventListener('keydown', (e) => {
   }
 })
 
+const NAME_COLORS = ['Red', 'Blue', 'Pink', 'Gold', 'Lime', 'Cyan', 'Teal', 'Jade', 'Ruby', 'Amber', 'Coral', 'Plum', 'Mint', 'Navy', 'Sage', 'Peach', 'Olive', 'Rust', 'Onyx', 'Snow', 'Wine', 'Moss', 'Sand', 'Coal', 'Ink', 'Fog', 'Ice', 'Ash', 'Neon', 'Volt', 'Aqua']
+const NAME_NOUNS = ['Fox', 'Wolf', 'Bear', 'Cat', 'Owl', 'Bat', 'Elk', 'Hawk', 'Lynx', 'Crow', 'Kiwi', 'Pear', 'Fig', 'Plum', 'Date', 'Moth', 'Crab', 'Puma', 'Mink', 'Dove', 'Seal', 'Toad', 'Wren', 'Finch', 'Grape', 'Melon', 'Mango', 'Apple', 'Lemon', 'Berry', 'Acorn', 'Tiger', 'Moose', 'Goat', 'Duck', 'Frog', 'Deer', 'Hare', 'Boar']
+
 function generateDefaultPlayerName() {
-  const randomNum = Math.floor(Math.random() * 900) + 100;
-  return `Player${randomNum}`;
+  const color = NAME_COLORS[Math.floor(Math.random() * NAME_COLORS.length)]
+  const noun = NAME_NOUNS[Math.floor(Math.random() * NAME_NOUNS.length)]
+  return color + noun
+}
+
+function loadPlayerName() {
+  let name = localStorage.getItem('playerName')
+  if (!name) {
+    name = generateDefaultPlayerName()
+    localStorage.setItem('playerName', name)
+  }
+  return name.length > 12 ? name.substring(0, 12) : name
 }
 
 // Inputs consumed by controls.js / the main loop
@@ -26,10 +39,7 @@ const inputControls = {
 
 // Player identity (used by Vehicle.serialize / networking)
 const playerControl = {
-  name: (() => {
-    const name = localStorage.getItem('playerName') || generateDefaultPlayerName();
-    return name.length > 12 ? name.substring(0, 12) + '.' : name;
-  })()
+  name: loadPlayerName()
 }
 
 const params = {
@@ -104,6 +114,21 @@ const params = {
   })()
 }
 
+let playerNameController
+
+function applyPlayerName(name) {
+  name = String(name || '').trim()
+  if (!name) name = generateDefaultPlayerName()
+  if (name.length > 12) name = name.substring(0, 12)
+  playerControl.name = name
+  params.playerName = name
+  localStorage.setItem('playerName', name)
+  playerNameController?.updateDisplay()
+  const nameInput = document.getElementById('player-name-input')
+  if (nameInput && nameInput.value !== name) nameInput.value = name
+  return name
+}
+
 const vehicleParams = {
   speed: 0,
   slipRatio: 0,
@@ -153,6 +178,7 @@ const carCollisionDebug = {
 gui.useLocalStorage = true
 gui.remember(params)
 
+playerNameController = gui.add(params, 'playerName').name('Player Name').onChange(applyPlayerName)
 gui.add(params, 'botShader', ['none', 'outline', 'fresnel', 'solid', 'xray', 'digital', 'glitch', 'waves']).onChange(() => window.refreshBotShader?.())
 gui.add(params, 'botOutlineThickness', 0.005, 0.06).step(0.001).onChange(() => window.refreshBotShader?.())
 gui.add(params, 'smokeEnabled')
@@ -249,6 +275,7 @@ function applyUrlParamOverrides() {
   gui.__controllers.forEach((c) => c.updateDisplay())
 }
 applyUrlParamOverrides()
+applyPlayerName(new URLSearchParams(window.location.search).has('playerName') ? params.playerName : playerControl.name)
 
 const tcToggleInput = document.getElementById('tc-toggle-input')
 const autoSteerToggleInput = document.getElementById('auto-steer-toggle-input')

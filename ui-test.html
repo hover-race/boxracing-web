@@ -6,14 +6,21 @@
     <title>UI Test</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Bangers&family=Chakra+Petch:ital,wght@1,700&family=Exo+2:ital,wght@1,800&family=Monoton&family=Pacifico&family=Racing+Sans+One&family=Tilt+Neon&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Bangers&family=Chakra+Petch:ital,wght@1,700&family=Chivo+Mono:wght@500;700&family=Exo+2:ital,wght@1,800&family=Fragment+Mono&family=IBM+Plex+Mono:wght@500;700&family=Inconsolata:wght@600;700&family=JetBrains+Mono:wght@500;700&family=Monoton&family=Overpass+Mono:wght@600;700&family=Pacifico&family=Press+Start+2P&family=Racing+Sans+One&family=Red+Hat+Mono:wght@500;700&family=Roboto+Mono:wght@500;700&family=Share+Tech+Mono&family=Source+Code+Pro:wght@600;700&family=Space+Mono:wght@400;700&family=Tilt+Neon&family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css" />
     <style>
+      html:has(body.ui-test-body),
+      body.ui-test-body {
+        width: auto;
+        height: auto;
+        min-height: 100vh;
+        overflow: auto;
+      }
+
       body.ui-test-body {
         margin: 0;
-        min-height: 100vh;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
         gap: 48px;
         background: #0a0a0a;
@@ -396,6 +403,39 @@
       .font-monoton { font-family: Monoton, cursive; font-style: italic; }
       .font-pacifico { font-family: Pacifico, cursive; font-style: italic; }
       .font-bangers { font-family: Bangers, system-ui; font-style: italic; letter-spacing: 0.04em; }
+
+      .time-sample {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+        line-height: 1.15;
+        font-size: clamp(22px, 3.2vw, 34px);
+        font-variant-numeric: tabular-nums;
+        color: var(--font-preview-color, #ff3ec8);
+        text-shadow:
+          0 0 8px color-mix(in srgb, var(--font-preview-color, #ff3ec8) 55%, transparent),
+          2px 3px 0 rgba(0, 0, 0, 0.55);
+      }
+
+      .font-system-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 700; }
+      .font-menlo { font-family: Menlo, Monaco, monospace; font-weight: 700; }
+      .font-consolas { font-family: Consolas, 'Courier New', monospace; font-weight: 700; }
+      .font-courier { font-family: 'Courier New', Courier, monospace; font-weight: 700; }
+      .font-jetbrains { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+      .font-ibm { font-family: 'IBM Plex Mono', monospace; font-weight: 700; }
+      .font-roboto-mono { font-family: 'Roboto Mono', monospace; font-weight: 700; }
+      .font-source-code { font-family: 'Source Code Pro', monospace; font-weight: 700; }
+      .font-space-mono { font-family: 'Space Mono', monospace; font-weight: 700; }
+      .font-share-tech { font-family: 'Share Tech Mono', monospace; }
+      .font-vt323 { font-family: VT323, monospace; }
+      .font-fragment { font-family: 'Fragment Mono', monospace; }
+      .font-chivo { font-family: 'Chivo Mono', monospace; font-weight: 700; }
+      .font-overpass { font-family: 'Overpass Mono', monospace; font-weight: 700; }
+      .font-redhat { font-family: 'Red Hat Mono', monospace; font-weight: 700; }
+      .font-inconsolata { font-family: Inconsolata, monospace; font-weight: 700; }
+      .font-press-start { font-family: 'Press Start 2P', monospace; font-size: clamp(12px, 1.8vw, 16px); line-height: 1.6; }
     </style>
   </head>
   <body class="ui-test-body">
@@ -489,6 +529,80 @@
         <div class="font-row">
           <span class="font-name">Bangers Italic</span>
           <p class="font-sample font-bangers">Race Start in 3</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="font-panel">
+      <h2>Monospace times</h2>
+      <div class="font-stack" id="time-stack">
+        <div class="font-row">
+          <span class="font-name">ui-monospace / SF Mono</span>
+          <p class="time-sample font-system-mono"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Menlo</span>
+          <p class="time-sample font-menlo"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Consolas</span>
+          <p class="time-sample font-consolas"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Courier New</span>
+          <p class="time-sample font-courier"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">JetBrains Mono Bold</span>
+          <p class="time-sample font-jetbrains"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">IBM Plex Mono Bold</span>
+          <p class="time-sample font-ibm"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Roboto Mono Bold</span>
+          <p class="time-sample font-roboto-mono"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Source Code Pro Bold</span>
+          <p class="time-sample font-source-code"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Space Mono Bold</span>
+          <p class="time-sample font-space-mono"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Share Tech Mono</span>
+          <p class="time-sample font-share-tech"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">VT323</span>
+          <p class="time-sample font-vt323"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Fragment Mono</span>
+          <p class="time-sample font-fragment"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Chivo Mono Bold</span>
+          <p class="time-sample font-chivo"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Overpass Mono Bold</span>
+          <p class="time-sample font-overpass"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Red Hat Mono Bold</span>
+          <p class="time-sample font-redhat"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Inconsolata Bold</span>
+          <p class="time-sample font-inconsolata"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Press Start 2P</span>
+          <p class="time-sample font-press-start"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
         </div>
       </div>
     </div>
@@ -601,12 +715,11 @@
         }
       })
 
-      const fontStack = document.getElementById('font-stack')
       const fontColors = document.getElementById('font-colors')
       const fontColorCustom = document.getElementById('font-color-custom')
 
       function setFontPreviewColor(color) {
-        fontStack.style.setProperty('--font-preview-color', color)
+        document.body.style.setProperty('--font-preview-color', color)
         fontColorCustom.value = color
         for (const button of fontColors.querySelectorAll('.font-color')) {
           button.classList.toggle('selected', button.dataset.color.toLowerCase() === color.toLowerCase())
@@ -621,6 +734,42 @@
       fontColorCustom.addEventListener('input', () => {
         setFontPreviewColor(fontColorCustom.value)
       })
+
+      const timeSamples = [...document.querySelectorAll('.time-sample')]
+      const timerStart = performance.now()
+
+      function pad(value, width) {
+        return String(value).padStart(width, '0')
+      }
+
+      function formatLap(ms) {
+        const minutes = Math.floor(ms / 60000)
+        const seconds = Math.floor((ms % 60000) / 1000)
+        const frac = Math.floor(ms / 10) % 100
+        return `${minutes}:${pad(seconds, 2)}.${pad(frac, 2)}`
+      }
+
+      function formatGap(ms) {
+        const s = ms / 1000
+        if (s < 60) return `+${s.toFixed(2)}`
+        const m = Math.floor(s / 60)
+        const rem = s - m * 60
+        return `+${m}:${rem.toFixed(2).padStart(5, '0')}`
+      }
+
+      function tickTimers(now) {
+        const elapsed = now - timerStart
+        const lap = formatLap(elapsed)
+        const other = formatLap(elapsed * 0.37 + 9000)
+        const gap = formatGap((elapsed % 30000) + 400)
+        for (const sample of timeSamples) {
+          sample.children[0].textContent = lap
+          sample.children[1].textContent = other
+          sample.children[2].textContent = gap
+        }
+        requestAnimationFrame(tickTimers)
+      }
+      requestAnimationFrame(tickTimers)
     </script>
   </body>
 </html>

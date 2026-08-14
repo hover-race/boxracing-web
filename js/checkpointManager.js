@@ -17,21 +17,37 @@ class CheckpointManager {
     this.currentLapStartTime = 0;
     this.bestLapTime = Infinity;
     this.lapPathRecorder = null;
+    this.trackLine = null;
+    this.startU = 0;
+    this.splitFracs = [0, 0.25, 0.5, 0.75];
 
     this.lapCountElement = document.getElementById('lap-counter');
-    this.currentLapTimeElement = document.getElementById('current-lap-time');
+    this.lapTimeWholeElement = document.getElementById('lap-time-whole');
+    this.lapTimeFracElement = document.getElementById('lap-time-frac');
     this.bestLapTimeElement = document.getElementById('best-lap-time');
+    this.positionElement = document.getElementById('race-hud-position');
+    this.playerNameElement = document.getElementById('race-hud-player-name');
+    this.standingsElement = document.getElementById('race-hud-standings');
 
-    this.updateTimerInterval = setInterval(() => this.updateCurrentLapTime(), 100);
+    this.updateTimerInterval = setInterval(() => this.updateRaceHud(), 100);
   }
 
-  init(car, { totalLaps = 5 } = {}) {
+  init(car, { totalLaps = 5, trackLine = null } = {}) {
     this.totalLaps = totalLaps;
     this.raceFinished = false;
-    this.registerRacer(car, { isPlayer: true, name: 'Player' });
+    this.trackLine = trackLine;
+    if (trackLine && this.finishLine?.ghost) {
+      const p = this.finishLine.ghost.position;
+      this.startU = trackLine.project(p.x, p.z);
+    } else {
+      this.startU = 0;
+    }
+    this.initTimingSplits();
+    this.registerRacer(car, { isPlayer: true, name: params.playerName || 'Player' });
     this.bestLapTime = Infinity;
     this.resetLapTimer();
     this.updatePlayerLapDisplay();
+    this.updateStandings();
     if (this.bestLapTimeElement) {
       this.bestLapTimeElement.textContent = `Best: ${this.formatTime(this.bestLapTime)}`;
     }
@@ -45,6 +61,11 @@ class CheckpointManager {
       checkpointProgress: 0,
       lapCount: 0,
       finished: false,
+      finishTime: 0,
+      trackU: null,
+      gridFrac: null,
+      splitIndex: 0,
+      splitTimes: [],
     };
     this.racers.push(racer);
     this.chassisToRacer.set(vehicle.chassis, racer);
@@ -66,33 +87,167 @@ class CheckpointManager {
   }
 
   formatTime(timeMs) {
-    if (timeMs === Infinity || timeMs === 0) {
-      return '--:--.---';
+    if (timeMs === Infinity) {
+      return '-:--.-';
     }
 
     const minutes = Math.floor(timeMs / 60000);
     const seconds = Math.floor((timeMs % 60000) / 1000);
-    const milliseconds = Math.floor(timeMs % 1000);
+    const tenths = Math.floor(timeMs / 100) % 10;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}.${tenths}`;
+  }
 
-    return `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+  setLapTimeDisplay(timeMs) {
+    const text = this.formatTime(timeMs);
+    const dot = text.lastIndexOf('.');
+    if (this.lapTimeWholeElement) this.lapTimeWholeElement.textContent = text.slice(0, dot);
+    if (this.lapTimeFracElement) this.lapTimeFracElement.textContent = text.slice(dot + 1);
+  }
+
+  updateRaceHud() {
+    this.updateCurrentLapTime();
+    this.pollSplits();
+    this.updateStandings();
+  }
+
+  initTimingSplits() {
+    let cp = 0.5;
+    if (this.trackLine && this.checkpoints[0]?.ghost) {
+      const p = this.checkpoints[0].ghost.position;
+      const u = this.trackLine.project(p.x, p.z);
+      cp = u - this.startU;
+      if (cp < 0) cp += 1;
+      if (cp < 0.08 || cp > 0.92) cp = 0.5;
+    }
+    this.splitFracs = [0, cp * 0.5, cp, cp + (1 - cp) * 0.5];
+  }
+
+  signedFrac(u) {
+    let frac = u - this.startU;
+    if (frac > 0.5) frac -= 1;
+    if (frac < -0.5) frac += 1;
+    return frac;
+  }
+
+  fracFromStart(u) {
+    let frac = u - this.startU;
+    if (frac < 0) frac += 1;
+    return frac;
+  }
+
+  inLapSplits(frac) {
+    let n = 0;
+    for (let i = 1; i < this.splitFracs.length; i++) {
+      if (frac >= this.splitFracs[i]) n = i;
+    }
+    return n;
+  }
+
+  updateTrackU(racer) {
+    if (!this.trackLine) return;
+    const pos = racer.vehicle.visualRoot.position;
+    racer.trackU = this.trackLine.project(pos.x, pos.z, racer.trackU);
+    if (racer.gridFrac == null) racer.gridFrac = this.signedFrac(racer.trackU);
+  }
+
+  pollSplits() {
+    const now = performance.now();
+    const n = this.splitFracs.length;
+    for (const racer of this.racers) {
+      this.updateTrackU(racer);
+      if (racer.finished || racer.checkpointProgress === 0) continue;
+      const frac = this.fracFromStart(racer.trackU);
+      const target = racer.lapCount * n + this.inLapSplits(frac);
+      while (racer.splitIndex < target) {
+        racer.splitTimes[racer.splitIndex] = now;
+        racer.splitIndex++;
+      }
+    }
+  }
+
+  rankedRacers() {
+    const finished = [];
+    const racing = [];
+    for (const racer of this.racers) {
+      if (racer.finished) finished.push(racer);
+      else racing.push(racer);
+    }
+    finished.sort((a, b) => a.finishTime - b.finishTime);
+    racing.sort((a, b) => {
+      if (b.splitIndex !== a.splitIndex) return b.splitIndex - a.splitIndex;
+      if (a.splitIndex === 0) return (b.gridFrac ?? 0) - (a.gridFrac ?? 0);
+      return a.splitTimes[a.splitIndex - 1] - b.splitTimes[b.splitIndex - 1];
+    });
+    return finished.concat(racing);
+  }
+
+  formatGap(ms) {
+    const s = ms / 1000;
+    if (s < 60) return `+${s.toFixed(1)}`;
+    const m = Math.floor(s / 60);
+    const rem = s - m * 60;
+    return `+${m}:${rem.toFixed(1).padStart(4, '0')}`;
+  }
+
+  gapBehind(racer, leader) {
+    if (racer === leader) return '—';
+    const k = racer.splitIndex - 1;
+    if (k < 0) return '—';
+    const leaderT = leader.splitTimes[k];
+    const racerT = racer.splitTimes[k];
+    if (leaderT == null || racerT == null) return '—';
+    return this.formatGap(racerT - leaderT);
+  }
+
+  syncStandingsRows(count) {
+    const list = this.standingsElement;
+    if (!list) return;
+    while (list.children.length < count) {
+      const row = document.createElement('div');
+      row.className = 'race-hud-racer';
+      row.innerHTML =
+        '<span class="race-hud-racer-pos"></span>' +
+        '<span class="race-hud-racer-name"></span>' +
+        '<span class="race-hud-racer-gap"></span>';
+      list.appendChild(row);
+    }
+    while (list.children.length > count) list.lastChild.remove();
+  }
+
+  updateStandings() {
+    if (!this.playerRacer || this.racers.length === 0) return;
+    const ranked = this.rankedRacers();
+    const leader = ranked[0];
+    const place = ranked.indexOf(this.playerRacer) + 1;
+    if (this.positionElement) {
+      this.positionElement.textContent = `P${place}`;
+    }
+    if (this.playerNameElement) {
+      this.playerNameElement.textContent = this.playerRacer.name;
+    }
+
+    this.syncStandingsRows(ranked.length);
+    if (!this.standingsElement) return;
+    for (let i = 0; i < ranked.length; i++) {
+      const racer = ranked[i];
+      const row = this.standingsElement.children[i];
+      row.classList.toggle('is-player', racer.isPlayer);
+      row.children[0].textContent = `P${i + 1}`;
+      row.children[1].textContent = racer.name;
+      row.children[2].textContent = this.gapBehind(racer, leader);
+    }
   }
 
   updateCurrentLapTime() {
     if (!this.playerRacer || this.currentLapStartTime === 0 || this.playerRacer.checkpointProgress === 0) {
       return;
     }
-
-    const lapTime = performance.now() - this.currentLapStartTime;
-    if (this.currentLapTimeElement) {
-      this.currentLapTimeElement.textContent = `Current: ${this.formatTime(lapTime)}`;
-    }
+    this.setLapTimeDisplay(performance.now() - this.currentLapStartTime);
   }
 
   resetLapTimer() {
     this.currentLapStartTime = 0;
-    if (this.currentLapTimeElement) {
-      this.currentLapTimeElement.textContent = 'Current: 0:00.000';
-    }
+    this.setLapTimeDisplay(0);
   }
 
   startLapTimer() {
@@ -105,7 +260,7 @@ class CheckpointManager {
     const current = finished
       ? this.totalLaps
       : Math.min(lapCount + 1, this.totalLaps);
-    this.lapCountElement.textContent = `Lap ${current}/${this.totalLaps}`;
+    this.lapCountElement.textContent = `${current}/${this.totalLaps}`;
   }
 
   completePlayerLap() {
@@ -147,6 +302,7 @@ class CheckpointManager {
         }
       } else if (racer.lapCount >= this.totalLaps) {
         racer.finished = true;
+        racer.finishTime = performance.now();
       }
     }
   }
@@ -161,6 +317,7 @@ class CheckpointManager {
 
   finishRace(racer) {
     racer.finished = true;
+    racer.finishTime = performance.now();
     this.raceFinished = true;
     this.updatePlayerLapDisplay();
     params.botDrive = false;
@@ -351,11 +508,17 @@ class CheckpointManager {
       racer.checkpointProgress = 0;
       racer.lapCount = 0;
       racer.finished = false;
+      racer.finishTime = 0;
+      racer.trackU = null;
+      racer.gridFrac = null;
+      racer.splitIndex = 0;
+      racer.splitTimes = [];
     }
     this.raceFinished = false;
     this.resetLapTimer();
     this.bestLapTime = Infinity;
     this.updatePlayerLapDisplay();
+    this.updateStandings();
     if (this.bestLapTimeElement) {
       this.bestLapTimeElement.textContent = 'Best: --:--.---';
     }

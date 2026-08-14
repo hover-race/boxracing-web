@@ -4,9 +4,18 @@ function selectCar(scene) {
   const overlay = document.getElementById('car-selection')
   const options = document.getElementById('car-selection-options')
   const startButton = document.getElementById('car-selection-start')
+  const nameInput = document.getElementById('player-name-input')
   let selectedCar = getCarModel(params.car_id)
 
+  nameInput.value = playerControl.name
+  nameInput.addEventListener('input', () => {
+    const name = nameInput.value.trim()
+    if (!name) return
+    applyPlayerName(name)
+  })
+
   function finish(carId) {
+    applyPlayerName(nameInput.value)
     params.car_id = carId
     localStorage.setItem('car_id', carId)
     params.offlinePlay = true

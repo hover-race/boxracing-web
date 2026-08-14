@@ -181,7 +181,10 @@ export class MainScene extends Scene3D {
     this.cameraSwitcher.initFollow(this.camera, this.car.visualRoot);
     window.bindCameraSwitcherToGui?.(this.cameraSwitcher)
     
-    this.checkpointManager.init(this.car, { totalLaps: params.numLaps })
+    this.checkpointManager.init(this.car, {
+      totalLaps: params.numLaps,
+      trackLine: this.trackCenterline,
+    })
     this.autoSteer = new AutoSteer([this.trackCenterline])
     if (params.debugSpawnU >= 0) {
       const backU = params.debugSpawnBackM / this.trackCenterline.length;
