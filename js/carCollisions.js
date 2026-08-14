@@ -1,4 +1,5 @@
 import { updateContactHeat, clearContactOverlay, triggerHeatWave, hasActiveHeatWave } from './contactOverlay.js'
+import { Config } from './config.js'
 
 export const GROUP_TRACK = 1
 export const GROUP_CAR = 2
@@ -118,7 +119,7 @@ function softPushRear(rear, front, contact) {
   const nx = dx / len
   const nz = dz / len
   const depthScale = Math.min(1, depth)
-  const force = params.carCollisionPushForce * rear.mass * depthScale
+  const force = Config.carCollisionPushForce * rear.mass * depthScale
   const btForce = new Ammo.btVector3(nx * force, 0, nz * force)
   rear.collisionMesh.body.ammo.applyCentralForce(btForce)
   Ammo.destroy(btForce)
