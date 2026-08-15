@@ -64,6 +64,7 @@ class CheckpointManager {
       finishTime: 0,
       trackU: null,
       gridFrac: null,
+      lastFrac: null,
       splitIndex: 0,
       splitTimes: [],
     };
@@ -135,33 +136,70 @@ class CheckpointManager {
     return frac;
   }
 
-  inLapSplits(frac) {
-    let n = 0;
-    for (let i = 1; i < this.splitFracs.length; i++) {
-      if (frac >= this.splitFracs[i]) n = i;
-    }
-    return n;
+  forwardDelta(prev, curr) {
+    let d = curr - prev;
+    if (d < -0.5) d += 1;
+    if (d > 0.5) d -= 1;
+    return d;
   }
 
-  updateTrackU(racer) {
-    if (!this.trackLine) return;
+  crossedGate(prev, curr, gate) {
+    if (prev <= curr) return prev < gate && gate <= curr;
+    return prev < gate || gate <= curr;
+  }
+
+  sampleOnTrack(racer) {
+    if (!this.trackLine) return null;
     const pos = racer.vehicle.visualRoot.position;
-    racer.trackU = this.trackLine.project(pos.x, pos.z, racer.trackU);
-    if (racer.gridFrac == null) racer.gridFrac = this.signedFrac(racer.trackU);
+    const maxDist = 22;
+    let u = this.trackLine.project(pos.x, pos.z, racer.trackU);
+    let p = this.trackLine.sample(u);
+    let dist = Math.hypot(pos.x - p.x, pos.z - p.z);
+    if (dist > maxDist) {
+      u = this.trackLine.project(pos.x, pos.z, null);
+      p = this.trackLine.sample(u);
+      dist = Math.hypot(pos.x - p.x, pos.z - p.z);
+    }
+    if (dist > maxDist) return null;
+    return u;
   }
 
   pollSplits() {
     const now = performance.now();
     const n = this.splitFracs.length;
+    const maxStep = 0.1;
     for (const racer of this.racers) {
-      this.updateTrackU(racer);
-      if (racer.finished || racer.checkpointProgress === 0) continue;
-      const frac = this.fracFromStart(racer.trackU);
-      const target = racer.lapCount * n + this.inLapSplits(frac);
-      while (racer.splitIndex < target) {
-        racer.splitTimes[racer.splitIndex] = now;
-        racer.splitIndex++;
+      if (racer.finished) continue;
+      const u = this.sampleOnTrack(racer);
+      if (u == null) continue;
+
+      const frac = this.fracFromStart(u);
+      racer.trackU = u;
+      if (racer.gridFrac == null) racer.gridFrac = this.signedFrac(u);
+
+      if (racer.checkpointProgress === 0 || racer.lastFrac == null) {
+        racer.lastFrac = frac;
+        continue;
       }
+
+      const d = this.forwardDelta(racer.lastFrac, frac);
+      if (d > 0 && d <= maxStep) {
+        const next = this.splitFracs[racer.splitIndex % n];
+        if (this.crossedGate(racer.lastFrac, frac, next)) {
+          racer.splitTimes[racer.splitIndex] = now;
+          racer.splitIndex++;
+        }
+      }
+      racer.lastFrac = frac;
+    }
+  }
+
+  syncSplitsToLap(racer) {
+    const minSplits = racer.lapCount * this.splitFracs.length;
+    const now = performance.now();
+    while (racer.splitIndex < minSplits) {
+      racer.splitTimes[racer.splitIndex] = now;
+      racer.splitIndex++;
     }
   }
 
@@ -174,6 +212,7 @@ class CheckpointManager {
     }
     finished.sort((a, b) => a.finishTime - b.finishTime);
     racing.sort((a, b) => {
+      if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
       if (b.splitIndex !== a.splitIndex) return b.splitIndex - a.splitIndex;
       if (a.splitIndex === 0) return (b.gridFrac ?? 0) - (a.gridFrac ?? 0);
       return a.splitTimes[a.splitIndex - 1] - b.splitTimes[b.splitIndex - 1];
@@ -191,12 +230,33 @@ class CheckpointManager {
 
   gapBehind(racer, leader) {
     if (racer === leader) return '—';
+    const n = this.splitFracs.length;
+    const laps = Math.max(
+      leader.lapCount - racer.lapCount,
+      Math.floor((leader.splitIndex - racer.splitIndex) / n)
+    );
+    if (laps >= 1) return laps === 1 ? '+1 LAP' : `+${laps} LAPS`;
     const k = racer.splitIndex - 1;
     if (k < 0) return '—';
     const leaderT = leader.splitTimes[k];
     const racerT = racer.splitTimes[k];
     if (leaderT == null || racerT == null) return '—';
-    return this.formatGap(racerT - leaderT);
+    const ms = racerT - leaderT;
+    if (ms < 0) return '—';
+    return this.formatGap(ms);
+  }
+
+  resetLapProgress(vehicle) {
+    const racer = this.chassisToRacer.get(vehicle.chassis);
+    if (!racer || racer.finished) return;
+    if (racer.checkpointProgress > 0) racer.checkpointProgress = 1;
+    const keep = racer.lapCount * this.splitFracs.length;
+    racer.splitTimes.length = keep;
+    racer.splitIndex = keep;
+    racer.trackU = null;
+    racer.lastFrac = null;
+    if (racer.isPlayer && racer.checkpointProgress > 0) this.startLapTimer();
+    this.updateStandings();
   }
 
   syncStandingsRows(count) {
@@ -291,6 +351,7 @@ class CheckpointManager {
     } else if (racer.checkpointProgress === 2) {
       racer.lapCount++;
       racer.checkpointProgress = 1;
+      this.syncSplitsToLap(racer);
 
       if (racer.isPlayer) {
         this.completePlayerLap();
@@ -511,6 +572,7 @@ class CheckpointManager {
       racer.finishTime = 0;
       racer.trackU = null;
       racer.gridFrac = null;
+      racer.lastFrac = null;
       racer.splitIndex = 0;
       racer.splitTimes = [];
     }

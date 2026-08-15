@@ -445,7 +445,10 @@ export class MainScene extends Scene3D {
 
     this.explosionFx.update(deltaTime / 1000);
     if (params.explosionEnabled && !this.car.exploding && this.car.updateDamage(deltaTime / 1000, this.explosionFx)) {
-      this.car.explode(this.explosionFx, this.startTransform, (t) => this.teleportCar(t));
+      this.car.explode(this.explosionFx, this.startTransform, (t) => {
+        this.teleportCar(t)
+        this.checkpointManager.resetLapProgress(this.car)
+      });
     }
     
     // Record replay data

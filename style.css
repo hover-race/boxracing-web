@@ -281,7 +281,7 @@ canvas {
 
 .race-hud-racer {
     display: grid;
-    grid-template-columns: 2.1em 1fr 4.6em;
+    grid-template-columns: 2.1em 1fr 5.2em;
     gap: 6px;
     align-items: baseline;
     margin-top: 4px;
