@@ -7,6 +7,7 @@ import { extractCarParts } from './carModels.js';
 import { GROUP_CAR, GROUP_TRACK } from './carCollisions.js';
 import { clearContactOverlay } from './contactOverlay.js';
 import { createEngineSound, updateEngineSound } from './sound.js';
+import { Gearbox } from './gearbox.js';
 
 class Vehicle {
   vehicle
@@ -78,13 +79,6 @@ class Vehicle {
     this.drivenWheelIndices = carModel.drivenWheels.map(
       slot => Vehicle.WHEEL_SLOT_INDEX[slot]
     )
-    this.numGears = carModel.numGears
-    this.redline = carModel.redline
-    this.gear = 1
-    this.targetGear = 1
-    this.shiftDuration = 0.35
-    this.shiftTimeRemaining = 0
-    this.shiftInterval = null
     this.wheels = []
 
     const { physicsWorld } = physics
@@ -102,14 +96,12 @@ class Vehicle {
     const wheelRadiusBack = carModel.wheelRadiusBack
     const wheelRadiusFront = carModel.wheelRadiusFront
     const driveWheelRadius = this.drivenWheelIndices[0] < 2 ? wheelRadiusFront : wheelRadiusBack
-    const topSpeedMps = carModel.topSpeedMph * 0.44704
-    const topGearWheelRpm = topSpeedMps / (2 * Math.PI * driveWheelRadius) * 60
-    const topGearRatio = this.redline / topGearWheelRpm
-    this.gearRatios = Array.from({ length: this.numGears }, (_, index) => {
-      if (this.numGears === 1) return topGearRatio
-      const gear = index + 1
-      const progression = this.numGears ** ((this.numGears - gear) / (this.numGears - 1))
-      return topGearRatio * progression
+    this.gearbox = new Gearbox({
+      numGears: carModel.numGears,
+      redline: carModel.redline,
+      topSpeedMph: carModel.topSpeedMph,
+      driveWheelRadius,
+      maxEngineForce: this.maxEngineForce,
     })
 
     this.addWheel(
@@ -319,57 +311,6 @@ class Vehicle {
     this.chassis.body.ammo.applyCentralForce(forward.op_mul(params.pushForce * 500))
   }
 
-  getDrivenWheelRpm() {
-    const totalAngularVelocity = this.drivenWheelIndices.reduce(
-      (total, index) => total + Math.abs(this.wheels[index].angularVelocity),
-      0,
-    )
-    return totalAngularVelocity / this.drivenWheelIndices.length * 60 / (2 * Math.PI)
-  }
-
-  getEngineRpm(gear = this.gear) {
-    return this.getDrivenWheelRpm() * this.gearRatios[gear - 1]
-  }
-
-  getDesiredGear() {
-    if (this.getEngineRpm() >= this.redline && this.gear < this.numGears) {
-      return this.gear + 1
-    }
-    if (this.gear > 1 && this.getEngineRpm(this.gear - 1) < this.redline * 0.7) {
-      return this.gear - 1
-    }
-    return this.gear
-  }
-
-  updateGear() {
-    if (this.shiftInterval) return
-
-    const desiredGear = this.getDesiredGear()
-    if (desiredGear !== this.gear) {
-      this.targetGear = desiredGear
-      this.shiftTimeRemaining = this.shiftDuration
-      const shiftStartedAt = performance.now()
-      this.shiftInterval = setInterval(() => {
-        const elapsed = (performance.now() - shiftStartedAt) / 1000
-        this.shiftTimeRemaining = Math.max(0, this.shiftDuration - elapsed)
-        if (this.shiftTimeRemaining <= this.shiftDuration / 2) {
-          this.gear = this.targetGear
-        }
-        if (this.shiftTimeRemaining === 0) {
-          clearInterval(this.shiftInterval)
-          this.shiftInterval = null
-        }
-      }, 16)
-    }
-  }
-
-  getDrivetrainTorqueFactor() {
-    if (this.getEngineRpm() >= this.redline) return 0
-    if (this.shiftTimeRemaining <= 0) return 1
-    const progress = 1 - this.shiftTimeRemaining / this.shiftDuration
-    return 0.2 + 0.8 * Math.abs(progress * 2 - 1)
-  }
-
   update(inputs) {
     if (this.exploding) return
 
@@ -381,14 +322,17 @@ class Vehicle {
     }
     
     const dt = 1/60;  // Assuming 60fps, ideally get this from the physics world
-    this.updateGear()
-    const gearRatio = this.gearRatios[this.gear - 1]
-    const drivetrainTorqueFactor = this.getDrivetrainTorqueFactor()
+    const { gearRatio, torqueFactor } = this.gearbox.update(
+      dt,
+      this.engineForce,
+      this.wheels,
+      this.drivenWheelIndices,
+    )
     const frontBrake = this.footBrake
-    this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake, 0, gearRatio, drivetrainTorqueFactor)
-    this.wheels[this.FRONT_RIGHT].update(dt, this.wheelEngineForce[1], frontBrake, 0, gearRatio, drivetrainTorqueFactor)
-    this.wheels[this.BACK_LEFT].update(dt, this.wheelEngineForce[2], frontBrake + this.escBrakeBL, this.handBrake, gearRatio, drivetrainTorqueFactor)
-    this.wheels[this.BACK_RIGHT].update(dt, this.wheelEngineForce[3], frontBrake + this.escBrakeBR, this.handBrake, gearRatio, drivetrainTorqueFactor)
+    this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake, 0, gearRatio, torqueFactor)
+    this.wheels[this.FRONT_RIGHT].update(dt, this.wheelEngineForce[1], frontBrake, 0, gearRatio, torqueFactor)
+    this.wheels[this.BACK_LEFT].update(dt, this.wheelEngineForce[2], frontBrake + this.escBrakeBL, this.handBrake, gearRatio, torqueFactor)
+    this.wheels[this.BACK_RIGHT].update(dt, this.wheelEngineForce[3], frontBrake + this.escBrakeBR, this.handBrake, gearRatio, torqueFactor)
     this.wheels[this.FRONT_LEFT].gui()
     vehicleParams.frontSlipAngle = Math.max(
       Math.abs(this.wheels[this.FRONT_LEFT].slipAngle),
@@ -406,9 +350,8 @@ class Vehicle {
 
     const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
     this.speedometer.textContent = `${speed.toFixed(0)} mph`
-    const rpm = this.getEngineRpm()
-    this.tachometer.textContent = `${Math.round(rpm / 50) * 50} rpm`
-    this.gearIndicator.textContent = `Gear ${this.gear}`
+    this.tachometer.textContent = `${Math.round(this.gearbox.engineRpm / 50) * 50} rpm`
+    this.gearIndicator.textContent = `Gear ${this.gearbox.gear}`
 
     // Update speed display in dat.gui
     vehicleParams.speed = speed
@@ -418,8 +361,8 @@ class Vehicle {
     this.particles.updateSmoke(dt)
     updateEngineSound(
       this.collisionMesh.engineSound,
-      this.wheels[this.BACK_LEFT],
-      this.wheels[this.BACK_RIGHT],
+      this.gearbox.engineRpm,
+      this.gearbox.redline,
     )
   }
 
@@ -541,11 +484,7 @@ class Vehicle {
       wheel.angularVelocity = 0
       wheel.rotation = 0
     }
-    this.gear = 1
-    this.targetGear = 1
-    this.shiftTimeRemaining = 0
-    clearInterval(this.shiftInterval)
-    this.shiftInterval = null
+    this.gearbox.reset()
     this.vehicleSteering = 0
     this.driverSteering = 0
     this.engineForce = 0

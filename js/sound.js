@@ -31,18 +31,14 @@ export function createEngineSound(collisionMesh, audioListener, isPositional) {
   document.addEventListener('keydown', playSound, { once: true })
 }
 
-export function updateEngineSound(engineSound, leftWheel, rightWheel) {
+export function updateEngineSound(engineSound, engineRpm, redline) {
   if (!engineSound) return
 
-  const speedMps = Math.abs(
-    (leftWheel.angularVelocity * leftWheel.radius + rightWheel.angularVelocity * rightWheel.radius) * 0.5
-  )
-  const speedMph = speedMps * 2.23694
-  engineSound.setVolume(Math.min(1, speedMph / 100) * (params.soundVolume / 100))
+  const normalizedRpm = Math.min(1, engineRpm / redline)
+  engineSound.setVolume(normalizedRpm * (params.soundVolume / 100))
   const minPitch = 0.5
   const maxPitch = 2
-  const pitch = minPitch + (maxPitch - minPitch) * (speedMph / 100)
-  engineSound.setPlaybackRate(Math.min(maxPitch, Math.max(minPitch, pitch)))
+  engineSound.setPlaybackRate(minPitch + (maxPitch - minPitch) * normalizedRpm)
 }
 
 export function loadTireScreechBuffer(audioListener) {
