@@ -32,19 +32,52 @@
   <body>
     <div id="car-selection">
       <div id="car-selection-panel">
-        <h1>Choose Car</h1>
-        <div id="car-selection-preview"></div>
-        <div id="car-selection-options"></div>
-        <label id="player-name-field">
-          <span class="player-name-label">Player name</span>
-          <span id="player-name-box">
-            <span id="player-name-visual" aria-hidden="true">
-              <span id="player-name-before"></span><span id="player-name-caret"></span><span id="player-name-after"></span>
-            </span>
-            <input id="player-name-input" type="text" maxlength="12" autocomplete="nickname" spellcheck="false" />
-          </span>
-        </label>
-        <button id="car-selection-start" type="button">Race</button>
+        <div id="car-selection-body">
+          <div id="car-selection-stage">
+            <div id="car-selection-preview-slot">
+              <div id="car-selection-preview"></div>
+            </div>
+            <h1>Choose Car</h1>
+            <div id="car-selection-options"></div>
+          </div>
+          <div id="car-selection-controls">
+            <label id="player-name-field">
+              <span class="player-name-label">Player name</span>
+              <span id="player-name-box">
+                <span id="player-name-visual" aria-hidden="true">
+                  <span id="player-name-before"></span><span id="player-name-caret"></span><span id="player-name-after"></span>
+                </span>
+                <input id="player-name-input" type="text" maxlength="12" autocomplete="nickname" spellcheck="false" />
+              </span>
+            </label>
+            <div id="car-selection-settings">
+              <div class="car-selection-setting">
+                <span>Mode</span>
+                <div class="car-selection-toggle" id="car-selection-mode">
+                  <button type="button" data-offline="true">Offline</button>
+                  <button type="button" data-offline="false">Online</button>
+                </div>
+              </div>
+              <div class="car-selection-setting">
+                <span>Bots</span>
+                <div class="car-selection-stepper" data-param="numBots" data-min="0" data-max="20">
+                  <button type="button" data-step="-1">-</button>
+                  <span class="car-selection-stepper-value"></span>
+                  <button type="button" data-step="1">+</button>
+                </div>
+              </div>
+              <div class="car-selection-setting">
+                <span>Laps</span>
+                <div class="car-selection-stepper" data-param="numLaps" data-min="1" data-max="20">
+                  <button type="button" data-step="-1">-</button>
+                  <span class="car-selection-stepper-value"></span>
+                  <button type="button" data-step="1">+</button>
+                </div>
+              </div>
+            </div>
+            <button id="car-selection-start" type="button">Race</button>
+          </div>
+        </div>
       </div>
     </div>
     <!-- <div id="info-text">Car using Raycast Vehicle<br />WASD and SPACE</div> -->

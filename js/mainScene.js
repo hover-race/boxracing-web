@@ -205,6 +205,7 @@ export class MainScene extends Scene3D {
 
     this.bots = []
     if (botCount > 0) {
+      const usedNames = new Set([params.playerName])
       for (let i = 0; i < botCount; i++) {
         const botSpawn = raceGrid?.botSpawns[i]
         const transform = botSpawn?.transform ?? this.botStartTransform
@@ -222,7 +223,12 @@ export class MainScene extends Scene3D {
           botCarModel,
           { recordReplay: false, isBot: true, botColor: botColorForIndex(i, botCount) }
         )
-        this.checkpointManager.registerRacer(botCar, { name: `Bot ${i + 1}` })
+        let name
+        do {
+          name = generateDefaultPlayerName() + '[bot]'
+        } while (usedNames.has(name))
+        usedNames.add(name)
+        this.checkpointManager.registerRacer(botCar, { name })
         this.bots.push({ car: botCar, bot })
       }
     }

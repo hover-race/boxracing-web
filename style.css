@@ -30,24 +30,51 @@ canvas {
     flex-direction: column;
     width: 100%;
     height: 100%;
-    padding: 34px;
+    min-height: 0;
+    padding: 24px 16px 16px;
     box-sizing: border-box;
+    overflow: auto;
     text-align: center;
 }
 
-#car-selection-panel h1 {
-    margin: 0 0 16px;
+#car-selection-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 90%;
+    margin: auto;
+    gap: 16px;
+}
+
+#car-selection-stage {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    align-items: center;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+    min-height: 0;
+    gap: 10px;
+    box-sizing: border-box;
+}
+
+#car-selection-stage h1 {
+    margin: 0;
     font: 400 clamp(14px, 2.5vw, 22px)/1.6 'Press Start 2P', monospace;
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
 
+#car-selection-preview-slot {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
 #car-selection-preview {
     position: relative;
-    flex: 1;
-    min-height: 0;
     width: 100%;
-    margin: 0 0 16px;
+    height: 100%;
     border-radius: 8px;
     overflow: hidden;
     background: radial-gradient(ellipse at center, #3a4a54 0%, #12181c 70%);
@@ -63,20 +90,38 @@ canvas {
     image-rendering: crisp-edges;
 }
 
+#car-selection-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    gap: 10px;
+    box-sizing: border-box;
+}
+
+@media (max-width: 700px) {
+    #car-selection-body {
+        grid-template-columns: 1fr;
+    }
+}
+
 #car-selection-options {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-    margin-bottom: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
 }
 
 .car-selection-card {
-    min-height: 80px;
+    padding: 8px 12px;
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     background: #1c252b;
     color: #fff;
-    font: 400 clamp(13px, 1.6vw, 16px)/1.6 'Press Start 2P', monospace;
+    font: 400 10px/1.4 'Press Start 2P', monospace;
     cursor: pointer;
 }
 
@@ -94,7 +139,7 @@ canvas {
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    margin-bottom: 16px;
+    width: 100%;
 }
 
 .player-name-label {
@@ -172,8 +217,70 @@ canvas {
     outline: none;
 }
 
+#car-selection-settings {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px 24px;
+    width: 100%;
+}
+
+.car-selection-setting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.car-selection-setting > span {
+    font: 400 10px/1.6 'Press Start 2P', monospace;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.car-selection-toggle,
+.car-selection-stepper {
+    display: flex;
+    align-items: stretch;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #1c252b;
+}
+
+.car-selection-toggle button,
+.car-selection-stepper button {
+    min-width: 44px;
+    padding: 10px 12px;
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.55);
+    font: 400 10px/1.6 'Press Start 2P', monospace;
+    cursor: pointer;
+}
+
+.car-selection-toggle button.selected,
+.car-selection-stepper button:hover {
+    background: #27343c;
+    color: #fff;
+}
+
+.car-selection-toggle button.selected {
+    background: #4caf50;
+    color: #fff;
+}
+
+.car-selection-stepper-value {
+    min-width: 2.4em;
+    padding: 10px 8px;
+    color: #fff;
+    font: 400 12px/1.6 'Press Start 2P', monospace;
+}
+
 #car-selection-start {
-    min-width: 180px;
+    width: 100%;
+    max-width: 280px;
     padding: 14px 28px;
     border: 0;
     border-radius: 6px;
@@ -185,6 +292,45 @@ canvas {
 
 #car-selection-start:hover {
     background: #388e3c;
+}
+
+@media (max-height: 500px) {
+    #car-selection-panel {
+        padding: 12px;
+        overflow: auto;
+    }
+
+    #car-selection-preview {
+        min-width: 120px;
+        min-height: 120px;
+    }
+
+    #car-selection-controls {
+        gap: 6px;
+    }
+
+    .car-selection-card {
+        padding: 6px 10px;
+    }
+
+    #player-name-box,
+    #player-name-input {
+        padding: 8px 12px;
+    }
+
+    .car-selection-setting {
+        gap: 4px;
+    }
+
+    .car-selection-toggle button,
+    .car-selection-stepper button,
+    .car-selection-stepper-value {
+        padding: 6px 10px;
+    }
+
+    #car-selection-start {
+        padding: 10px 20px;
+    }
 }
 
 #info-text {

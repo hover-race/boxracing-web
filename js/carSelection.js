@@ -39,15 +39,51 @@ function selectCar(scene) {
     applyPlayerName(nameInput.value)
     params.car_id = carId
     localStorage.setItem('car_id', carId)
-    params.offlinePlay = true
-    params.numBots = 4
-    params.botDrive = true
+    params.botDrive = params.numBots > 0
     overlay.remove()
     return carId
   }
 
   if (params.skipIntro) {
     return Promise.resolve(finish(selectedCar.car_id))
+  }
+
+  const modeToggle = document.getElementById('car-selection-mode')
+
+  function syncMode() {
+    for (const button of modeToggle.querySelectorAll('[data-offline]')) {
+      button.classList.toggle('selected', (button.dataset.offline === 'true') === params.offlinePlay)
+    }
+  }
+
+  modeToggle.addEventListener('click', (e) => {
+    const button = e.target.closest('[data-offline]')
+    if (!button) return
+    params.offlinePlay = button.dataset.offline === 'true'
+    localStorage.setItem('offlinePlay', String(params.offlinePlay))
+    syncMode()
+  })
+  syncMode()
+
+  for (const stepper of document.querySelectorAll('.car-selection-stepper')) {
+    const key = stepper.dataset.param
+    const min = Number(stepper.dataset.min)
+    const max = Number(stepper.dataset.max)
+    const valueEl = stepper.querySelector('.car-selection-stepper-value')
+
+    function syncStepper() {
+      params[key] = Math.min(max, Math.max(min, Number(params[key]) || 0))
+      valueEl.textContent = String(params[key])
+    }
+
+    stepper.addEventListener('click', (e) => {
+      const button = e.target.closest('[data-step]')
+      if (!button) return
+      params[key] = Math.min(max, Math.max(min, params[key] + Number(button.dataset.step)))
+      localStorage.setItem(key, String(params[key]))
+      syncStepper()
+    })
+    syncStepper()
   }
 
   function updateSelection() {
