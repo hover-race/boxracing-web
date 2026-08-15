@@ -213,7 +213,7 @@ canvas {
     border: 1px solid rgba(196, 77, 255, 0.4);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
     color: #fff;
-    font-family: Audiowide, sans-serif;
+    font-family: 'JetBrains Mono', monospace;
     font-style: italic;
     font-weight: 700;
     pointer-events: none;
@@ -268,8 +268,6 @@ canvas {
 #lap-time-whole,
 .lap-time-dot,
 .lap-time-frac {
-    font-family: 'Fragment Mono', ui-monospace, monospace;
-    font-style: normal;
     font-variant-numeric: tabular-nums;
 }
 
@@ -278,8 +276,6 @@ canvas {
     padding-top: 10px;
     border-top: 1px solid rgba(255, 255, 255, 0.45);
     text-align: left;
-    font-family: 'Fragment Mono', ui-monospace, monospace;
-    font-style: normal;
     font-variant-numeric: tabular-nums;
 }
 

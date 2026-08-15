@@ -6,7 +6,7 @@
     <title>UI Test</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Bangers&family=Chakra+Petch:ital,wght@1,700&family=Chivo+Mono:wght@500;700&family=Exo+2:ital,wght@1,800&family=Fragment+Mono&family=IBM+Plex+Mono:wght@500;700&family=Inconsolata:wght@600;700&family=JetBrains+Mono:wght@500;700&family=Monoton&family=Overpass+Mono:wght@600;700&family=Pacifico&family=Press+Start+2P&family=Racing+Sans+One&family=Red+Hat+Mono:wght@500;700&family=Roboto+Mono:wght@500;700&family=Share+Tech+Mono&family=Source+Code+Pro:wght@600;700&family=Space+Mono:wght@400;700&family=Tilt+Neon&family=VT323&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Azeret+Mono:ital,wght@0,700;1,700&family=Bangers&family=Chakra+Petch:ital,wght@1,700&family=Chivo+Mono:ital,wght@0,500;0,700;1,500;1,700&family=DM+Mono:ital,wght@0,500;1,500&family=Exo+2:ital,wght@1,800&family=Fragment+Mono&family=Geist+Mono:ital,wght@0,700;1,700&family=IBM+Plex+Mono:ital,wght@0,500;0,700;1,500;1,700&family=Inconsolata:ital,wght@0,600;0,700;1,600;1,700&family=JetBrains+Mono:ital,wght@0,500;0,700;1,500;1,700&family=Monoton&family=Overpass+Mono:ital,wght@0,600;0,700;1,600;1,700&family=Pacifico&family=Press+Start+2P&family=Racing+Sans+One&family=Red+Hat+Mono:ital,wght@0,500;0,700;1,500;1,700&family=Roboto+Mono:ital,wght@0,500;0,700;1,500;1,700&family=Share+Tech+Mono&family=Source+Code+Pro:ital,wght@0,600;0,700;1,600;1,700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Spline+Sans+Mono:ital,wght@0,700;1,700&family=Tilt+Neon&family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css" />
     <style>
       html:has(body.ui-test-body),
@@ -435,6 +435,11 @@
       .font-overpass { font-family: 'Overpass Mono', monospace; font-weight: 700; }
       .font-redhat { font-family: 'Red Hat Mono', monospace; font-weight: 700; }
       .font-inconsolata { font-family: Inconsolata, monospace; font-weight: 700; }
+      .font-dm { font-family: 'DM Mono', monospace; font-weight: 500; }
+      .font-azeret { font-family: 'Azeret Mono', monospace; font-weight: 700; }
+      .font-geist { font-family: 'Geist Mono', monospace; font-weight: 700; }
+      .font-spline { font-family: 'Spline Sans Mono', monospace; font-weight: 700; }
+      .italic { font-style: italic; }
       body.ui-test-body #race-hud {
         position: relative;
         top: auto;
@@ -651,6 +656,68 @@
         <div class="font-row">
           <span class="font-name">Press Start 2P</span>
           <p class="time-sample font-press-start"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="font-panel">
+      <h2>Italic monospace</h2>
+      <div class="font-stack">
+        <div class="font-row">
+          <span class="font-name">IBM Plex Mono Bold Italic</span>
+          <p class="time-sample font-ibm italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">JetBrains Mono Bold Italic</span>
+          <p class="time-sample font-jetbrains italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Roboto Mono Bold Italic</span>
+          <p class="time-sample font-roboto-mono italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Source Code Pro Bold Italic</span>
+          <p class="time-sample font-source-code italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Space Mono Bold Italic</span>
+          <p class="time-sample font-space-mono italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Chivo Mono Bold Italic</span>
+          <p class="time-sample font-chivo italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Red Hat Mono Bold Italic</span>
+          <p class="time-sample font-redhat italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Inconsolata Bold Italic</span>
+          <p class="time-sample font-inconsolata italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Overpass Mono Bold Italic</span>
+          <p class="time-sample font-overpass italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">DM Mono Medium Italic</span>
+          <p class="time-sample font-dm italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Azeret Mono Bold Italic</span>
+          <p class="time-sample font-azeret italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Geist Mono Bold Italic</span>
+          <p class="time-sample font-geist italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Spline Sans Mono Bold Italic</span>
+          <p class="time-sample font-spline italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
+        </div>
+        <div class="font-row">
+          <span class="font-name">Fragment Mono italic (faux — no italic cut)</span>
+          <p class="time-sample font-fragment italic"><span>1:23.4</span><span>0:09.0</span><span>+12.4</span></p>
         </div>
       </div>
     </div>
