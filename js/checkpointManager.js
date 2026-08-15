@@ -391,6 +391,7 @@ class CheckpointManager {
     racer.finishTime = performance.now();
     this.raceFinished = true;
     this.updatePlayerLapDisplay();
+    this.scene.cameraSwitcher.setController(1);
     this.showRaceFinishedMessage();
   }
 
