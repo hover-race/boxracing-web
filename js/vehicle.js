@@ -6,6 +6,7 @@ import { playExplosionSound, playImpactSound } from './sfx.js';
 import { extractCarParts } from './carModels.js';
 import { GROUP_CAR, GROUP_TRACK } from './carCollisions.js';
 import { clearContactOverlay } from './contactOverlay.js';
+import { createEngineSound, updateEngineSound } from './sound.js';
 
 class Vehicle {
   vehicle
@@ -415,7 +416,11 @@ class Vehicle {
     this.updateAccelerometer(dt)
 
     this.particles.updateSmoke(dt)
-    this.updateSound()
+    updateEngineSound(
+      this.collisionMesh.engineSound,
+      this.wheels[this.BACK_LEFT],
+      this.wheels[this.BACK_RIGHT],
+    )
   }
 
   syncVisualTransforms() {
@@ -604,25 +609,6 @@ class Vehicle {
     const frac = Math.max(0, Math.min(1, this.hp / params.carMaxHp))
     this.hpFill.style.width = `${frac * 100}%`
     this.hpFill.style.background = frac > 0.5 ? '#4caf50' : frac > 0.25 ? '#ffb300' : '#ff3b30'
-  }
-
-  updateSound() {
-    if (this.collisionMesh.engineSound) {
-      // Wheel surface speed (omega * r), not contact-patch speed: forwardSpeed reads 0
-      // when a wheel is airborne, which made the engine cut out over jumps. Angular
-      // velocity keeps tracking the drivetrain in the air.
-      const bl = this.wheels[this.BACK_LEFT]
-      const br = this.wheels[this.BACK_RIGHT]
-      const rearMps = Math.abs(
-        (bl.angularVelocity * bl.radius + br.angularVelocity * br.radius) * 0.5
-      )
-      const speed = rearMps * 2.23694
-      this.collisionMesh.engineSound.setVolume(Math.min(1, speed / 100) * (params.soundVolume / 100))
-      const minPitch = 0.5
-      const maxPitch = 2.0
-      const pitch = minPitch + (maxPitch - minPitch) * (speed / 100)
-      this.collisionMesh.engineSound.setPlaybackRate(Math.min(maxPitch, Math.max(minPitch, pitch)))
-    }
   }
 
   applyTorqueSteering() {
@@ -975,34 +961,7 @@ class Vehicle {
     })
     collisionMesh.body.setDamping(0.1, 0.1)
 
-    // Bots get positional audio so their engines fall off with distance;
-    // the player's engine stays non-positional (camera-relative, always audible).
-    const engineSound = isBot
-      ? new THREE.PositionalAudio(scene.listener)
-      : new THREE.Audio(scene.listener)
-    if (isBot) {
-      engineSound.setRefDistance(8)
-      engineSound.setRolloffFactor(2)
-      collisionMesh.add(engineSound)
-    }
-    const audioLoader = new THREE.AudioLoader()
-    audioLoader.load('assets/winston_high.wav', (buffer) => {
-      engineSound.setBuffer(buffer)
-      engineSound.setLoop(true)
-      engineSound.setVolume(params.soundVolume / 100)
-      collisionMesh.engineSound = engineSound
-    })
-
-    let hasInteracted = false
-    const playSound = () => {
-      if (!hasInteracted && collisionMesh.engineSound) {
-        collisionMesh.engineSound.play()
-        hasInteracted = true
-      }
-    }
-    document.addEventListener('mousedown', playSound, { once: true })
-    document.addEventListener('touchstart', playSound, { once: true })
-    document.addEventListener('keydown', playSound, { once: true })
+    createEngineSound(collisionMesh, scene.listener, isBot)
 
     const vehicle = new Vehicle(scene.scene, scene.physics, collisionMesh, visualRoot, wheels, scene.listener, {
       recordReplay,
@@ -1099,7 +1058,6 @@ class RemoteCar {
   }
 
   destroy() {
-    clearInterval(this.shiftInterval)
     this.scene.scene.remove(this.visualRoot)
     for (const wheel of this.wheelMeshes) this.scene.scene.remove(wheel)
   }

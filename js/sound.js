@@ -1,6 +1,50 @@
 const TIRE_SCREECH_URL = 'assets/tire-screech2.mp3'
 const TIRE_VOLUME_GAIN = 2.5
 
+export function createEngineSound(collisionMesh, audioListener, isPositional) {
+  const engineSound = isPositional
+    ? new THREE.PositionalAudio(audioListener)
+    : new THREE.Audio(audioListener)
+  if (isPositional) {
+    engineSound.setRefDistance(8)
+    engineSound.setRolloffFactor(2)
+    collisionMesh.add(engineSound)
+  }
+
+  const audioLoader = new THREE.AudioLoader()
+  audioLoader.load('assets/winston_high.wav', (buffer) => {
+    engineSound.setBuffer(buffer)
+    engineSound.setLoop(true)
+    engineSound.setVolume(params.soundVolume / 100)
+    collisionMesh.engineSound = engineSound
+  })
+
+  let hasInteracted = false
+  const playSound = () => {
+    if (!hasInteracted && collisionMesh.engineSound) {
+      collisionMesh.engineSound.play()
+      hasInteracted = true
+    }
+  }
+  document.addEventListener('mousedown', playSound, { once: true })
+  document.addEventListener('touchstart', playSound, { once: true })
+  document.addEventListener('keydown', playSound, { once: true })
+}
+
+export function updateEngineSound(engineSound, leftWheel, rightWheel) {
+  if (!engineSound) return
+
+  const speedMps = Math.abs(
+    (leftWheel.angularVelocity * leftWheel.radius + rightWheel.angularVelocity * rightWheel.radius) * 0.5
+  )
+  const speedMph = speedMps * 2.23694
+  engineSound.setVolume(Math.min(1, speedMph / 100) * (params.soundVolume / 100))
+  const minPitch = 0.5
+  const maxPitch = 2
+  const pitch = minPitch + (maxPitch - minPitch) * (speedMph / 100)
+  engineSound.setPlaybackRate(Math.min(maxPitch, Math.max(minPitch, pitch)))
+}
+
 export function loadTireScreechBuffer(audioListener) {
   const sound = new THREE.Audio(audioListener)
   const loader = new THREE.AudioLoader()
