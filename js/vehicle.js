@@ -66,7 +66,7 @@ class Vehicle {
     this.collisionMesh = collisionMesh
     this.visualRoot = visualRoot
     this.car_id = carModel.car_id
-    this.mass = carModel.mass
+    this.massKg = carModel.massKg
     this.wheelbase = carModel.wheelbase
     this.wheelTravel = carModel.wheelTravel
     this.suspensionRestLength = carModel.suspensionRestLength
@@ -896,7 +896,7 @@ class Vehicle {
     scene.add.existing(visualRoot)
     scene.physics.add.existing(collisionMesh, {
       shape: 'convex',
-      mass: carModel.mass,
+      mass: carModel.massKg,
       addChildren: false,
       collisionGroup: GROUP_CAR,
       collisionMask: GROUP_TRACK,

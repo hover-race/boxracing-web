@@ -9,7 +9,7 @@ const DEFAULTS = {
   suspensionDampingRelaxation: 3,
   suspensionDampingCompression: 4.4,
   suspensionRollInfluence: 1,
-  mass: 800,
+  massKg: 1500,
   engineTorque: 300,
   numGears: 4,
   redline: 6000,
@@ -19,6 +19,7 @@ const DEFAULTS = {
 
 const CAR_MODELS = [
   {
+    // 1960s Mustang
     car_id: 'mustang',
     displayName: 'Mustang',
     file: 'assets/glb/red-mustang-bigwheel2.glb',
@@ -30,6 +31,8 @@ const CAR_MODELS = [
       rearLeft: 'RearLeftWheel',
       rearRight: 'RearRightWheel',
     },
+    massKg: 1350,
+    numGears: 3,
     engineTorque: 300,
   },
   {
@@ -47,7 +50,8 @@ const CAR_MODELS = [
     wheelRadiusFront: 0.39,
     wheelRadiusBack: 0.39,
     wheelbase: 2.69,
-    engineTorque: 1000,
+    massKg: 1650,
+    engineTorque: 400,
   },
   {
     car_id: 'evo5',
@@ -64,7 +68,8 @@ const CAR_MODELS = [
     wheelRadiusFront: 0.39,
     wheelRadiusBack: 0.39,
     wheelbase: 2.5,
-    engineTorque: 500, // Per axle
+    massKg: 1360,
+    engineTorque: 220, // Per axle
     drivenWheels: ['frontLeft', 'frontRight', 'rearLeft', 'rearRight'],
   },
   {
@@ -87,8 +92,8 @@ const CAR_MODELS = [
     suspensionDampingCompression: 0.5,
     suspensionDampingRelaxation: 1.5,
     suspensionRollInfluence: 0,
-    mass: 1200,
-    engineTorque: 1200,
+    massKg: 2500,
+    engineTorque: 450,
   },
 ].map(model => ({ ...DEFAULTS, ...model }))
 

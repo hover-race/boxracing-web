@@ -106,7 +106,7 @@ function softPushRear(rear, front, depth) {
   const nx = dx / len
   const nz = dz / len
   const depthScale = Math.min(1, depth)
-  const force = Config.carCollisionPushForce * rear.mass * depthScale
+  const force = Config.carCollisionPushForce * rear.massKg * depthScale
   const btForce = new Ammo.btVector3(nx * force, 0, nz * force)
   rear.collisionMesh.body.ammo.applyCentralForce(btForce)
   Ammo.destroy(btForce)
