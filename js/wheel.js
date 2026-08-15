@@ -9,9 +9,6 @@ class Wheel {
     wheelIndex,
     engineTorque = 700,
     maxEngineForce = 3000,
-    numGears = 5,
-    redline = 7000,
-    topSpeedMph = 120,
   ) {
     this.vehicleRigidBody = vehicleRigidBody
     this.wheelInfo = wheelInfo;
@@ -20,9 +17,6 @@ class Wheel {
     this.wheelIndex = wheelIndex
     this.engineTorque = engineTorque
     this.maxEngineForce = maxEngineForce
-    this.numGears = numGears
-    this.redline = redline
-    this.topSpeedMph = topSpeedMph
 
     // State variables
     this.angularVelocity = 0;  // rad/s
@@ -158,35 +152,8 @@ class Wheel {
     return this.clamp((surfaceSpeed - forwardSpeed) / denominator, -1, 1)
   }
 
-  getGearRatioFor(gear) {
-    const topSpeedMps = this.topSpeedMph * 0.44704
-    const topGearWheelRpm = topSpeedMps / (2 * Math.PI * this.radius) * 60
-    const topGearRatio = this.redline / topGearWheelRpm
-    if (this.numGears === 1) return topGearRatio
-    const progression = this.numGears ** ((this.numGears - gear) / (this.numGears - 1))
-    return topGearRatio * progression
-  }
-
-  getGear() {
-    const wheelRpm = Math.abs(this.angularVelocity) * 60 / (2 * Math.PI)
-    for (let gear = 1; gear <= this.numGears; gear++) {
-      const ratio = this.getGearRatioFor(gear)
-      if (wheelRpm * ratio < this.redline) return gear
-    }
-    return this.numGears
-  }
-
-  getGearRatio() {
-    return this.getGearRatioFor(this.getGear())
-  }
-
-  getEngineRpm() {
-    return Math.abs(this.angularVelocity) * 60 / (2 * Math.PI) * this.getGearRatio()
-  }
-
-  getDriveTorque(engineForce) {
-    if (this.getEngineRpm() >= this.redline) return 0
-    let driveTorque = engineForce / this.maxEngineForce * this.engineTorque * this.getGearRatio()
+  getDriveTorque(engineForce, gearRatio, drivetrainTorqueFactor) {
+    let driveTorque = engineForce / this.maxEngineForce * this.engineTorque * gearRatio * drivetrainTorqueFactor
     const slipOverLimit = Math.max(0, Math.abs(this.slipRatio) - params.tcSlipLimit)
     if (params.tractionControl && slipOverLimit > 0) {
       driveTorque *= Math.max(0, 1 - Math.min(params.tcMaxCut, slipOverLimit * params.tcStrength))
@@ -207,14 +174,14 @@ class Wheel {
     if (lock >= 0.75) this.angularVelocity = 0
   }
 
-  update(dt, engineForce, footBrake, handBrake = 0) {
+  update(dt, engineForce, footBrake, handBrake = 0, gearRatio = 1, drivetrainTorqueFactor = 1) {
     const brakeForce = footBrake + handBrake
     this.forwardForceScalar = 0
     this.sideForceScalar = 0
     this.skidInfo = this.getSkidInfo()
 
     if (!this.isInContact()) {
-      const torque = this.getDriveTorque(engineForce) + this.getBrakeTorque(footBrake, handBrake)
+      const torque = this.getDriveTorque(engineForce, gearRatio, drivetrainTorqueFactor) + this.getBrakeTorque(footBrake, handBrake)
       this.angularVelocity += torque / params.wheelInertia * dt
       this.angularVelocity = this.clamp(this.angularVelocity, -params.maxWheelAngularVelocity, params.maxWheelAngularVelocity)
       this.rotation += this.angularVelocity * dt
@@ -248,7 +215,7 @@ class Wheel {
     this.normalForce = normalForce
     this.maxSide = maxSide
 
-    const driveTorque = this.getDriveTorque(engineForce)
+    const driveTorque = this.getDriveTorque(engineForce, gearRatio, drivetrainTorqueFactor)
     const brakeTorque = this.getBrakeTorque(footBrake, handBrake)
     const c = params.tireSlipDamping
     const r = this.radius

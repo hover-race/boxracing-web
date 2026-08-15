@@ -77,6 +77,13 @@ class Vehicle {
     this.drivenWheelIndices = carModel.drivenWheels.map(
       slot => Vehicle.WHEEL_SLOT_INDEX[slot]
     )
+    this.numGears = carModel.numGears
+    this.redline = carModel.redline
+    this.topSpeedMph = carModel.topSpeedMph
+    this.gear = 1
+    this.targetGear = 1
+    this.shiftDuration = 0.35
+    this.shiftTimeRemaining = 0
     this.wheels = []
 
     const { physicsWorld } = physics
@@ -93,6 +100,7 @@ class Vehicle {
 
     const wheelRadiusBack = carModel.wheelRadiusBack
     const wheelRadiusFront = carModel.wheelRadiusFront
+    this.driveWheelRadius = this.drivenWheelIndices[0] < 2 ? wheelRadiusFront : wheelRadiusBack
 
     this.addWheel(
       wheelMeshes.frontLeft,
@@ -154,9 +162,6 @@ class Vehicle {
         index,
         carModel.engineTorque,
         this.maxEngineForce,
-        carModel.numGears,
-        carModel.redline,
-        carModel.topSpeedMph,
       );
     });
 
@@ -304,6 +309,60 @@ class Vehicle {
     this.chassis.body.ammo.applyCentralForce(forward.op_mul(params.pushForce * 500))
   }
 
+  getGearRatioFor(gear) {
+    const topSpeedMps = this.topSpeedMph * 0.44704
+    const topGearWheelRpm = topSpeedMps / (2 * Math.PI * this.driveWheelRadius) * 60
+    const topGearRatio = this.redline / topGearWheelRpm
+    if (this.numGears === 1) return topGearRatio
+    const progression = this.numGears ** ((this.numGears - gear) / (this.numGears - 1))
+    return topGearRatio * progression
+  }
+
+  getDrivenWheelRpm() {
+    const totalAngularVelocity = this.drivenWheelIndices.reduce(
+      (total, index) => total + Math.abs(this.wheels[index].angularVelocity),
+      0,
+    )
+    return totalAngularVelocity / this.drivenWheelIndices.length * 60 / (2 * Math.PI)
+  }
+
+  getEngineRpm(gear = this.gear) {
+    return this.getDrivenWheelRpm() * this.getGearRatioFor(gear)
+  }
+
+  getDesiredGear() {
+    if (this.getEngineRpm() >= this.redline && this.gear < this.numGears) {
+      return this.gear + 1
+    }
+    if (this.gear > 1 && this.getEngineRpm(this.gear - 1) < this.redline * 0.7) {
+      return this.gear - 1
+    }
+    return this.gear
+  }
+
+  updateGear(dt) {
+    if (this.shiftTimeRemaining > 0) {
+      this.shiftTimeRemaining = Math.max(0, this.shiftTimeRemaining - dt)
+      if (this.shiftTimeRemaining <= this.shiftDuration / 2) {
+        this.gear = this.targetGear
+      }
+      return
+    }
+
+    const desiredGear = this.getDesiredGear()
+    if (desiredGear !== this.gear) {
+      this.targetGear = desiredGear
+      this.shiftTimeRemaining = this.shiftDuration
+    }
+  }
+
+  getDrivetrainTorqueFactor() {
+    if (this.getEngineRpm() >= this.redline) return 0
+    if (this.shiftTimeRemaining <= 0) return 1
+    const progress = 1 - this.shiftTimeRemaining / this.shiftDuration
+    return 0.2 + 0.8 * Math.abs(progress * 2 - 1)
+  }
+
   update(inputs) {
     if (this.exploding) return
 
@@ -315,11 +374,14 @@ class Vehicle {
     }
     
     const dt = 1/60;  // Assuming 60fps, ideally get this from the physics world
+    this.updateGear(dt)
+    const gearRatio = this.getGearRatioFor(this.gear)
+    const drivetrainTorqueFactor = this.getDrivetrainTorqueFactor()
     const frontBrake = this.footBrake
-    this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake)
-    this.wheels[this.FRONT_RIGHT].update(dt, this.wheelEngineForce[1], frontBrake)
-    this.wheels[this.BACK_LEFT].update(dt, this.wheelEngineForce[2], frontBrake + this.escBrakeBL, this.handBrake)
-    this.wheels[this.BACK_RIGHT].update(dt, this.wheelEngineForce[3], frontBrake + this.escBrakeBR, this.handBrake)
+    this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake, 0, gearRatio, drivetrainTorqueFactor)
+    this.wheels[this.FRONT_RIGHT].update(dt, this.wheelEngineForce[1], frontBrake, 0, gearRatio, drivetrainTorqueFactor)
+    this.wheels[this.BACK_LEFT].update(dt, this.wheelEngineForce[2], frontBrake + this.escBrakeBL, this.handBrake, gearRatio, drivetrainTorqueFactor)
+    this.wheels[this.BACK_RIGHT].update(dt, this.wheelEngineForce[3], frontBrake + this.escBrakeBR, this.handBrake, gearRatio, drivetrainTorqueFactor)
     this.wheels[this.FRONT_LEFT].gui()
     vehicleParams.frontSlipAngle = Math.max(
       Math.abs(this.wheels[this.FRONT_LEFT].slipAngle),
@@ -337,10 +399,9 @@ class Vehicle {
 
     const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
     this.speedometer.textContent = `${speed.toFixed(0)} mph`
-    const drivenWheel = this.wheels[this.drivenWheelIndices[0]]
-    const rpm = drivenWheel?.getEngineRpm() || 0
+    const rpm = this.getEngineRpm()
     this.tachometer.textContent = `${Math.round(rpm / 50) * 50} rpm`
-    this.gearIndicator.textContent = `Gear ${drivenWheel?.getGear() || 1}`
+    this.gearIndicator.textContent = `Gear ${this.gear}`
 
     // Update speed display in dat.gui
     vehicleParams.speed = speed
@@ -469,6 +530,9 @@ class Vehicle {
       wheel.angularVelocity = 0
       wheel.rotation = 0
     }
+    this.gear = 1
+    this.targetGear = 1
+    this.shiftTimeRemaining = 0
     this.vehicleSteering = 0
     this.driverSteering = 0
     this.engineForce = 0
