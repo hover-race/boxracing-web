@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Start / Finish UI Test</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=JetBrains+Mono:ital,wght@1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      body {
+        background:
+          linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.72)),
+          radial-gradient(ellipse at center, #384641 0%, #161a1b 55%, #08090a 100%);
+      }
+
+      .test-track {
+        position: fixed;
+        inset: 28% -15% -45%;
+        transform: perspective(600px) rotateX(58deg);
+        border: 70px solid #292929;
+        border-radius: 50%;
+        box-shadow:
+          inset 0 0 0 4px rgba(255, 255, 255, 0.3),
+          0 0 0 4px rgba(255, 255, 255, 0.3);
+      }
+
+      .test-controls {
+        position: fixed;
+        left: 50%;
+        bottom: 28px;
+        z-index: 6000;
+        display: flex;
+        gap: 12px;
+        transform: translateX(-50%);
+      }
+
+      .test-controls button {
+        padding: 10px 16px;
+        border: 1px solid rgba(196, 77, 255, 0.65);
+        border-radius: 6px;
+        background: rgba(10, 0, 22, 0.9);
+        color: #fff;
+        font: 700 13px/1 'JetBrains Mono', monospace;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="test-track"></div>
+    <div id="race-countdown"></div>
+    <div id="race-finish" aria-live="polite">
+      <div id="race-finish-title">YOU FINISHED 2ND!</div>
+      <div id="race-finish-standings">
+        <div class="race-finish-racer">
+          <span>P1</span>
+          <span class="race-finish-racer-name">PurpleHawk</span>
+          <span class="race-finish-racer-time">4:32.7</span>
+        </div>
+        <div class="race-finish-racer is-player">
+          <span>P2</span>
+          <span class="race-finish-racer-name">CyanFox</span>
+          <span class="race-finish-racer-time">+1.3</span>
+        </div>
+        <div class="race-finish-racer">
+          <span>P3</span>
+          <span class="race-finish-racer-name">GoldMoth</span>
+          <span class="race-finish-racer-time">—</span>
+        </div>
+        <div class="race-finish-racer">
+          <span>P4</span>
+          <span class="race-finish-racer-name">RedWolf</span>
+          <span class="race-finish-racer-time">—</span>
+        </div>
+        <div class="race-finish-racer">
+          <span>P5</span>
+          <span class="race-finish-racer-name">LimeBear</span>
+          <span class="race-finish-racer-time">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="test-controls">
+      <button id="show-start" type="button">Start sequence</button>
+      <button id="show-finish" type="button">Finish sequence</button>
+    </div>
+
+    <script>
+      const countdown = document.getElementById('race-countdown')
+      const finish = document.getElementById('race-finish')
+      const finishTimes = [...document.querySelectorAll('.race-finish-racer-time')]
+      let countdownTimer
+      let finishTimers = []
+
+      function showFinish() {
+        clearTimeout(countdownTimer)
+        for (const timer of finishTimers) clearTimeout(timer)
+        finishTimers = []
+        countdown.classList.remove('visible', 'fade-out')
+        finish.classList.remove('visible')
+        finish.style.visibility = ''
+        finishTimes[0].textContent = '4:32.7'
+        finishTimes[1].textContent = '+1.3'
+        finishTimes.slice(2).forEach((time) => {
+          time.textContent = '—'
+        })
+        requestAnimationFrame(() => finish.classList.add('visible'))
+        finishTimers.push(setTimeout(() => {
+          finishTimes[2].textContent = '+3.8'
+        }, 1200))
+        finishTimers.push(setTimeout(() => {
+          finishTimes[3].textContent = '+5.1'
+        }, 2400))
+        finishTimers.push(setTimeout(() => {
+          finishTimes[4].textContent = '+7.6'
+        }, 3600))
+      }
+
+      function showStart() {
+        clearTimeout(countdownTimer)
+        for (const timer of finishTimers) clearTimeout(timer)
+        finishTimers = []
+        finish.classList.remove('visible')
+        finish.style.visibility = 'hidden'
+        countdown.classList.remove('fade-out')
+        countdown.classList.add('visible')
+        const steps = [3, 2, 1, 0]
+        let step = 0
+
+        const tick = () => {
+          countdown.textContent = steps[step] === 0 ? 'GO!' : `Race in ${steps[step]}`
+          if (steps[step] === 0) {
+            countdownTimer = setTimeout(() => countdown.classList.add('fade-out'), 400)
+            return
+          }
+          step++
+          countdownTimer = setTimeout(tick, 1000)
+        }
+
+        tick()
+      }
+
+      document.getElementById('show-start').addEventListener('click', showStart)
+      document.getElementById('show-finish').addEventListener('click', showFinish)
+      showFinish()
+    </script>
+  </body>
+</html>

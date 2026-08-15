@@ -491,6 +491,88 @@ canvas {
     transition: opacity 0.75s ease, visibility 0s linear 0.75s;
 }
 
+#race-finish {
+    position: fixed;
+    top: 16%;
+    left: 50%;
+    z-index: 5000;
+    box-sizing: border-box;
+    width: min(480px, calc(100vw - 32px));
+    padding: 24px 32px 28px;
+    border-radius: 12px;
+    transform: translate(-50%, -12px);
+    opacity: 0;
+    visibility: hidden;
+    background: rgba(10, 0, 22, 0.9);
+    border: 1px solid rgba(196, 77, 255, 0.65);
+    box-shadow:
+        0 12px 32px rgba(0, 0, 0, 0.55),
+        0 0 30px rgba(196, 77, 255, 0.16);
+    color: #fff;
+    pointer-events: none;
+    transition:
+        opacity 0.35s ease,
+        transform 0.35s ease,
+        visibility 0s linear 0.35s;
+}
+
+#race-finish.visible {
+    transform: translate(-50%, 0);
+    opacity: 1;
+    visibility: visible;
+    transition:
+        opacity 0.35s ease,
+        transform 0.35s ease,
+        visibility 0s;
+}
+
+#race-finish-title {
+    color: #c44dff;
+    font-family: Audiowide, sans-serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: clamp(28px, 6vw, 48px);
+    line-height: 1.1;
+    text-align: center;
+    text-shadow: 0 0 18px rgba(196, 77, 255, 0.55);
+}
+
+#race-finish-standings {
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(196, 77, 255, 0.45);
+    font-family: 'JetBrains Mono', monospace;
+    font-style: italic;
+    font-weight: 700;
+}
+
+.race-finish-racer {
+    display: grid;
+    grid-template-columns: 3em 1fr 5.5em;
+    gap: 10px;
+    padding: 6px 10px;
+    border-radius: 5px;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.race-finish-racer.is-player {
+    background: rgba(196, 77, 255, 0.2);
+    color: #fff;
+}
+
+.race-finish-racer-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.race-finish-racer-time {
+    color: #fff;
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
 #hud-bottom-left {
     position: fixed;
     bottom: 20px;

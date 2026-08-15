@@ -1,3 +1,5 @@
+import { on, off } from './raceEvents.js';
+
 class CheckpointManager {
   // Oval track: start/finish line + one checkpoint.
   // Sequence: finish (start lap) -> checkpoint -> finish (complete lap).
@@ -13,6 +15,7 @@ class CheckpointManager {
     this.playerRacer = null;
     this.totalLaps = 5;
     this.raceFinished = false;
+    this.raceStartTime = 0;
     this.lapTimes = [];
     this.currentLapStartTime = 0;
     this.bestLapTime = Infinity;
@@ -28,6 +31,14 @@ class CheckpointManager {
     this.positionElement = document.getElementById('race-hud-position');
     this.playerNameElement = document.getElementById('race-hud-player-name');
     this.standingsElement = document.getElementById('race-hud-standings');
+    this.finishElement = document.getElementById('race-finish');
+    this.finishTitleElement = document.getElementById('race-finish-title');
+    this.finishStandingsElement = document.getElementById('race-finish-standings');
+
+    this.onRaceStart = () => {
+      this.raceStartTime = performance.now();
+    };
+    on('raceStart', this.onRaceStart);
 
     this.updateTimerInterval = setInterval(() => this.updateRaceHud(), 100);
   }
@@ -230,11 +241,9 @@ class CheckpointManager {
 
   gapBehind(racer, leader) {
     if (racer === leader) return '—';
-    const n = this.splitFracs.length;
-    const laps = Math.max(
-      leader.lapCount - racer.lapCount,
-      Math.floor((leader.splitIndex - racer.splitIndex) / n)
-    );
+    const leaderProg = leader.lapCount + (leader.trackU != null ? this.fracFromStart(leader.trackU) : 0);
+    const racerProg = racer.lapCount + (racer.trackU != null ? this.fracFromStart(racer.trackU) : 0);
+    const laps = Math.floor(leaderProg - racerProg);
     if (laps >= 1) return laps === 1 ? '+1 LAP' : `+${laps} LAPS`;
     const k = racer.splitIndex - 1;
     if (k < 0) return '—';
@@ -364,6 +373,7 @@ class CheckpointManager {
       } else if (racer.lapCount >= this.totalLaps) {
         racer.finished = true;
         racer.finishTime = performance.now();
+        if (this.raceFinished) this.updateRaceFinishStandings();
       }
     }
   }
@@ -381,31 +391,52 @@ class CheckpointManager {
     racer.finishTime = performance.now();
     this.raceFinished = true;
     this.updatePlayerLapDisplay();
-    params.botDrive = false;
     this.showRaceFinishedMessage();
   }
 
   showRaceFinishedMessage() {
-    let messageElement = document.getElementById('race-finished-message');
-    if (!messageElement) {
-      messageElement = document.createElement('div');
-      messageElement.id = 'race-finished-message';
-      messageElement.style.position = 'fixed';
-      messageElement.style.top = '40%';
-      messageElement.style.left = '50%';
-      messageElement.style.transform = 'translate(-50%, -50%)';
-      messageElement.style.color = '#4caf50';
-      messageElement.style.fontFamily = "'Press Start 2P', monospace";
-      messageElement.style.fontSize = 'clamp(16px, 3vw, 28px)';
-      messageElement.style.fontWeight = 'bold';
-      messageElement.style.textAlign = 'center';
-      messageElement.style.background = 'rgba(0, 0, 0, 0.8)';
-      messageElement.style.padding = '24px 32px';
-      messageElement.style.borderRadius = '10px';
-      messageElement.style.zIndex = '2000';
-      document.body.appendChild(messageElement);
+    const ranked = this.rankedRacers();
+    const place = ranked.indexOf(this.playerRacer) + 1;
+    const mod100 = place % 100;
+    const suffix = mod100 >= 11 && mod100 <= 13
+      ? 'th'
+      : ['th', 'st', 'nd', 'rd'][Math.min(place % 10, 4)] || 'th';
+
+    this.finishTitleElement.textContent = `YOU FINISHED ${place}${suffix}!`;
+    this.updateRaceFinishStandings();
+    this.finishElement.classList.add('visible');
+  }
+
+  updateRaceFinishStandings() {
+    const ranked = this.rankedRacers();
+    const winner = ranked[0];
+    this.finishStandingsElement.replaceChildren();
+
+    for (let i = 0; i < ranked.length; i++) {
+      const racer = ranked[i];
+      const row = document.createElement('div');
+      row.className = `race-finish-racer${racer.isPlayer ? ' is-player' : ''}`;
+
+      const position = document.createElement('span');
+      position.textContent = `P${i + 1}`;
+
+      const name = document.createElement('span');
+      name.className = 'race-finish-racer-name';
+      name.textContent = racer.name;
+
+      const time = document.createElement('span');
+      time.className = 'race-finish-racer-time';
+      if (!racer.finished) {
+        time.textContent = '—';
+      } else if (i === 0) {
+        time.textContent = this.formatTime(racer.finishTime - this.raceStartTime);
+      } else {
+        time.textContent = this.formatGap(racer.finishTime - winner.finishTime);
+      }
+
+      row.append(position, name, time);
+      this.finishStandingsElement.appendChild(row);
     }
-    messageElement.textContent = 'RACE FINISHED!';
   }
 
   showLapCompletionMessage(isNewBest, lastLapTime) {
@@ -577,6 +608,8 @@ class CheckpointManager {
       racer.splitTimes = [];
     }
     this.raceFinished = false;
+    this.raceStartTime = 0;
+    this.finishElement?.classList.remove('visible');
     this.resetLapTimer();
     this.bestLapTime = Infinity;
     this.updatePlayerLapDisplay();
@@ -590,10 +623,13 @@ class CheckpointManager {
     if (this.updateTimerInterval) {
       clearInterval(this.updateTimerInterval);
     }
+    off('raceStart', this.onRaceStart);
     clearTimeout(this.messageTimeout);
     clearTimeout(this.checkpointMessageTimeout);
 
-    for (const id of ['lap-completion-message', 'checkpoint-message', 'race-finished-message']) {
+    this.finishElement?.classList.remove('visible');
+
+    for (const id of ['lap-completion-message', 'checkpoint-message']) {
       const element = document.getElementById(id);
       element?.remove();
     }
