@@ -10,7 +10,10 @@ const DEFAULTS = {
   suspensionDampingCompression: 4.4,
   suspensionRollInfluence: 1,
   mass: 800,
-  engineTorque: 700,
+  engineTorque: 300,
+  numGears: 4,
+  redline: 6000,
+  topSpeedMph: 120,
   drivenWheels: ['rearLeft', 'rearRight'],
 }
 
@@ -27,7 +30,7 @@ const CAR_MODELS = [
       rearLeft: 'RearLeftWheel',
       rearRight: 'RearRightWheel',
     },
-    engineTorque: 1000,
+    engineTorque: 300,
   },
   {
     car_id: 'monte_carlo',

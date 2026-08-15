@@ -774,6 +774,11 @@ canvas {
     font-size: 34px;
 }
 
+#tachometer,
+#gear-indicator {
+    font-size: 20px;
+}
+
 #tcs-indicator,
 #esc-indicator {
     width: 40px;

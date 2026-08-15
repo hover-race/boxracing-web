@@ -119,6 +119,8 @@ class Vehicle {
     )
 
     this.speedometer = document.getElementById('speedometer')
+    this.tachometer = document.getElementById('tachometer')
+    this.gearIndicator = document.getElementById('gear-indicator')
     this.accelerometerDot = document.getElementById('accel-dot')
     this.hpFill = document.getElementById('hp-fill')
     this.hp = params.carMaxHp
@@ -144,7 +146,18 @@ class Vehicle {
     this.wheels = this.wheelMeshes.map((mesh, index) => {
       const wheelInfo = this.vehicle.getWheelInfo(index);
       const radius = index < 2 ? wheelRadiusFront : wheelRadiusBack;
-      return new Wheel(this.collisionMesh.body.ammo, wheelInfo, radius, this.vehicle, index, carModel.engineTorque, this.maxEngineForce);
+      return new Wheel(
+        this.collisionMesh.body.ammo,
+        wheelInfo,
+        radius,
+        this.vehicle,
+        index,
+        carModel.engineTorque,
+        this.maxEngineForce,
+        carModel.numGears,
+        carModel.redline,
+        carModel.topSpeedMph,
+      );
     });
 
     this.particles = new TireParticles(scene, this, audioListener)
@@ -324,6 +337,10 @@ class Vehicle {
 
     const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
     this.speedometer.textContent = `${speed.toFixed(0)} mph`
+    const drivenWheel = this.wheels[this.drivenWheelIndices[0]]
+    const rpm = drivenWheel?.getEngineRpm() || 0
+    this.tachometer.textContent = `${Math.round(rpm / 50) * 50} rpm`
+    this.gearIndicator.textContent = `Gear ${drivenWheel?.getGear() || 1}`
 
     // Update speed display in dat.gui
     vehicleParams.speed = speed

@@ -1,7 +1,18 @@
 import { Config } from './config.js'
 
 class Wheel {
-  constructor(vehicleRigidBody, wheelInfo, radius, raycastVehicle, wheelIndex, engineTorque = 700, maxEngineForce = 3000) {
+  constructor(
+    vehicleRigidBody,
+    wheelInfo,
+    radius,
+    raycastVehicle,
+    wheelIndex,
+    engineTorque = 700,
+    maxEngineForce = 3000,
+    numGears = 5,
+    redline = 7000,
+    topSpeedMph = 120,
+  ) {
     this.vehicleRigidBody = vehicleRigidBody
     this.wheelInfo = wheelInfo;
     this.radius = radius;
@@ -9,6 +20,9 @@ class Wheel {
     this.wheelIndex = wheelIndex
     this.engineTorque = engineTorque
     this.maxEngineForce = maxEngineForce
+    this.numGears = numGears
+    this.redline = redline
+    this.topSpeedMph = topSpeedMph
 
     // State variables
     this.angularVelocity = 0;  // rad/s
@@ -144,8 +158,35 @@ class Wheel {
     return this.clamp((surfaceSpeed - forwardSpeed) / denominator, -1, 1)
   }
 
+  getGearRatioFor(gear) {
+    const topSpeedMps = this.topSpeedMph * 0.44704
+    const topGearWheelRpm = topSpeedMps / (2 * Math.PI * this.radius) * 60
+    const topGearRatio = this.redline / topGearWheelRpm
+    if (this.numGears === 1) return topGearRatio
+    const progression = this.numGears ** ((this.numGears - gear) / (this.numGears - 1))
+    return topGearRatio * progression
+  }
+
+  getGear() {
+    const wheelRpm = Math.abs(this.angularVelocity) * 60 / (2 * Math.PI)
+    for (let gear = 1; gear <= this.numGears; gear++) {
+      const ratio = this.getGearRatioFor(gear)
+      if (wheelRpm * ratio < this.redline) return gear
+    }
+    return this.numGears
+  }
+
+  getGearRatio() {
+    return this.getGearRatioFor(this.getGear())
+  }
+
+  getEngineRpm() {
+    return Math.abs(this.angularVelocity) * 60 / (2 * Math.PI) * this.getGearRatio()
+  }
+
   getDriveTorque(engineForce) {
-    let driveTorque = engineForce / this.maxEngineForce * this.engineTorque
+    if (this.getEngineRpm() >= this.redline) return 0
+    let driveTorque = engineForce / this.maxEngineForce * this.engineTorque * this.getGearRatio()
     const slipOverLimit = Math.max(0, Math.abs(this.slipRatio) - params.tcSlipLimit)
     if (params.tractionControl && slipOverLimit > 0) {
       driveTorque *= Math.max(0, 1 - Math.min(params.tcMaxCut, slipOverLimit * params.tcStrength))
@@ -250,7 +291,8 @@ class Wheel {
     const latSlip = Math.abs(lateralSpeed) / Math.max(Math.abs(forwardSpeed), 1)
     this.isSlipping = Math.max(Math.abs(this.slipRatio), latSlip) >= params.smokeSlipThreshold
 
-    if (this.wheelIndex === 2) {
+    const LOG_WHEEL_FORCES = false;
+    if (this.wheelIndex === 2 && LOG_WHEEL_FORCES) {
       const basis = this.vehicleRigidBody.getWorldTransform().getBasis()
       const noseX = basis.getRow(0).z(), noseY = basis.getRow(1).z(), noseZ = basis.getRow(2).z()
       const fwdDotNose = forwardDir.x * noseX + forwardDir.y * noseY + forwardDir.z * noseZ
