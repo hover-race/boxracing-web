@@ -79,11 +79,11 @@ class Vehicle {
     )
     this.numGears = carModel.numGears
     this.redline = carModel.redline
-    this.topSpeedMph = carModel.topSpeedMph
     this.gear = 1
     this.targetGear = 1
     this.shiftDuration = 0.35
     this.shiftTimeRemaining = 0
+    this.shiftInterval = null
     this.wheels = []
 
     const { physicsWorld } = physics
@@ -100,7 +100,16 @@ class Vehicle {
 
     const wheelRadiusBack = carModel.wheelRadiusBack
     const wheelRadiusFront = carModel.wheelRadiusFront
-    this.driveWheelRadius = this.drivenWheelIndices[0] < 2 ? wheelRadiusFront : wheelRadiusBack
+    const driveWheelRadius = this.drivenWheelIndices[0] < 2 ? wheelRadiusFront : wheelRadiusBack
+    const topSpeedMps = carModel.topSpeedMph * 0.44704
+    const topGearWheelRpm = topSpeedMps / (2 * Math.PI * driveWheelRadius) * 60
+    const topGearRatio = this.redline / topGearWheelRpm
+    this.gearRatios = Array.from({ length: this.numGears }, (_, index) => {
+      if (this.numGears === 1) return topGearRatio
+      const gear = index + 1
+      const progression = this.numGears ** ((this.numGears - gear) / (this.numGears - 1))
+      return topGearRatio * progression
+    })
 
     this.addWheel(
       wheelMeshes.frontLeft,
@@ -309,15 +318,6 @@ class Vehicle {
     this.chassis.body.ammo.applyCentralForce(forward.op_mul(params.pushForce * 500))
   }
 
-  getGearRatioFor(gear) {
-    const topSpeedMps = this.topSpeedMph * 0.44704
-    const topGearWheelRpm = topSpeedMps / (2 * Math.PI * this.driveWheelRadius) * 60
-    const topGearRatio = this.redline / topGearWheelRpm
-    if (this.numGears === 1) return topGearRatio
-    const progression = this.numGears ** ((this.numGears - gear) / (this.numGears - 1))
-    return topGearRatio * progression
-  }
-
   getDrivenWheelRpm() {
     const totalAngularVelocity = this.drivenWheelIndices.reduce(
       (total, index) => total + Math.abs(this.wheels[index].angularVelocity),
@@ -327,7 +327,7 @@ class Vehicle {
   }
 
   getEngineRpm(gear = this.gear) {
-    return this.getDrivenWheelRpm() * this.getGearRatioFor(gear)
+    return this.getDrivenWheelRpm() * this.gearRatios[gear - 1]
   }
 
   getDesiredGear() {
@@ -340,19 +340,25 @@ class Vehicle {
     return this.gear
   }
 
-  updateGear(dt) {
-    if (this.shiftTimeRemaining > 0) {
-      this.shiftTimeRemaining = Math.max(0, this.shiftTimeRemaining - dt)
-      if (this.shiftTimeRemaining <= this.shiftDuration / 2) {
-        this.gear = this.targetGear
-      }
-      return
-    }
+  updateGear() {
+    if (this.shiftInterval) return
 
     const desiredGear = this.getDesiredGear()
     if (desiredGear !== this.gear) {
       this.targetGear = desiredGear
       this.shiftTimeRemaining = this.shiftDuration
+      const shiftStartedAt = performance.now()
+      this.shiftInterval = setInterval(() => {
+        const elapsed = (performance.now() - shiftStartedAt) / 1000
+        this.shiftTimeRemaining = Math.max(0, this.shiftDuration - elapsed)
+        if (this.shiftTimeRemaining <= this.shiftDuration / 2) {
+          this.gear = this.targetGear
+        }
+        if (this.shiftTimeRemaining === 0) {
+          clearInterval(this.shiftInterval)
+          this.shiftInterval = null
+        }
+      }, 16)
     }
   }
 
@@ -374,8 +380,8 @@ class Vehicle {
     }
     
     const dt = 1/60;  // Assuming 60fps, ideally get this from the physics world
-    this.updateGear(dt)
-    const gearRatio = this.getGearRatioFor(this.gear)
+    this.updateGear()
+    const gearRatio = this.gearRatios[this.gear - 1]
     const drivetrainTorqueFactor = this.getDrivetrainTorqueFactor()
     const frontBrake = this.footBrake
     this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake, 0, gearRatio, drivetrainTorqueFactor)
@@ -533,6 +539,8 @@ class Vehicle {
     this.gear = 1
     this.targetGear = 1
     this.shiftTimeRemaining = 0
+    clearInterval(this.shiftInterval)
+    this.shiftInterval = null
     this.vehicleSteering = 0
     this.driverSteering = 0
     this.engineForce = 0
@@ -1091,6 +1099,7 @@ class RemoteCar {
   }
 
   destroy() {
+    clearInterval(this.shiftInterval)
     this.scene.scene.remove(this.visualRoot)
     for (const wheel of this.wheelMeshes) this.scene.scene.remove(wheel)
   }

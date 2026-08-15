@@ -52,7 +52,8 @@ const CAR_MODELS = [
     wheelbase: 2.69,
     massKg: 1650,
     numGears: 4,
-    engineTorque: 400,
+    topSpeedMph: 140,
+    engineTorque: 350,
   },
   {
     car_id: 'evo5',
@@ -70,7 +71,7 @@ const CAR_MODELS = [
     wheelRadiusBack: 0.39,
     wheelbase: 2.5,
     massKg: 1360,
-    engineTorque: 220, // Per axle
+    engineTorque: 190, // Per axle
     numGears: 5,
     drivenWheels: ['frontLeft', 'frontRight', 'rearLeft', 'rearRight'],
   },
