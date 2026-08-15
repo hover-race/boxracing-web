@@ -51,6 +51,7 @@ const CAR_MODELS = [
     wheelRadiusBack: 0.39,
     wheelbase: 2.69,
     massKg: 1650,
+    numGears: 4,
     engineTorque: 400,
   },
   {
@@ -70,6 +71,7 @@ const CAR_MODELS = [
     wheelbase: 2.5,
     massKg: 1360,
     engineTorque: 220, // Per axle
+    numGears: 5,
     drivenWheels: ['frontLeft', 'frontRight', 'rearLeft', 'rearRight'],
   },
   {
@@ -93,6 +95,7 @@ const CAR_MODELS = [
     suspensionDampingRelaxation: 1.5,
     suspensionRollInfluence: 0,
     massKg: 2500,
+    numGears: 8,
     engineTorque: 450,
   },
 ].map(model => ({ ...DEFAULTS, ...model }))
