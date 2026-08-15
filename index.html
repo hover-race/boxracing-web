@@ -36,10 +36,12 @@
         <div id="car-selection-preview"></div>
         <div id="car-selection-options"></div>
         <label id="player-name-field">
-          <span>Player name</span>
+          <span class="player-name-label">Player name</span>
           <span id="player-name-box">
+            <span id="player-name-visual" aria-hidden="true">
+              <span id="player-name-before"></span><span id="player-name-caret"></span><span id="player-name-after"></span>
+            </span>
             <input id="player-name-input" type="text" maxlength="12" autocomplete="nickname" spellcheck="false" />
-            <span id="player-name-caret" aria-hidden="true"></span>
           </span>
         </label>
         <button id="car-selection-start" type="button">Race</button>

@@ -97,7 +97,7 @@ canvas {
     margin-bottom: 16px;
 }
 
-#player-name-field span {
+.player-name-label {
     font: 400 10px/1.6 'Press Start 2P', monospace;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -106,38 +106,41 @@ canvas {
 
 #player-name-box {
     position: relative;
+    display: block;
     width: min(320px, 100%);
-    font: 400 14px/1.6 'Press Start 2P', monospace;
-}
-
-#player-name-input {
-    width: 100%;
     box-sizing: border-box;
     padding: 12px 14px;
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     background: #1c252b;
-    color: #fff;
     font: 400 14px/1.6 'Press Start 2P', monospace;
-    text-align: center;
-    caret-color: transparent;
 }
 
-#player-name-input:focus {
-    outline: none;
+#player-name-box:focus-within {
     border-color: #4caf50;
     box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.25);
 }
 
-#player-name-caret {
-    position: absolute;
-    top: 50%;
-    width: 1em;
-    height: 1.15em;
-    margin-top: -0.58em;
-    background: #fff;
+#player-name-visual {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 1.6em;
     pointer-events: none;
+}
+
+#player-name-before,
+#player-name-after {
+    white-space: pre;
+    color: #fff;
+}
+
+#player-name-caret {
     display: none;
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+    background: #fff;
     animation: player-name-caret 1s step-end infinite;
 }
 
@@ -147,6 +150,26 @@ canvas {
 
 @keyframes player-name-caret {
     50% { background: transparent; }
+}
+
+#player-name-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border: 0;
+    background: transparent;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    caret-color: transparent;
+    font: 400 14px/1.6 'Press Start 2P', monospace;
+    text-align: center;
+}
+
+#player-name-input:focus {
+    outline: none;
 }
 
 #car-selection-start {

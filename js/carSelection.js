@@ -15,30 +15,25 @@ function selectCar(scene) {
   })
 
   const nameCaret = document.getElementById('player-name-caret')
-  const nameMeasure = document.createElement('canvas').getContext('2d')
+  const nameBefore = document.getElementById('player-name-before')
+  const nameAfter = document.getElementById('player-name-after')
 
-  function updateNameCaret() {
-    if (document.activeElement !== nameInput || nameInput.selectionStart !== nameInput.selectionEnd) {
-      nameCaret.classList.remove('is-on')
-      return
-    }
-    const cs = getComputedStyle(nameInput)
-    nameMeasure.font = cs.font
-    const ch = nameMeasure.measureText('M').width
-    const before = nameMeasure.measureText(nameInput.value.slice(0, nameInput.selectionStart)).width
-    const total = nameMeasure.measureText(nameInput.value).width
-    const padLeft = parseFloat(cs.paddingLeft)
-    const inner = nameInput.clientWidth - padLeft - parseFloat(cs.paddingRight)
-    nameCaret.style.width = `${ch}px`
-    nameCaret.style.left = `${padLeft + (inner - total) / 2 + before}px`
-    nameCaret.classList.add('is-on')
+  function updateNameVisual() {
+    const value = nameInput.value
+    const start = nameInput.selectionStart ?? value.length
+    const end = nameInput.selectionEnd ?? value.length
+    nameBefore.textContent = value.slice(0, start)
+    nameAfter.textContent = value.slice(end)
+    nameCaret.classList.toggle('is-on', document.activeElement === nameInput && start === end)
   }
 
-  nameInput.addEventListener('focus', updateNameCaret)
-  nameInput.addEventListener('click', updateNameCaret)
-  nameInput.addEventListener('keyup', updateNameCaret)
-  nameInput.addEventListener('input', updateNameCaret)
-  document.addEventListener('selectionchange', updateNameCaret)
+  nameInput.addEventListener('focus', updateNameVisual)
+  nameInput.addEventListener('blur', updateNameVisual)
+  nameInput.addEventListener('click', updateNameVisual)
+  nameInput.addEventListener('keyup', updateNameVisual)
+  nameInput.addEventListener('input', updateNameVisual)
+  document.addEventListener('selectionchange', updateNameVisual)
+  updateNameVisual()
 
   function finish(carId) {
     applyPlayerName(nameInput.value)
@@ -91,7 +86,7 @@ function selectCar(scene) {
     })
     nameInput.focus()
     nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length)
-    updateNameCaret()
+    updateNameVisual()
   })
 }
 
