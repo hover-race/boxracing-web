@@ -103,6 +103,7 @@ class Vehicle {
       redline: carModel.redline,
       topSpeedMph: carModel.topSpeedMph,
       driveWheelRadius,
+      reverseGearRatio: carModel.reverseGearRatio,
     })
 
     this.addWheel(
@@ -338,6 +339,7 @@ class Vehicle {
       Math.abs(speed),
       this.wheels,
       this.drivenWheelIndices,
+      this.engineForce < 0,
     )
     const frontBrake = this.footBrake
     this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake, 0, gearRatio, torqueFactor)
@@ -360,7 +362,7 @@ class Vehicle {
     )
 
     this.speedometer.textContent = `${speed.toFixed(0)} mph`
-    this.tachometer.update(this.gearbox.engineRpm, this.gearbox.gear)
+    this.tachometer.update(this.gearbox.engineRpm, this.gearbox.getGearLabel())
 
     // Update speed display in dat.gui
     vehicleParams.speed = speed

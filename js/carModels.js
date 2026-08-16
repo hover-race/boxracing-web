@@ -12,6 +12,7 @@ const DEFAULTS = {
   massKg: 800,
   engineTorque: 130,
   numGears: 4,
+  reverseGearRatio: 12,
   redline: 6000,
   topSpeedMph: 120,
   drivenWheels: ['rearLeft', 'rearRight'],
