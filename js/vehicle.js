@@ -103,6 +103,7 @@ class Vehicle {
       topSpeedMph: carModel.topSpeedMph,
       driveWheelRadius,
       maxEngineForce: this.maxEngineForce,
+      engineTorque: carModel.engineTorque,
     })
 
     this.addWheel(
@@ -328,6 +329,7 @@ class Vehicle {
       this.wheels,
       this.drivenWheelIndices,
     )
+    vehicleParams.converterTorque = this.gearbox.converterTorque
     const frontBrake = this.footBrake
     this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake, 0, gearRatio, torqueFactor)
     this.wheels[this.FRONT_RIGHT].update(dt, this.wheelEngineForce[1], frontBrake, 0, gearRatio, torqueFactor)

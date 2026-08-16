@@ -60,6 +60,12 @@ const params = {
   steerAssistSlipLimitDeg: 10,
   wheelInertia: 1.2,
   engineTorque: 700,
+  drivetrainEngineInertia: 1,
+  engineFrictionNm: 25,
+  engineViscousFriction: 0.08,
+  converterStallRatio: 0.35,
+  shiftLoadMultiplier: 1.5,
+  shiftDuration: 0.5,
   brakeTorque: 450,
   tireLongitudinalStiffness: 12,
   tireLateralStiffness: 2,
@@ -164,6 +170,7 @@ const vehicleParams = {
   autoSteerLateral: 0,
   autoSteerHeadingDeg: 0,
   crashG: 0,
+  converterTorque: 0,
 }
 
 const carCollisionDebug = {
@@ -201,6 +208,15 @@ stabilityFolder.add(params, 'autoSteerStrength', 0, 2).step(0.05)
 stabilityFolder.add(vehicleParams, 'autoSteerAssist', 0, 1).step(0.01).listen()
 stabilityFolder.add(vehicleParams, 'autoSteerLateral', -15, 15).step(0.1).listen()
 stabilityFolder.add(vehicleParams, 'autoSteerHeadingDeg', -45, 45).step(0.1).listen()
+
+const drivetrainFolder = gui.addFolder('Drivetrain')
+drivetrainFolder.add(params, 'drivetrainEngineInertia', 0.1, 5).step(0.1)
+drivetrainFolder.add(params, 'engineFrictionNm', 0, 200).step(1)
+drivetrainFolder.add(params, 'engineViscousFriction', 0, 0.5).step(0.01)
+drivetrainFolder.add(params, 'converterStallRatio', 0.1, 0.8).step(0.01)
+drivetrainFolder.add(params, 'shiftLoadMultiplier', 0, 5).step(0.1)
+drivetrainFolder.add(params, 'shiftDuration', 0.1, 2).step(0.05)
+drivetrainFolder.add(vehicleParams, 'converterTorque', -2000, 2000).step(1).listen()
 
 const botFolder = gui.addFolder('Bot')
 botFolder.add(params, 'numBots', 0, 20).step(1)

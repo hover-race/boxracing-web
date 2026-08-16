@@ -33,7 +33,9 @@ const CAR_MODELS = [
     },
     massKg: 1350,
     numGears: 3,
+    redline: 7000,
     engineTorque: 300,
+    topSpeedMph: 120,
   },
   {
     car_id: 'monte_carlo',
@@ -56,7 +58,7 @@ const CAR_MODELS = [
     massKg: 1300,
     numGears: 4,
     topSpeedMph: 140,
-    engineTorque: 450,
+    engineTorque: 150,
   },
   {
     car_id: 'evo5',
