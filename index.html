@@ -95,8 +95,21 @@
         </div>
       </div>
       <div id="speedometer">0 mph</div>
-      <div id="tachometer">0 rpm</div>
-      <div id="gear-indicator">Gear 1</div>
+      <div id="tachometer" aria-label="Tachometer">
+        <svg viewBox="0 0 220 220" role="img">
+          <circle class="tach-face" cx="110" cy="110" r="104" />
+          <circle class="tach-inner-ring" cx="110" cy="110" r="94" />
+          <path class="tach-redline-arc" data-tach-redline />
+          <g data-tach-ticks></g>
+          <g data-tach-numbers></g>
+          <text class="tach-label" x="110" y="82">RPM × 1000</text>
+          <text class="tach-gear" data-tach-gear x="110" y="153">1</text>
+          <g class="tach-needle-group" data-tach-needle>
+            <path class="tach-needle" d="M 104 111 L 110 31 L 116 111 Z" />
+            <circle class="tach-hub" cx="110" cy="110" r="9" />
+          </g>
+        </svg>
+      </div>
     </div>
     <div id="hud-bottom-right">
       <div id="hud-toast" class="hud-toast"></div>

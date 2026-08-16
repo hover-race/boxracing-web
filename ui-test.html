@@ -528,14 +528,6 @@
         text-anchor: middle;
       }
 
-      #tach-rpm {
-        fill: #fff;
-        font-size: 16px;
-        font-weight: 700;
-        text-anchor: middle;
-        font-variant-numeric: tabular-nums;
-      }
-
       #tach-gear {
         fill: #ffdc46;
         font-size: 28px;
@@ -552,8 +544,7 @@
         <path id="tach-redline-arc" class="tach-redline-arc" />
         <g id="tach-ticks"></g>
         <g id="tach-numbers"></g>
-        <text class="tach-label" x="110" y="72">RPM × 1000</text>
-        <text id="tach-rpm" x="110" y="91">900</text>
+        <text class="tach-label" x="110" y="82">RPM × 1000</text>
         <text id="tach-gear" x="110" y="153">1</text>
         <g id="tach-needle">
           <path class="tach-needle" d="M 104 111 L 110 31 L 116 111 Z" />
@@ -855,7 +846,6 @@
       const tachTicks = document.getElementById('tach-ticks')
       const tachNumbers = document.getElementById('tach-numbers')
       const tachNeedle = document.getElementById('tach-needle')
-      const tachRpm = document.getElementById('tach-rpm')
       const tachGear = document.getElementById('tach-gear')
 
       const listener = new THREE.AudioListener()
@@ -916,7 +906,6 @@
         const clampedRpm = Math.max(0, Math.min(TACH_MAX_RPM, rpm))
         const angle = TACH_MIN_ANGLE + (clampedRpm / TACH_MAX_RPM) * (TACH_MAX_ANGLE - TACH_MIN_ANGLE)
         tachNeedle.style.transform = `rotate(${angle}deg)`
-        tachRpm.textContent = Math.round(clampedRpm / 50) * 50
         tachGear.textContent = gear
       }
 

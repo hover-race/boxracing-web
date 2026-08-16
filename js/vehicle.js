@@ -8,6 +8,7 @@ import { GROUP_CAR, GROUP_TRACK } from './carCollisions.js';
 import { clearContactOverlay } from './contactOverlay.js';
 import { createEngineSound, updateEngineSound } from './sound.js';
 import { Gearbox } from './gearbox.js';
+import { Tachometer } from './tachometer.js';
 
 class Vehicle {
   vehicle
@@ -129,8 +130,7 @@ class Vehicle {
     )
 
     this.speedometer = document.getElementById('speedometer')
-    this.tachometer = document.getElementById('tachometer')
-    this.gearIndicator = document.getElementById('gear-indicator')
+    this.tachometer = new Tachometer(document.getElementById('tachometer'), carModel.redline)
     this.accelerometerDot = document.getElementById('accel-dot')
     this.hpFill = document.getElementById('hp-fill')
     this.hp = params.carMaxHp
@@ -350,8 +350,7 @@ class Vehicle {
 
     const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
     this.speedometer.textContent = `${speed.toFixed(0)} mph`
-    this.tachometer.textContent = `${Math.round(this.gearbox.engineRpm / 50) * 50} rpm`
-    this.gearIndicator.textContent = `Gear ${this.gearbox.gear}`
+    this.tachometer.update(this.gearbox.engineRpm, this.gearbox.gear)
 
     // Update speed display in dat.gui
     vehicleParams.speed = speed
