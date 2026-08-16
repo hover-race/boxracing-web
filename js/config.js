@@ -3,4 +3,5 @@ export const Config = {
   gripSide: 2,
   carCollisionPushForce: 30,
   airDrag: 0.7,
+  engineDrag: 0.2,
 }

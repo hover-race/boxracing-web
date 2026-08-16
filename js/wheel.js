@@ -153,7 +153,10 @@ class Wheel {
   }
 
   getDriveTorque(engineForce, gearRatio, drivetrainTorqueFactor) {
-    let driveTorque = engineForce / this.maxEngineForce * this.engineTorque * gearRatio * drivetrainTorqueFactor
+    const throttle = engineForce / this.maxEngineForce
+    let driveTorque = throttle * this.engineTorque * gearRatio * drivetrainTorqueFactor
+    const engineDrag = (1 - Math.abs(throttle)) * this.engineTorque * Config.engineDrag * gearRatio * drivetrainTorqueFactor
+    driveTorque -= Math.sign(this.angularVelocity) * engineDrag
     const slipOverLimit = Math.max(0, Math.abs(this.slipRatio) - params.tcSlipLimit)
     if (params.tractionControl && slipOverLimit > 0) {
       driveTorque *= Math.max(0, 1 - Math.min(params.tcMaxCut, slipOverLimit * params.tcStrength))
