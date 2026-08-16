@@ -102,8 +102,6 @@ class Vehicle {
       redline: carModel.redline,
       topSpeedMph: carModel.topSpeedMph,
       driveWheelRadius,
-      maxEngineForce: this.maxEngineForce,
-      engineTorque: carModel.engineTorque,
     })
 
     this.addWheel(
@@ -323,18 +321,17 @@ class Vehicle {
     }
     
     const dt = 1/60;  // Assuming 60fps, ideally get this from the physics world
-    const { gearRatio, torqueFactor } = this.gearbox.update(
-      dt,
-      this.engineForce,
+    const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
+    const { torqueFactor } = this.gearbox.update(
+      Math.abs(speed),
       this.wheels,
       this.drivenWheelIndices,
     )
-    vehicleParams.converterTorque = this.gearbox.converterTorque
     const frontBrake = this.footBrake
-    this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake, 0, gearRatio, torqueFactor)
-    this.wheels[this.FRONT_RIGHT].update(dt, this.wheelEngineForce[1], frontBrake, 0, gearRatio, torqueFactor)
-    this.wheels[this.BACK_LEFT].update(dt, this.wheelEngineForce[2], frontBrake + this.escBrakeBL, this.handBrake, gearRatio, torqueFactor)
-    this.wheels[this.BACK_RIGHT].update(dt, this.wheelEngineForce[3], frontBrake + this.escBrakeBR, this.handBrake, gearRatio, torqueFactor)
+    this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake, 0, torqueFactor)
+    this.wheels[this.FRONT_RIGHT].update(dt, this.wheelEngineForce[1], frontBrake, 0, torqueFactor)
+    this.wheels[this.BACK_LEFT].update(dt, this.wheelEngineForce[2], frontBrake + this.escBrakeBL, this.handBrake, torqueFactor)
+    this.wheels[this.BACK_RIGHT].update(dt, this.wheelEngineForce[3], frontBrake + this.escBrakeBR, this.handBrake, torqueFactor)
     this.wheels[this.FRONT_LEFT].gui()
     vehicleParams.frontSlipAngle = Math.max(
       Math.abs(this.wheels[this.FRONT_LEFT].slipAngle),
@@ -350,7 +347,6 @@ class Vehicle {
       'escLightOffTimeoutId'
     )
 
-    const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
     this.speedometer.textContent = `${speed.toFixed(0)} mph`
     this.tachometer.update(this.gearbox.engineRpm, this.gearbox.gear)
 

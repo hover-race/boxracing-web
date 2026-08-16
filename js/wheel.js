@@ -152,8 +152,8 @@ class Wheel {
     return this.clamp((surfaceSpeed - forwardSpeed) / denominator, -1, 1)
   }
 
-  getDriveTorque(engineForce, gearRatio, drivetrainTorqueFactor) {
-    let driveTorque = engineForce / this.maxEngineForce * this.engineTorque * gearRatio * drivetrainTorqueFactor
+  getDriveTorque(engineForce, drivetrainTorqueFactor) {
+    let driveTorque = engineForce / this.maxEngineForce * this.engineTorque * drivetrainTorqueFactor
     const slipOverLimit = Math.max(0, Math.abs(this.slipRatio) - params.tcSlipLimit)
     if (params.tractionControl && slipOverLimit > 0) {
       driveTorque *= Math.max(0, 1 - Math.min(params.tcMaxCut, slipOverLimit * params.tcStrength))
@@ -174,14 +174,14 @@ class Wheel {
     if (lock >= 0.75) this.angularVelocity = 0
   }
 
-  update(dt, engineForce, footBrake, handBrake = 0, gearRatio = 1, drivetrainTorqueFactor = 1) {
+  update(dt, engineForce, footBrake, handBrake = 0, drivetrainTorqueFactor = 1) {
     const brakeForce = footBrake + handBrake
     this.forwardForceScalar = 0
     this.sideForceScalar = 0
     this.skidInfo = this.getSkidInfo()
 
     if (!this.isInContact()) {
-      const torque = this.getDriveTorque(engineForce, gearRatio, drivetrainTorqueFactor) + this.getBrakeTorque(footBrake, handBrake)
+      const torque = this.getDriveTorque(engineForce, drivetrainTorqueFactor) + this.getBrakeTorque(footBrake, handBrake)
       this.angularVelocity += torque / params.wheelInertia * dt
       this.angularVelocity = this.clamp(this.angularVelocity, -params.maxWheelAngularVelocity, params.maxWheelAngularVelocity)
       this.rotation += this.angularVelocity * dt
@@ -215,7 +215,7 @@ class Wheel {
     this.normalForce = normalForce
     this.maxSide = maxSide
 
-    const driveTorque = this.getDriveTorque(engineForce, gearRatio, drivetrainTorqueFactor)
+    const driveTorque = this.getDriveTorque(engineForce, drivetrainTorqueFactor)
     const brakeTorque = this.getBrakeTorque(footBrake, handBrake)
     const c = params.tireSlipDamping
     const r = this.radius

@@ -9,8 +9,8 @@ const DEFAULTS = {
   suspensionDampingRelaxation: 3,
   suspensionDampingCompression: 4.4,
   suspensionRollInfluence: 1,
-  massKg: 1500,
-  engineTorque: 300,
+  massKg: 800,
+  engineTorque: 700,
   numGears: 4,
   redline: 6000,
   topSpeedMph: 120,
@@ -31,10 +31,10 @@ const CAR_MODELS = [
       rearLeft: 'RearLeftWheel',
       rearRight: 'RearRightWheel',
     },
-    massKg: 1350,
+    // massKg: 1350,
     numGears: 3,
     redline: 7000,
-    engineTorque: 300,
+    engineTorque: 1000,
     topSpeedMph: 120,
   },
   {
@@ -55,10 +55,10 @@ const CAR_MODELS = [
     suspensionStiffness: 90,
     suspensionDampingCompression: 5.4,
 
-    massKg: 1300,
+    // massKg: 1300,
     numGears: 4,
     topSpeedMph: 140,
-    engineTorque: 150,
+    engineTorque: 1000,
   },
   {
     car_id: 'evo5',
@@ -76,7 +76,7 @@ const CAR_MODELS = [
     wheelRadiusBack: 0.39,
     wheelbase: 2.5,
     massKg: 1360,
-    engineTorque: 190, // Per axle
+    engineTorque: 500, // Per axle
     numGears: 5,
     drivenWheels: ['frontLeft', 'frontRight', 'rearLeft', 'rearRight'],
   },
@@ -102,7 +102,7 @@ const CAR_MODELS = [
     suspensionRollInfluence: 0,
     massKg: 2500,
     numGears: 8,
-    engineTorque: 450,
+    engineTorque: 1200,
   },
 ].map(model => ({ ...DEFAULTS, ...model }))
 
