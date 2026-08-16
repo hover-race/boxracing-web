@@ -95,7 +95,10 @@ class Gearbox {
   update(speedMph, wheels, drivenWheelIndices) {
     this.updateGear(speedMph)
     this.updateDisplayedRpm(speedMph, wheels, drivenWheelIndices)
-    return { torqueFactor: this.getTorqueFactor() }
+    return {
+      gearRatio: this.getDisplayRatio(),
+      torqueFactor: this.getTorqueFactor(),
+    }
   }
 
   reset() {

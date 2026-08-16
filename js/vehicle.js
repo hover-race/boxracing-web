@@ -9,6 +9,7 @@ import { clearContactOverlay } from './contactOverlay.js';
 import { createEngineSound, updateEngineSound } from './sound.js';
 import { Gearbox } from './gearbox.js';
 import { Tachometer } from './tachometer.js';
+import { Config } from './config.js';
 
 class Vehicle {
   vehicle
@@ -161,7 +162,7 @@ class Vehicle {
         radius,
         this.vehicle,
         index,
-        carModel.engineTorque,
+        carModel.engineTorque / this.drivenWheelIndices.length,
         this.maxEngineForce,
       );
     });
@@ -310,10 +311,21 @@ class Vehicle {
     this.chassis.body.ammo.applyCentralForce(forward.op_mul(params.pushForce * 500))
   }
 
+  applyAirDrag() {
+    const velocity = this.chassis.body.ammo.getLinearVelocity()
+    const speed = velocity.length()
+    if (speed < 0.01) return
+    const scale = -Config.airDrag * speed
+    if (!this._btAirDrag) this._btAirDrag = new Ammo.btVector3()
+    this._btAirDrag.setValue(velocity.x() * scale, velocity.y() * scale, velocity.z() * scale)
+    this.chassis.body.ammo.applyCentralForce(this._btAirDrag)
+  }
+
   update(inputs) {
     if (this.exploding) return
 
     this.updateControls(inputs)
+    this.applyAirDrag()
     
     // Check if steering sensitivity has changed in GUI
     if (vehicleParams && vehicleParams.steeringSensitivity !== this.steeringSensitivity) {
@@ -322,16 +334,16 @@ class Vehicle {
     
     const dt = 1/60;  // Assuming 60fps, ideally get this from the physics world
     const speed = this.vehicle.getCurrentSpeedKmHour() * 0.621371
-    const { torqueFactor } = this.gearbox.update(
+    const { gearRatio, torqueFactor } = this.gearbox.update(
       Math.abs(speed),
       this.wheels,
       this.drivenWheelIndices,
     )
     const frontBrake = this.footBrake
-    this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake, 0, torqueFactor)
-    this.wheels[this.FRONT_RIGHT].update(dt, this.wheelEngineForce[1], frontBrake, 0, torqueFactor)
-    this.wheels[this.BACK_LEFT].update(dt, this.wheelEngineForce[2], frontBrake + this.escBrakeBL, this.handBrake, torqueFactor)
-    this.wheels[this.BACK_RIGHT].update(dt, this.wheelEngineForce[3], frontBrake + this.escBrakeBR, this.handBrake, torqueFactor)
+    this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake, 0, gearRatio, torqueFactor)
+    this.wheels[this.FRONT_RIGHT].update(dt, this.wheelEngineForce[1], frontBrake, 0, gearRatio, torqueFactor)
+    this.wheels[this.BACK_LEFT].update(dt, this.wheelEngineForce[2], frontBrake + this.escBrakeBL, this.handBrake, gearRatio, torqueFactor)
+    this.wheels[this.BACK_RIGHT].update(dt, this.wheelEngineForce[3], frontBrake + this.escBrakeBR, this.handBrake, gearRatio, torqueFactor)
     this.wheels[this.FRONT_LEFT].gui()
     vehicleParams.frontSlipAngle = Math.max(
       Math.abs(this.wheels[this.FRONT_LEFT].slipAngle),
@@ -895,7 +907,7 @@ class Vehicle {
       collisionGroup: GROUP_CAR,
       collisionMask: GROUP_TRACK,
     })
-    collisionMesh.body.setDamping(0.1, 0.1)
+    collisionMesh.body.setDamping(0, 0.1)
 
     createEngineSound(collisionMesh, scene.listener, isBot)
 
