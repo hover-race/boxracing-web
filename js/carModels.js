@@ -59,7 +59,7 @@ const CAR_MODELS = [
     // massKg: 1300,
     numGears: 4,
     topSpeedMph: 140,
-    engineTorque: 170,
+    engineTorque: 190,
   },
   {
     car_id: 'evo5',
