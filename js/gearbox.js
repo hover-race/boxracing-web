@@ -38,7 +38,7 @@ class Gearbox {
     this.topGearRatio = this.gearRatios[this.gearRatios.length - 1]
     this.shiftPointsMph = this.gearRatios
       .slice(0, -1)
-      .map(ratio => topSpeedMph * this.topGearRatio / ratio)
+      .map(ratio => topSpeedMph * this.topGearRatio / ratio * 0.92)
     this.reverseTopSpeedMph = topSpeedMph * this.topGearRatio / this.reverseGearRatio
   }
 

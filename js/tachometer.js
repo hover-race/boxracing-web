@@ -42,8 +42,7 @@ class Tachometer {
       }
     }
 
-    const redlineAngle = MIN_ANGLE + (redline / MAX_RPM) * (MAX_ANGLE - MIN_ANGLE)
-    const redlineStart = point(96, redlineAngle)
+    const redlineStart = point(96, MIN_ANGLE + (redline / MAX_RPM) * (MAX_ANGLE - MIN_ANGLE))
     const redlineEnd = point(96, MAX_ANGLE)
     element.querySelector('[data-tach-redline]').setAttribute(
       'd',
