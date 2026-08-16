@@ -50,10 +50,13 @@ const CAR_MODELS = [
     wheelRadiusFront: 0.39,
     wheelRadiusBack: 0.39,
     wheelbase: 2.69,
-    massKg: 1650,
+    suspensionStiffness: 90,
+    suspensionDampingCompression: 5.4,
+
+    massKg: 1300,
     numGears: 4,
     topSpeedMph: 140,
-    engineTorque: 350,
+    engineTorque: 450,
   },
   {
     car_id: 'evo5',

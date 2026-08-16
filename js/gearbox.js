@@ -5,12 +5,14 @@ class Gearbox {
     this.maxEngineForce = maxEngineForce
     this.idleRpm = 800
     this.stallRpm = redline * 0.35
+    this.engineAccelerationResponse = 2.5
+    this.engineDecelerationResponse = 6
     this.engineRpm = this.idleRpm
     this.gear = 1
     this.targetGear = 1
     this.shiftDuration = 0.35
-    this.shiftTimeRemaining = 0
-    this.shiftInterval = null
+    this.shiftStartedAt = 0
+    this.shiftTimeout = null
 
     const topSpeedMps = topSpeedMph * 0.44704
     const topGearWheelRpm = topSpeedMps / (2 * Math.PI * driveWheelRadius) * 60
@@ -44,7 +46,9 @@ class Gearbox {
       this.idleRpm,
       Math.min(this.redline, transmissionRpm + converterSlipRpm),
     )
-    const response = targetRpm > this.engineRpm ? 5 : 12
+    const response = targetRpm > this.engineRpm
+      ? this.engineAccelerationResponse
+      : this.engineDecelerationResponse
     this.engineRpm += (targetRpm - this.engineRpm) * Math.min(1, response * dt)
   }
 
@@ -60,24 +64,16 @@ class Gearbox {
   }
 
   updateGear(wheels, drivenWheelIndices) {
-    if (this.shiftInterval) return
+    if (this.shiftTimeout) return
 
     const desiredGear = this.getDesiredGear(wheels, drivenWheelIndices)
     if (desiredGear !== this.gear) {
       this.targetGear = desiredGear
-      this.shiftTimeRemaining = this.shiftDuration
-      const shiftStartedAt = performance.now()
-      this.shiftInterval = setInterval(() => {
-        const elapsed = (performance.now() - shiftStartedAt) / 1000
-        this.shiftTimeRemaining = Math.max(0, this.shiftDuration - elapsed)
-        if (this.shiftTimeRemaining <= this.shiftDuration / 2) {
-          this.gear = this.targetGear
-        }
-        if (this.shiftTimeRemaining === 0) {
-          clearInterval(this.shiftInterval)
-          this.shiftInterval = null
-        }
-      }, 16)
+      this.shiftStartedAt = performance.now()
+      this.shiftTimeout = setTimeout(() => {
+        this.gear = this.targetGear
+        this.shiftTimeout = null
+      }, this.shiftDuration * 1000)
     }
   }
 
@@ -89,8 +85,8 @@ class Gearbox {
     const transmissionRpm = this.getTransmissionRpm(wheels, drivenWheelIndices)
     const speedRatio = Math.max(0, Math.min(1, transmissionRpm / this.engineRpm))
     const converterFactor = smoothEngagement * (2 - speedRatio)
-    if (this.shiftTimeRemaining <= 0) return converterFactor
-    const progress = 1 - this.shiftTimeRemaining / this.shiftDuration
+    if (!this.shiftTimeout) return converterFactor
+    const progress = Math.min(1, (performance.now() - this.shiftStartedAt) / (this.shiftDuration * 1000))
     const shiftFactor = 0.2 + 0.8 * Math.abs(progress * 2 - 1)
     return converterFactor * shiftFactor
   }
@@ -105,12 +101,12 @@ class Gearbox {
   }
 
   reset() {
-    clearInterval(this.shiftInterval)
+    clearTimeout(this.shiftTimeout)
     this.engineRpm = this.idleRpm
     this.gear = 1
     this.targetGear = 1
-    this.shiftTimeRemaining = 0
-    this.shiftInterval = null
+    this.shiftStartedAt = 0
+    this.shiftTimeout = null
   }
 }
 

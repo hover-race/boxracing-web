@@ -445,9 +445,123 @@
         top: auto;
         right: auto;
       }
+
+      #ui-test-tachometer {
+        position: fixed;
+        left: 24px;
+        bottom: 24px;
+        width: 220px;
+        height: 220px;
+        z-index: 10;
+        color: #f4f4f4;
+        font-family: 'Chakra Petch', sans-serif;
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.65));
+      }
+
+      #ui-test-tachometer svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .tach-face {
+        fill: rgba(10, 10, 10, 0.94);
+        stroke: #565656;
+        stroke-width: 3;
+      }
+
+      .tach-inner-ring {
+        fill: none;
+        stroke: rgba(255, 255, 255, 0.12);
+        stroke-width: 1;
+      }
+
+      .tach-tick {
+        stroke: #d8d8d8;
+        stroke-width: 2;
+      }
+
+      .tach-tick.major {
+        stroke-width: 4;
+      }
+
+      .tach-tick.redline {
+        stroke: #ff3b30;
+      }
+
+      .tach-number {
+        fill: #e8e8e8;
+        font-size: 15px;
+        font-weight: 700;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+
+      .tach-redline-arc {
+        fill: none;
+        stroke: #ff3b30;
+        stroke-width: 5;
+        stroke-linecap: round;
+      }
+
+      #tach-needle {
+        transform-origin: 110px 110px;
+        transition: transform 80ms linear;
+      }
+
+      .tach-needle {
+        fill: #ff3b30;
+        filter: drop-shadow(0 0 3px rgba(255, 59, 48, 0.75));
+      }
+
+      .tach-hub {
+        fill: #d9d9d9;
+        stroke: #5f5f5f;
+        stroke-width: 3;
+      }
+
+      .tach-label {
+        fill: #969696;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-anchor: middle;
+      }
+
+      #tach-rpm {
+        fill: #fff;
+        font-size: 16px;
+        font-weight: 700;
+        text-anchor: middle;
+        font-variant-numeric: tabular-nums;
+      }
+
+      #tach-gear {
+        fill: #ffdc46;
+        font-size: 28px;
+        font-weight: 700;
+        text-anchor: middle;
+      }
     </style>
   </head>
   <body class="ui-test-body">
+    <div id="ui-test-tachometer" aria-label="Tachometer">
+      <svg viewBox="0 0 220 220" role="img">
+        <circle class="tach-face" cx="110" cy="110" r="104" />
+        <circle class="tach-inner-ring" cx="110" cy="110" r="94" />
+        <path id="tach-redline-arc" class="tach-redline-arc" />
+        <g id="tach-ticks"></g>
+        <g id="tach-numbers"></g>
+        <text class="tach-label" x="110" y="72">RPM × 1000</text>
+        <text id="tach-rpm" x="110" y="91">900</text>
+        <text id="tach-gear" x="110" y="153">1</text>
+        <g id="tach-needle">
+          <path class="tach-needle" d="M 104 111 L 110 31 L 116 111 Z" />
+          <circle class="tach-hub" cx="110" cy="110" r="9" />
+        </g>
+      </svg>
+    </div>
+
     <div id="race-hud">
       <div id="race-hud-position">P2</div>
       <div id="race-hud-player-name">CyanFox</div>
@@ -738,6 +852,11 @@
       const tcsIndicator = document.getElementById('tcs-indicator')
       const escIndicator = document.getElementById('esc-indicator')
       const soundToggle = document.getElementById('sound-toggle')
+      const tachTicks = document.getElementById('tach-ticks')
+      const tachNumbers = document.getElementById('tach-numbers')
+      const tachNeedle = document.getElementById('tach-needle')
+      const tachRpm = document.getElementById('tach-rpm')
+      const tachGear = document.getElementById('tach-gear')
 
       const listener = new THREE.AudioListener()
       const tireSound = new TireScreechSound(listener)
@@ -748,6 +867,83 @@
       let clickCtx = null
       let soundMuted = false
       let savedSoundVolume = params.soundVolume
+
+      const TACH_MIN_ANGLE = -135
+      const TACH_MAX_ANGLE = 135
+      const TACH_MAX_RPM = 8000
+      const SVG_NS = 'http://www.w3.org/2000/svg'
+
+      function tachPoint(radius, angle) {
+        const radians = angle * Math.PI / 180
+        return {
+          x: 110 + Math.sin(radians) * radius,
+          y: 110 - Math.cos(radians) * radius,
+        }
+      }
+
+      for (let rpm = 0; rpm <= TACH_MAX_RPM; rpm += 250) {
+        const angle = TACH_MIN_ANGLE + (rpm / TACH_MAX_RPM) * (TACH_MAX_ANGLE - TACH_MIN_ANGLE)
+        const major = rpm % 1000 === 0
+        const outer = tachPoint(91, angle)
+        const inner = tachPoint(major ? 77 : 83, angle)
+        const tick = document.createElementNS(SVG_NS, 'line')
+        tick.setAttribute('x1', inner.x)
+        tick.setAttribute('y1', inner.y)
+        tick.setAttribute('x2', outer.x)
+        tick.setAttribute('y2', outer.y)
+        tick.setAttribute('class', `tach-tick${major ? ' major' : ''}${rpm >= 6500 ? ' redline' : ''}`)
+        tachTicks.appendChild(tick)
+
+        if (major) {
+          const labelPoint = tachPoint(66, angle)
+          const label = document.createElementNS(SVG_NS, 'text')
+          label.setAttribute('x', labelPoint.x)
+          label.setAttribute('y', labelPoint.y)
+          label.setAttribute('class', 'tach-number')
+          label.textContent = rpm / 1000
+          tachNumbers.appendChild(label)
+        }
+      }
+
+      const redlineStart = tachPoint(96, TACH_MIN_ANGLE + (6500 / TACH_MAX_RPM) * (TACH_MAX_ANGLE - TACH_MIN_ANGLE))
+      const redlineEnd = tachPoint(96, TACH_MAX_ANGLE)
+      document.getElementById('tach-redline-arc').setAttribute(
+        'd',
+        `M ${redlineStart.x} ${redlineStart.y} A 96 96 0 0 1 ${redlineEnd.x} ${redlineEnd.y}`,
+      )
+
+      function setTachometer(rpm, gear) {
+        const clampedRpm = Math.max(0, Math.min(TACH_MAX_RPM, rpm))
+        const angle = TACH_MIN_ANGLE + (clampedRpm / TACH_MAX_RPM) * (TACH_MAX_ANGLE - TACH_MIN_ANGLE)
+        tachNeedle.style.transform = `rotate(${angle}deg)`
+        tachRpm.textContent = Math.round(clampedRpm / 50) * 50
+        tachGear.textContent = gear
+      }
+
+      const tachDriverStart = performance.now()
+
+      function driveTachometer(now) {
+        const elapsed = (now - tachDriverStart) / 1000
+        const cycle = elapsed % 11
+        let gear
+        let rpm
+
+        if (cycle < 1.2) {
+          gear = 1
+          rpm = 900 + cycle * 650
+        } else {
+          const run = cycle - 1.2
+          gear = Math.min(6, Math.floor(run / 1.65) + 1)
+          const gearProgress = (run % 1.65) / 1.65
+          rpm = 3000 + gearProgress * 3900
+        }
+
+        rpm += Math.sin(elapsed * 18) * 35
+        setTachometer(rpm, gear)
+        requestAnimationFrame(driveTachometer)
+      }
+
+      requestAnimationFrame(driveTachometer)
 
       function setSoundMuted(muted) {
         soundMuted = muted
