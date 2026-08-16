@@ -429,6 +429,7 @@ export class MainScene extends Scene3D {
     }
 
     let vehicleInputs = idle
+    const throttle = Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput + params.autoThrottle))
     if (raceLive) {
       let steering = inputControls.steering;
       if (this.autoSteer) {
@@ -439,11 +440,12 @@ export class MainScene extends Scene3D {
 
       vehicleInputs = {
         ...inputControls,
-        throttle: Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput + params.autoThrottle)),
+        throttle,
         steering,
       }
-    } else if (this.autoSteer) {
-      vehicleParams.autoSteerLateral = 0;
+    } else {
+      vehicleInputs = { ...idle, throttle, holdOnGrid: true }
+      if (this.autoSteer) vehicleParams.autoSteerLateral = 0;
     }
     this.car.update(vehicleInputs);
     this.autoSteer?.patchWheelLog(vehicleParams.wheelSteerAngle);

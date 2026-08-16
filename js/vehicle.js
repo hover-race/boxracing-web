@@ -340,6 +340,8 @@ class Vehicle {
       this.wheels,
       this.drivenWheelIndices,
       this.engineForce < 0,
+      this.holdOnGrid,
+      this.maxEngineForce > 0 ? this.engineForce / this.maxEngineForce : 0,
     )
     const frontBrake = this.footBrake
     this.wheels[this.FRONT_LEFT].update(dt, this.wheelEngineForce[0], frontBrake, 0, gearRatio, torqueFactor)
@@ -647,6 +649,7 @@ class Vehicle {
 
   applyDriveForces() {
     this.wheelEngineForce = [0, 0, 0, 0]
+    if (this.holdOnGrid) return
     for (const i of this.drivenWheelIndices) {
       this.wheelEngineForce[i] = this.engineForce
     }
@@ -858,7 +861,8 @@ class Vehicle {
       footBrakeInput = 0
     }
 
-    const throttleInput = inputs.throttle + reverseThrottle
+    this.holdOnGrid = !!inputs.holdOnGrid
+    const throttleInput = this.holdOnGrid ? Math.max(0, inputs.throttle) : inputs.throttle + reverseThrottle
     this.engineForce = this.maxEngineForce * throttleInput;
     this.applyStabilityActuation()
     const tcsActive = this.applyTractionControl()

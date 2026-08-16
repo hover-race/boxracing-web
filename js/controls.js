@@ -40,7 +40,13 @@ class ControlsManager {
     };
 
     const keyEvent = (e, down) => {
-      if (!inputControls.enabled) return;
+      if (!inputControls.enabled) {
+        if (e.code === 'KeyW' || e.code === 'ArrowUp') {
+          inputControls.throttle = down ? 1 : 0;
+          e.preventDefault();
+        }
+        return;
+      }
       // Don't drive the car while typing into a GUI field; let the input keep the event.
       if (isEditable(e.target)) return;
 
@@ -87,7 +93,6 @@ class ControlsManager {
 
     // Handle joystick events
     this.joystick.on('move', (evt, data) => {
-      if (!inputControls.enabled) return;
       const angle = data.angle.radian;
       const force = Math.min(data.force, 1.0);
       
@@ -95,9 +100,13 @@ class ControlsManager {
       const forwardAmount = Math.sin(angle) * force;
       const steeringAmount = -Math.sin(angle - Math.PI/2) * force;
 
-      // Update input controls
-      inputControls.steering = steeringAmount;
       inputControls.throttle = Math.max(0, forwardAmount);
+      if (!inputControls.enabled) {
+        inputControls.steering = 0;
+        inputControls.brake = 0;
+        return;
+      }
+      inputControls.steering = steeringAmount;
       inputControls.brake = Math.max(0, -forwardAmount);
     });
 

@@ -65,12 +65,21 @@ class Gearbox {
     return this.shiftFromRatio + (this.shiftToRatio - this.shiftFromRatio) * progress
   }
 
-  updateDisplayedRpm(speedMph, wheels, drivenWheelIndices) {
+  getCoupledRpm(speedMph, wheels, drivenWheelIndices) {
     const ratio = this.getDisplayRatio()
     const wheelRpm = this.getDrivenWheelRpm(wheels, drivenWheelIndices) * ratio
     const roadRpm = speedMph / this.topSpeedMph * this.redline * (ratio / this.topGearRatio)
-    const coupledRpm = wheelRpm + (roadRpm - wheelRpm) * params.rpmRoadCoupling
-    this.engineRpm = clamp(coupledRpm, this.idleRpm, this.redline)
+    return wheelRpm + (roadRpm - wheelRpm) * params.rpmRoadCoupling
+  }
+
+  updateDisplayedRpm(speedMph, wheels, drivenWheelIndices, holdOnGrid, throttle) {
+    const target = holdOnGrid
+      ? this.idleRpm + Math.max(0, throttle) * (this.redline - this.idleRpm)
+      : this.getCoupledRpm(speedMph, wheels, drivenWheelIndices)
+    const dt = 1 / 60
+    const tau = target >= this.engineRpm ? 0.22 : 0.12
+    this.engineRpm += (target - this.engineRpm) * (1 - Math.exp(-dt / tau))
+    this.engineRpm = clamp(this.engineRpm, this.idleRpm, this.redline)
   }
 
   getDesiredGear(speedMph, reversing) {
@@ -120,12 +129,12 @@ class Gearbox {
     return this.shiftTimeout ? params.shiftTorqueFactor : 1
   }
 
-  update(speedMph, wheels, drivenWheelIndices, reversing) {
-    this.updateGear(speedMph, reversing)
-    this.updateDisplayedRpm(speedMph, wheels, drivenWheelIndices)
+  update(speedMph, wheels, drivenWheelIndices, reversing, holdOnGrid, throttle) {
+    if (!holdOnGrid) this.updateGear(speedMph, reversing)
+    this.updateDisplayedRpm(speedMph, wheels, drivenWheelIndices, holdOnGrid, throttle)
     return {
       gearRatio: this.getDisplayRatio(),
-      torqueFactor: this.getTorqueFactor(speedMph),
+      torqueFactor: holdOnGrid ? 0 : this.getTorqueFactor(speedMph),
     }
   }
 
