@@ -78,7 +78,6 @@ const params = {
   spawnAngle: 0,
   botShader: 'xray',
   botOutlineThickness: 0.02,
-  smokeEnabled: true,
   smokeSlipThreshold: 0.25,
   smokeRate: 45,
   maxSmokeParticles: 160,
@@ -185,7 +184,6 @@ gui.remember(params)
 playerNameController = gui.add(params, 'playerName').name('Player Name').onChange(applyPlayerName)
 gui.add(params, 'botShader', ['none', 'outline', 'fresnel', 'solid', 'xray', 'digital', 'glitch', 'waves']).onChange(() => window.refreshBotShader?.())
 gui.add(params, 'botOutlineThickness', 0.005, 0.06).step(0.001).onChange(() => window.refreshBotShader?.())
-gui.add(params, 'smokeEnabled')
 const soundVolumeController = gui.add(params, 'soundVolume', 0, 100).step(1)
 gui.add(vehicleParams, 'steeringSensitivity', 0.1, 2.0).step(0.1)
 

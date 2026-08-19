@@ -4,7 +4,6 @@ wheelGui.remember(params)
 wheelGui.add(params, 'throttleInput', -1, 1).step(0.01)
 wheelGui.add(params, 'runPhysics')
 wheelGui.add(params, 'autoStopPhysicsAfterSec')
-wheelGui.add(params, 'smokeEnabled')
 
 wheelGui.add(vehicleParams, 'wheelSpeed', -50, 50).step(0.1).listen()
 wheelGui.add(vehicleParams, 'slipRatio', -1, 1).step(0.01).listen()

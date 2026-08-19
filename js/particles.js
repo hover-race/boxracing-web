@@ -80,10 +80,8 @@ class TireParticles {
   updateSmoke(dt) {
     this.updateTireAudio(dt)
 
-    if (params.smokeEnabled) {
-      for (const wheel of this.vehicle.wheels) {
-        this.emitSmoke(wheel, dt)
-      }
+    for (const wheel of this.vehicle.wheels) {
+      this.emitSmoke(wheel, dt)
     }
 
     for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
