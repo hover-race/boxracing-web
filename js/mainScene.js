@@ -7,7 +7,7 @@ import { CameraSwitcher } from './camera.js';
 import { ControlsManager } from './controls.js';
 import { CheckpointManager } from './checkpointManager.js';
 import { UIController } from './ui.js';
-import { ReplayPlayer, ReplayUI } from './replays.js';
+import { Replay } from './replays.js';
 import { LapPathRecorder } from './lapPath.js';
 import { RacingLine } from './racingLine.js';
 import { Bot } from './bot.js';
@@ -39,8 +39,7 @@ export class MainScene extends Scene3D {
   portal = null
   controlsManager = null
   starSystem = null
-  replayPlayer = null
-  replayUI = null
+  replay = null
   cameraSwitcher = null
 
   async loadGltf(path) {
@@ -221,7 +220,7 @@ export class MainScene extends Scene3D {
           transform,
           this.carModels.get(botCarModel.car_id).prefab.clone(true),
           botCarModel,
-          { recordReplay: false, isBot: true, botColor: botColorForIndex(i, botCount) }
+          { isBot: true, botColor: botColorForIndex(i, botCount) }
         )
         let name
         do {
@@ -233,22 +232,8 @@ export class MainScene extends Scene3D {
       }
     }
 
-    // Initialize replay system
-    console.log('Initializing replay system...')
-    this.replayPlayer = new ReplayPlayer()
-    this.replayUI = new ReplayUI()
-    console.log('Replay system initialized')
-    
-    // Start recording automatically on page load
-    console.log('Starting auto-recording...')
-    if (this.car.recorder) {
-      this.car.recorder.start()
-      console.log('Auto-recording started on page load')
-    } else {
-      console.log('Auto-recording skipped - recorder not available')
-    }
-    
-    if (!this.car) return
+    this.replay = new Replay(this)
+
 
     // Initialize controls manager instead of setupKeyboardControls
     this.controlsManager = new ControlsManager(this);
@@ -409,6 +394,10 @@ export class MainScene extends Scene3D {
         this._fpsAccum = 0
       }
     }
+    if (this.replay?.active) {
+      this.replay.tick(deltaTime)
+      return
+    }
     if (!params.runPhysics) return
     this._physicsElapsed += deltaTime / 1000
     if (this._physicsTimer) this._physicsTimer.textContent = this._physicsElapsed.toFixed(1)
@@ -458,28 +447,15 @@ export class MainScene extends Scene3D {
         this.checkpointManager.resetLapProgress(this.car)
       });
     }
-    
-    // Record replay data
-    if (this.car.recorder) {
-      this.car.recorder.recordFrame(this.car);
-    }
 
-    // Record the racing line for the current lap
     if (this.lapPathRecorder) {
       this.lapPathRecorder.recordFrame(this.car.visualRoot.position);
     }
-    
-    // Update replay player if playing
-    if (this.replayPlayer && this.replayPlayer.isPlaying) {
-      this.replayPlayer.update(this.car);
-    }
-    
-    // Update star system
+
     if (this.starSystem) {
       this.starSystem.update(deltaTime);
     }
 
-    // Update controls manager
     if (this.controlsManager) {
       this.controlsManager.update();
     }
@@ -493,13 +469,15 @@ export class MainScene extends Scene3D {
   }
 
   preRender() {
+    if (this.replay?.active) {
+      this.updateCamera(this._deltaTime || 0)
+      return
+    }
     if (this.car) this.car.syncVisualTransforms()
     for (const { car } of this.bots ?? []) car.syncVisualTransforms()
     this.carCollisionManager?.postPhysicsUpdate((this._deltaTime || 0) / 1000)
-
-    if (!(this.replayPlayer && this.replayPlayer.isPlaying)) {
-      this.updateCamera(this._deltaTime || 0)
-    }
+    this.replay?.recordFrame()
+    this.updateCamera(this._deltaTime || 0)
   }
 
   updateCamera(deltaTime) {
@@ -558,7 +536,7 @@ export class MainScene extends Scene3D {
   }
 
   cleanup() {
-    // Clean up checkpoint manager
+    this.replay?.dispose();
     if (this.checkpointManager) {
       this.checkpointManager.cleanup();
     }

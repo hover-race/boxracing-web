@@ -393,6 +393,7 @@ class CheckpointManager {
     this.updatePlayerLapDisplay();
     this.scene.cameraSwitcher.setController(1);
     this.showRaceFinishedMessage();
+    this.scene.replay?.onPlayerFinished();
   }
 
   showRaceFinishedMessage() {

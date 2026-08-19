@@ -1,5 +1,4 @@
 import { Wheel } from './wheel.js';
-import { ReplayRecorder } from './replays.js';
 import { TireParticles } from './particles.js';
 import { applyBotShader } from './botShaders.js';
 import { playExplosionSound, playImpactSound } from './sfx.js';
@@ -62,7 +61,6 @@ class Vehicle {
   exploding = false
 
   constructor(scene, physics, collisionMesh, visualRoot, wheelMeshes, audioListener, {
-    recordReplay = true,
     carModel,
   } = {}) {
     this.scene = scene
@@ -169,12 +167,6 @@ class Vehicle {
     });
 
     this.particles = new TireParticles(scene, this, audioListener)
-
-    this.recorder = new ReplayRecorder()
-    if (recordReplay) {
-      this.recorder.start()
-      console.log('Vehicle: Auto-recording started on car load')
-    }
 
     physics.carCollisionManager?.register(this)
   }
@@ -894,7 +886,6 @@ class Vehicle {
 
 
   static async setup(scene, transform, preloadedModel, carModel, {
-    recordReplay = true,
     isBot = false,
     botColor = null,
   } = {}) {
@@ -918,7 +909,6 @@ class Vehicle {
     createEngineSound(collisionMesh, scene.listener, isBot)
 
     const vehicle = new Vehicle(scene.scene, scene.physics, collisionMesh, visualRoot, wheels, scene.listener, {
-      recordReplay,
       carModel,
     })
     if (isBot) applyBotShader(vehicle, params.botShader, botColor)

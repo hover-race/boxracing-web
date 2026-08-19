@@ -155,6 +155,16 @@
       <div id="race-finish-title"></div>
       <div id="race-finish-standings"></div>
     </div>
+    <div id="replay-overlay">
+      <div id="replay-badge">REPLAY</div>
+      <div id="replay-bar">
+        <button type="button" id="replay-play">Pause</button>
+        <input id="replay-timeline" type="range" min="0" max="1" value="0" step="1">
+        <span id="replay-time">0:00 / 0:00</span>
+        <button type="button" id="replay-screenshot">Screenshot</button>
+        <button type="button" id="replay-export">Export Video</button>
+      </div>
+    </div>
     <div id="joystick-zone" style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); width: 120px; height: 120px;"></div>
     <script src="js/curves.js"></script>
     <script src="js/gui.js"></script>

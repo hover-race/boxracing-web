@@ -5,7 +5,6 @@ class UIController {
 
   setup() {
     this.setupCreateServerButton();
-    this.setupReplayControls();
   }
 
   setupCreateServerButton() {
@@ -51,58 +50,6 @@ class UIController {
         } catch (error) {
           this.updateConnectionStatus(`Error: ${error.message}`, "disconnected");
         }
-      });
-    }
-  }
-
-  setupReplayControls() {
-    // Setup replay buttons
-    const playBtn = document.getElementById('play-replay-btn');
-    const pauseBtn = document.getElementById('pause-replay-btn');
-    const rewindBackBtn = document.getElementById('rewind-back-btn');
-    const rewindForwardBtn = document.getElementById('rewind-forward-btn');
-    
-    if (playBtn) {
-      playBtn.addEventListener('click', () => {
-        const frames = this.mainScene.car.recorder.frames;
-        if (frames.length > 0) {
-          this.mainScene.replayPlayer.load(frames);
-          this.mainScene.replayPlayer.play(this.mainScene.car);
-          playBtn.style.display = 'none';
-          pauseBtn.style.display = 'block';
-          this.mainScene.replayUI.show();
-          console.log('Replay started');
-        } else {
-          console.log('No replay data to play');
-        }
-      });
-    }
-    
-    if (pauseBtn) {
-      pauseBtn.addEventListener('click', () => {
-        this.mainScene.replayPlayer.stop(this.mainScene.car);
-        playBtn.style.display = 'block';
-        pauseBtn.style.display = 'none';
-        this.mainScene.replayUI.hide();
-        console.log('Replay paused');
-      });
-    }
-    
-    if (rewindBackBtn) {
-      rewindBackBtn.addEventListener('click', () => {
-        this.mainScene.replayPlayer.seek(0);
-        console.log('Rewound to start');
-      });
-    }
-    
-    if (rewindForwardBtn) {
-      rewindForwardBtn.addEventListener('click', () => {
-        // Seek to end of replay
-        if (this.mainScene.replayPlayer.frames.length > 0) {
-          const lastFrame = this.mainScene.replayPlayer.frames[this.mainScene.replayPlayer.frames.length - 1];
-          this.mainScene.replayPlayer.seek(lastFrame.timestamp);
-        }
-        console.log('Fast forwarded to end');
       });
     }
   }
