@@ -79,6 +79,7 @@
           <span class="race-finish-racer-time">—</span>
         </div>
       </div>
+      <div id="race-finish-next"></div>
     </div>
 
     <div class="test-controls">
@@ -86,20 +87,28 @@
       <button id="show-finish" type="button">Finish sequence</button>
     </div>
 
-    <script>
+    <script type="module">
+      import { Config } from './js/config.js'
+
       const countdown = document.getElementById('race-countdown')
       const finish = document.getElementById('race-finish')
+      const finishNext = document.getElementById('race-finish-next')
       const finishTimes = [...document.querySelectorAll('.race-finish-racer-time')]
       let countdownTimer
       let finishTimers = []
 
-      function showFinish() {
+      function clearTimers() {
         clearTimeout(countdownTimer)
         for (const timer of finishTimers) clearTimeout(timer)
         finishTimers = []
-        countdown.classList.remove('visible', 'fade-out')
+      }
+
+      function showFinish() {
+        clearTimers()
+        countdown.classList.remove('visible', 'fade-out', 'next-round')
         finish.classList.remove('visible')
         finish.style.visibility = ''
+        finishNext.textContent = ''
         finishTimes[0].textContent = '4:32.7'
         finishTimes[1].textContent = '+1.3'
         finishTimes.slice(2).forEach((time) => {
@@ -115,6 +124,22 @@
         finishTimers.push(setTimeout(() => {
           finishTimes[4].textContent = '+7.6'
         }, 3600))
+
+        const holdMs = Config.standingsHoldSec * 1000
+        const started = performance.now()
+        const tickHold = () => {
+          const left = Math.ceil((holdMs - (performance.now() - started)) / 1000)
+          if (left > 0) {
+            finishNext.textContent = `Next round in ${left}`
+            countdownTimer = setTimeout(tickHold, 200)
+            return
+          }
+          finish.classList.remove('visible')
+          finish.style.visibility = 'hidden'
+          finishNext.textContent = ''
+          showStart()
+        }
+        tickHold()
       }
 
       function showStart() {
@@ -123,7 +148,7 @@
         finishTimers = []
         finish.classList.remove('visible')
         finish.style.visibility = 'hidden'
-        countdown.classList.remove('fade-out')
+        countdown.classList.remove('fade-out', 'next-round')
         countdown.classList.add('visible')
         const steps = [3, 2, 1, 0]
         let step = 0
@@ -141,7 +166,11 @@
         tick()
       }
 
-      document.getElementById('show-start').addEventListener('click', showStart)
+      document.getElementById('show-start').addEventListener('click', () => {
+        clearTimers()
+        finishNext.textContent = ''
+        showStart()
+      })
       document.getElementById('show-finish').addEventListener('click', showFinish)
       showFinish()
     </script>

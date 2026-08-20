@@ -1,4 +1,4 @@
-import { on, off } from './raceEvents.js';
+import { on, off, emit } from './raceEvents.js';
 
 class CheckpointManager {
   // Oval track: start/finish line + one checkpoint.
@@ -394,6 +394,7 @@ class CheckpointManager {
     this.scene.cameraSwitcher.setController(1);
     this.showRaceFinishedMessage();
     this.scene.replay?.onPlayerFinished();
+    emit('raceFinished');
   }
 
   showRaceFinishedMessage() {
@@ -611,6 +612,9 @@ class CheckpointManager {
     }
     this.raceFinished = false;
     this.raceStartTime = 0;
+    if (this.finishTitleElement) this.finishTitleElement.textContent = '';
+    const finishNext = document.getElementById('race-finish-next');
+    if (finishNext) finishNext.textContent = '';
     this.finishElement?.classList.remove('visible');
     this.resetLapTimer();
     this.bestLapTime = Infinity;

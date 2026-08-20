@@ -4,7 +4,38 @@ class UIController {
   }
 
   setup() {
+    this.setupGameMenu();
     this.setupCreateServerButton();
+  }
+
+  setupGameMenu() {
+    const menu = document.getElementById('game-menu');
+    const menuBtn = document.getElementById('game-menu-btn');
+    const items = document.getElementById('game-menu-items');
+    menuBtn.addEventListener('click', () => {
+      items.hidden = !items.hidden;
+      menu.classList.toggle('open', !items.hidden);
+    });
+    document.getElementById('game-menu-home').addEventListener('click', () => {
+      const url = new URL(window.location);
+      url.searchParams.delete('skipIntro');
+      window.location.assign(url);
+    });
+    const offlineBtn = document.getElementById('game-menu-offline');
+    offlineBtn.classList.toggle('selected', params.offlinePlay);
+    offlineBtn.addEventListener('click', () => {
+      const offline = !params.offlinePlay;
+      localStorage.setItem('offlinePlay', String(offline));
+      const url = new URL(window.location);
+      if (offline) url.searchParams.set('offlinePlay', '1');
+      else url.searchParams.delete('offlinePlay');
+      window.location.assign(url);
+    });
+    document.getElementById('game-menu-options').addEventListener('click', () => {
+      items.hidden = true;
+      menu.classList.remove('open');
+      window.openOptionsGui();
+    });
   }
 
   setupCreateServerButton() {

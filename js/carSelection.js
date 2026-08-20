@@ -48,22 +48,15 @@ function selectCar(scene) {
     return Promise.resolve(finish(selectedCar.car_id))
   }
 
-  const modeToggle = document.getElementById('car-selection-mode')
-
-  function syncMode() {
-    for (const button of modeToggle.querySelectorAll('[data-offline]')) {
-      button.classList.toggle('selected', (button.dataset.offline === 'true') === params.offlinePlay)
-    }
-  }
-
-  modeToggle.addEventListener('click', (e) => {
-    const button = e.target.closest('[data-offline]')
-    if (!button) return
-    params.offlinePlay = button.dataset.offline === 'true'
-    localStorage.setItem('offlinePlay', String(params.offlinePlay))
-    syncMode()
+  const skipIntro = document.getElementById('car-selection-skip-intro')
+  skipIntro.checked = params.skipIntro
+  skipIntro.addEventListener('change', () => {
+    params.skipIntro = skipIntro.checked
+    const url = new URL(window.location)
+    if (params.skipIntro) url.searchParams.set('skipIntro', '1')
+    else url.searchParams.delete('skipIntro')
+    window.history.replaceState({}, '', url)
   })
-  syncMode()
 
   for (const stepper of document.querySelectorAll('.car-selection-stepper')) {
     const key = stepper.dataset.param

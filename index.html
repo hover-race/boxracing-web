@@ -52,13 +52,6 @@
             </label>
             <div id="car-selection-settings">
               <div class="car-selection-setting">
-                <span>Mode</span>
-                <div class="car-selection-toggle" id="car-selection-mode">
-                  <button type="button" data-offline="true">Offline</button>
-                  <button type="button" data-offline="false">Online</button>
-                </div>
-              </div>
-              <div class="car-selection-setting">
                 <span>Bots</span>
                 <div class="car-selection-stepper" data-param="numBots" data-min="0" data-max="20">
                   <button type="button" data-step="-1">-</button>
@@ -74,6 +67,10 @@
                   <button type="button" data-step="1">+</button>
                 </div>
               </div>
+              <label class="car-selection-setting car-selection-check">
+                <input id="car-selection-skip-intro" type="checkbox" />
+                <span>Skip intro</span>
+              </label>
             </div>
             <button id="car-selection-start" type="button">Race</button>
           </div>
@@ -82,8 +79,15 @@
     </div>
     <!-- <div id="info-text">Car using Raycast Vehicle<br />WASD and SPACE</div> -->
     <div id="top-left-controls">
-      <div id="connection-status" class="status-connecting">Connecting...</div>
-      <button id="create-server-btn">Create Server</button>
+      <div id="game-menu">
+        <button type="button" id="game-menu-btn">Menu</button>
+        <div id="game-menu-items" hidden>
+          <button type="button" id="game-menu-home">Home</button>
+          <button type="button" id="create-server-btn">Create Server</button>
+          <button type="button" id="game-menu-offline">Offline Mode</button>
+          <button type="button" id="game-menu-options">Options</button>
+        </div>
+      </div>
     </div>
     <div id="hud-bottom-left">
       <div id="fps-counter">-- fps</div>
@@ -154,6 +158,7 @@
     <div id="race-finish" aria-live="polite">
       <div id="race-finish-title"></div>
       <div id="race-finish-standings"></div>
+      <div id="race-finish-next"></div>
     </div>
     <div id="replay-overlay">
       <div id="replay-badge">REPLAY</div>

@@ -16,8 +16,11 @@ import { centerlineFromTrack } from './trackCenterline.js';
 import { ExplosionFX } from './explosionFx.js';
 import { CAR_MODELS, getCarModel, selectScene } from './carModels.js';
 import { CarCollisionManager, GROUP_TRACK, GROUP_CAR } from './carCollisions.js';
-import { emit as emitRaceEvent, isRaceStarted } from './raceEvents.js';
+import { emit as emitRaceEvent, on as onRaceEvent, isRaceStarted } from './raceEvents.js';
+import { Config } from './config.js';
 import './countdownHud.js';
+
+const RESTART_COUNTDOWN_MS = 4000;
 
 export class MainScene extends Scene3D {
   constructor() {
@@ -254,6 +257,10 @@ export class MainScene extends Scene3D {
     }
 
     this.startRaceCountdown()
+
+    onRaceEvent('raceFinished', () => {
+      if (this.isRoundHost()) this.hostScheduleStart()
+    })
   }
 
   setupDebugStepper() {
@@ -316,16 +323,130 @@ export class MainScene extends Scene3D {
     this.autoSteer?.dumpLog();
   }
 
-  teleportCar(transform) {
+  teleportVehicle(vehicle, transform) {
     const pos = transform.position;
     const rot = transform.quaternion;
-    this.car.syncBodyTransform(pos, rot);
-    const body = this.car.collisionMesh.body;
+    vehicle.syncBodyTransform(pos, rot);
+    const body = vehicle.collisionMesh.body;
     const tf = body.ammo.getWorldTransform();
     tf.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
     tf.setRotation(new Ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
     body.ammo.setWorldTransform(tf);
-    this.car.resetMotion();
+    vehicle.resetMotion();
+  }
+
+  teleportCar(transform) {
+    this.teleportVehicle(this.car, transform);
+  }
+
+  isRoundHost() {
+    return params.offlinePlay || !this.networkManager || this.networkManager.signalingManager.isHosting;
+  }
+
+  roundPeerIds() {
+    const mine = this.networkManager?.signalingManager.peerId ?? 'local';
+    const others = this.networkManager?.getConnectedPeers() ?? [];
+    return [mine, ...others.slice().sort()];
+  }
+
+  poseOf(transform) {
+    const p = transform.position;
+    const q = transform.quaternion;
+    return { p: [p.x, p.y, p.z], q: [q.x, q.y, q.z, q.w] };
+  }
+
+  transformFromPose(pose) {
+    const transform = new THREE.Object3D();
+    transform.position.set(pose.p[0], pose.p[1], pose.p[2]);
+    transform.quaternion.set(pose.q[0], pose.q[1], pose.q[2], pose.q[3]);
+    return transform;
+  }
+
+  buildGridSlots(count, spacingM = 8) {
+    const line = this.trackCenterline;
+    const startU = line.project(this.startTransform.position.x, this.startTransform.position.z);
+    const slots = [];
+    for (let i = 0; i < count; i++) {
+      let u = startU - (i * spacingM / line.length);
+      if (u < 0) u += 1;
+      slots.push(MainScene.transformOnLine(line, u, params.spawnAngle));
+    }
+    return slots;
+  }
+
+  buildRoundPlacements() {
+    const ids = this.roundPeerIds();
+    const slots = this.buildGridSlots(ids.length);
+    const placements = {};
+    ids.forEach((id, i) => {
+      placements[id] = this.poseOf(slots[i]);
+    });
+    return placements;
+  }
+
+  hostScheduleStart() {
+    const detail = {
+      goAt: Date.now() + Config.standingsHoldSec * 1000 + RESTART_COUNTDOWN_MS,
+      placements: this.buildRoundPlacements(),
+    };
+    this.networkManager?.sendEvent('scheduleStart', detail);
+    this.onScheduleStart(detail);
+  }
+
+  onScheduleStart({ goAt, placements }) {
+    clearTimeout(this._roundTimer);
+    this._goAt = goAt;
+    this._roundPlacements = placements;
+    this._placedForRound = false;
+    emitRaceEvent('countdownStart');
+    this.tickRoundClock();
+  }
+
+  tickRoundClock() {
+    const remain = this._goAt - Date.now();
+    if (remain > RESTART_COUNTDOWN_MS) {
+      emitRaceEvent('nextRound', Math.ceil((remain - RESTART_COUNTDOWN_MS) / 1000));
+      const untilNext = (remain - RESTART_COUNTDOWN_MS) % 1000;
+      this._roundTimer = setTimeout(() => this.tickRoundClock(), untilNext || 1000);
+      return;
+    }
+    if (!this._placedForRound) {
+      this._placedForRound = true;
+      this.applyRoundPlacements(this._roundPlacements);
+      this.checkpointManager.reset();
+      this.cameraSwitcher.setController(0);
+      emitRaceEvent('countdownStart');
+    }
+    const step = remain > 3000 ? 3 : remain > 2000 ? 2 : remain > 1000 ? 1 : 0;
+    emitRaceEvent('countdown', step);
+    if (step === 0) {
+      emitRaceEvent('raceStart');
+      return;
+    }
+    const nextAt = this._goAt - (step * 1000);
+    this._roundTimer = setTimeout(() => this.tickRoundClock(), Math.max(0, nextAt - Date.now()));
+  }
+
+  applyRoundPlacements(placements) {
+    const mine = this.networkManager?.signalingManager.peerId ?? 'local';
+    const pose = placements?.[mine];
+    const playerTransform = pose ? this.transformFromPose(pose) : this.startTransform;
+    this.teleportCar(playerTransform);
+    this.autoSteer?.seedAtCar(this.car);
+
+    const humanCount = Math.max(1, Object.keys(placements ?? {}).length);
+    const spawnLine = this.racingLines[0];
+    const botStartU = spawnLine.project(this.startTransform.position.x, this.startTransform.position.z);
+    for (let i = 0; i < this.bots.length; i++) {
+      const { car, bot } = this.bots[i];
+      let u = botStartU - ((humanCount + i) * 8 / spawnLine.length);
+      if (u < 0) u += 1;
+      const transform = MainScene.transformOnLine(spawnLine, u, params.spawnAngle);
+      this.teleportVehicle(car, transform);
+      for (const lap of bot.laps) {
+        lap.u = lap.line.project(transform.position.x, transform.position.z);
+      }
+    }
   }
 
   log(a, b) {
@@ -358,6 +479,7 @@ export class MainScene extends Scene3D {
       const myPeerId = this.networkManager.signalingManager.peerId;
       this.remoteManager.handleStateUpdate(states, myPeerId);
     });
+    this.networkManager.on('scheduleStart', (detail) => this.onScheduleStart(detail));
 
     // If gameId exists in URL, try to connect to that server
     if (gameId) {
@@ -537,6 +659,7 @@ export class MainScene extends Scene3D {
 
   cleanup() {
     this.replay?.dispose();
+    clearTimeout(this._roundTimer);
     if (this.checkpointManager) {
       this.checkpointManager.cleanup();
     }

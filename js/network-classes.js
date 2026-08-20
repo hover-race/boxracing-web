@@ -362,6 +362,10 @@ class NetworkManager {
         dataChannel.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
+                if (data.type === 'event') {
+                    this.emit(data.name, data.detail);
+                    return;
+                }
                 if (data.type === 'state-update') {
                     Object.entries(data.states).forEach(([id, state]) => {
                         if (id !== this.signalingManager.peerId) {
@@ -452,6 +456,13 @@ class NetworkManager {
         this.eventListeners.clear();
         this.localSenders.clear();
         this.nextObjectId = 0;
+    }
+
+    sendEvent(name, detail) {
+        const payload = JSON.stringify({ type: 'event', name, detail });
+        this.dataChannels.forEach((channel) => {
+            if (channel.readyState === 'open') channel.send(payload);
+        });
     }
 
     addSender(sender) {
