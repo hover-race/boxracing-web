@@ -4,13 +4,6 @@ dat.GUI.TEXT_OPEN = 'Options'
 dat.GUI.TEXT_CLOSED = 'Options'
 const gui = new dat.GUI({ width: 400 })
 
-window.addEventListener('keydown', (e) => {
-  if (e.key === '`') {
-    if (gui.closed) gui.open()
-    else gui.close()
-  }
-})
-
 const NAME_COLORS = ['Red', 'Blue', 'Pink', 'Gold', 'Lime', 'Cyan', 'Teal', 'Jade', 'Ruby', 'Amber', 'Coral', 'Plum', 'Mint', 'Navy', 'Sage', 'Peach', 'Olive', 'Rust', 'Onyx', 'Snow', 'Wine', 'Moss', 'Sand', 'Coal', 'Ink', 'Fog', 'Ice', 'Ash', 'Neon', 'Volt', 'Aqua']
 const NAME_NOUNS = ['Fox', 'Wolf', 'Bear', 'Cat', 'Owl', 'Bat', 'Elk', 'Hawk', 'Lynx', 'Crow', 'Kiwi', 'Pear', 'Fig', 'Plum', 'Date', 'Moth', 'Crab', 'Puma', 'Mink', 'Dove', 'Seal', 'Toad', 'Wren', 'Finch', 'Grape', 'Melon', 'Mango', 'Apple', 'Lemon', 'Berry', 'Acorn', 'Tiger', 'Moose', 'Goat', 'Duck', 'Frog', 'Deer', 'Hare', 'Boar']
 
@@ -72,6 +65,7 @@ const params = {
   autoThrottle: 0,
   runPhysics: true,
   physicsDebug: false,
+  fixedCamWobble: 1,
   autoStopPhysicsAfterSec: 0,
   debugSpawnU: -1,
   debugSpawnBackM: 30,
@@ -245,6 +239,7 @@ debugFolder.add(params, 'throttleInput', -1, 1).step(0.01)
 debugFolder.add(params, 'autoThrottle', 0, 1).step(0.05)
 debugFolder.add(params, 'runPhysics')
 debugFolder.add(params, 'physicsDebug').onChange((enabled) => window.setPhysicsDebug?.(enabled))
+debugFolder.add(params, 'fixedCamWobble', 0, 3).step(0.05)
 debugFolder.add(params, 'autoStopPhysicsAfterSec')
 debugFolder.add(params, 'debugSpawnU', -1, 1).step(0.01).name('Spawn u (-1=start)')
 debugFolder.add(params, 'debugSpawnBackM', 0, 150).step(5).name('Spawn back m')
@@ -398,6 +393,94 @@ autoSteerToggleInput.addEventListener('change', () => {
 })
 autoSteerController.onChange((enabled) => {
   autoSteerToggleInput.checked = enabled
+})
+
+const guiSearchLi = document.createElement('li')
+guiSearchLi.className = 'gui-search'
+const guiSearchInput = document.createElement('input')
+guiSearchInput.type = 'search'
+guiSearchInput.placeholder = 'Search'
+guiSearchLi.appendChild(guiSearchInput)
+gui.__ul.insertBefore(guiSearchLi, gui.__ul.firstChild)
+
+const folderWasClosed = new Map()
+
+function snapshotFolderState(g) {
+  folderWasClosed.clear()
+  ;(function walk(g) {
+    for (const folder of Object.values(g.__folders)) {
+      folderWasClosed.set(folder, folder.closed)
+      walk(folder)
+    }
+  })(g)
+}
+
+function restoreFolderState() {
+  for (const [folder, closed] of folderWasClosed) {
+    if (closed) folder.close()
+    else folder.open()
+  }
+  folderWasClosed.clear()
+}
+
+function setGuiRowShown(el, show) {
+  el.style.display = show ? '' : 'none'
+}
+
+function showAllGuiRows(g) {
+  for (const controller of g.__controllers) setGuiRowShown(controller.__li, true)
+  for (const folder of Object.values(g.__folders)) {
+    setGuiRowShown(folder.domElement.parentElement, true)
+    showAllGuiRows(folder)
+  }
+}
+
+function filterGuiRows(g, query, forceShow) {
+  let visible = false
+  for (const controller of g.__controllers) {
+    const text = `${controller.property} ${controller._name || ''}`.toLowerCase()
+    const show = forceShow || text.includes(query)
+    setGuiRowShown(controller.__li, show)
+    if (show) visible = true
+  }
+  for (const [name, folder] of Object.entries(g.__folders)) {
+    const folderMatch = forceShow || name.toLowerCase().includes(query)
+    const childVisible = filterGuiRows(folder, query, folderMatch)
+    const show = folderMatch || childVisible
+    setGuiRowShown(folder.domElement.parentElement, show)
+    if (show) folder.open()
+    if (show) visible = true
+  }
+  return visible
+}
+
+function filterGui(query) {
+  query = query.trim().toLowerCase()
+  if (!query) {
+    showAllGuiRows(gui)
+    restoreFolderState()
+    return
+  }
+  if (!folderWasClosed.size) snapshotFolderState(gui)
+  filterGuiRows(gui, query, false)
+}
+
+guiSearchInput.addEventListener('input', () => filterGui(guiSearchInput.value))
+
+window.addEventListener('keydown', (e) => {
+  if (e.key !== '`') return
+  e.preventDefault()
+  if (gui.closed) {
+    gui.open()
+    guiSearchInput.focus()
+    guiSearchInput.select()
+  } else if (document.activeElement === guiSearchInput) {
+    gui.close()
+    guiSearchInput.blur()
+  } else {
+    guiSearchInput.focus()
+    guiSearchInput.select()
+  }
 })
 
 gui.close()

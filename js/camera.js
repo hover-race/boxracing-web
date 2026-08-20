@@ -318,12 +318,24 @@ class CameraOrbit {
 
 // Camera rigidly attached to the car, preserving roll axis
 class CameraFixed {
-  constructor(offset, lookAtOffset, label = '') {
+  constructor(offset, lookAtOffset, label = '', wobble = false) {
     this.label = label
-    // Local-space offset from the car's position
     this.offset = offset.clone()
-    // Local-space point to look at, relative to the car
     this.lookAtOffset = lookAtOffset.clone()
+    this.wobble = wobble
+    this._desired = new THREE.Quaternion()
+    this._prevDesired = new THREE.Quaternion()
+    this._offset = new THREE.Quaternion()
+    this._omega = new THREE.Vector3()
+    this._err = new THREE.Quaternion()
+    this._inv = new THREE.Quaternion()
+    this._axis = new THREE.Vector3()
+    this._dq = new THREE.Quaternion()
+    this._worldPos = new THREE.Vector3()
+    this._worldLookAt = new THREE.Vector3()
+    this._worldUp = new THREE.Vector3()
+    this._lookMat = new THREE.Matrix4()
+    this._ready = false
   }
 
   setOffset(x, y, z) {
@@ -334,18 +346,93 @@ class CameraFixed {
     return this.offset.clone()
   }
 
+  activate() {
+    this._ready = false
+    this._omega.set(0, 0, 0)
+    this._offset.identity()
+  }
+
   update(camera, target, deltaTime) {
     if (!target) return
 
-    // Rotate local offset into world space using car's full quaternion (preserves roll).
-    const worldPos = this.offset.clone().applyQuaternion(target.quaternion)
-    camera.position.copy(target.position).add(worldPos)
+    this._worldPos.copy(this.offset).applyQuaternion(target.quaternion)
+    camera.position.copy(target.position).add(this._worldPos)
 
-    // Build camera orientation using car's up axis so roll is inherited.
-    const worldLookAt = this.lookAtOffset.clone().applyQuaternion(target.quaternion).add(target.position)
-    const worldUp = new THREE.Vector3(0, 1, 0).applyQuaternion(target.quaternion)
-    const m = new THREE.Matrix4().lookAt(camera.position, worldLookAt, worldUp)
-    camera.quaternion.setFromRotationMatrix(m)
+    this._worldLookAt.copy(this.lookAtOffset).applyQuaternion(target.quaternion).add(target.position)
+    this._worldUp.set(0, 1, 0).applyQuaternion(target.quaternion)
+    this._lookMat.lookAt(camera.position, this._worldLookAt, this._worldUp)
+    this._desired.setFromRotationMatrix(this._lookMat)
+
+    const wobbleAmount = this.wobble ? params.fixedCamWobble : 0
+    if (wobbleAmount <= 0) {
+      camera.quaternion.copy(this._desired)
+      return
+    }
+
+    const dt = Math.min((deltaTime > 1 ? deltaTime / 1000 : deltaTime) || 1 / 60, 0.05)
+
+    if (!this._ready) {
+      this._offset.identity()
+      this._omega.set(0, 0, 0)
+      this._prevDesired.copy(this._desired)
+      this._ready = true
+    }
+
+    this._inv.copy(this._prevDesired).invert()
+    this._err.copy(this._inv).multiply(this._desired)
+    if (this._err.w < 0) {
+      this._err.x *= -1
+      this._err.y *= -1
+      this._err.z *= -1
+      this._err.w *= -1
+    }
+    const dW = THREE.MathUtils.clamp(this._err.w, -1, 1)
+    const dAngle = 2 * Math.acos(dW)
+    const dS = Math.sqrt(Math.max(0, 1 - dW * dW))
+    if (dS > 1e-6 && dt > 1e-6) {
+      const coupling = 0.2 * wobbleAmount
+      this._omega.x += (this._err.x / dS) * (dAngle / dt) * coupling
+      this._omega.z += (this._err.z / dS) * (dAngle / dt) * coupling
+    }
+    this._prevDesired.copy(this._desired)
+
+    this._err.copy(this._offset)
+    if (this._err.w < 0) {
+      this._err.x *= -1
+      this._err.y *= -1
+      this._err.z *= -1
+      this._err.w *= -1
+    }
+    const oW = THREE.MathUtils.clamp(this._err.w, -1, 1)
+    const oAngle = 2 * Math.acos(oW)
+    const oS = Math.sqrt(Math.max(0, 1 - oW * oW))
+    if (oS > 1e-6) this._axis.set(this._err.x, this._err.y, this._err.z).divideScalar(oS)
+    else this._axis.set(0, 0, 0)
+
+    const stiffness = 22
+    const damping = 14
+    this._omega.x += (-stiffness * oAngle * this._axis.x - damping * this._omega.x) * dt
+    this._omega.y = 0
+    this._omega.z += (-stiffness * oAngle * this._axis.z - damping * this._omega.z) * dt
+
+    const step = this._omega.length() * dt
+    if (step > 1e-8) {
+      this._dq.setFromAxisAngle(this._axis.copy(this._omega).normalize(), step)
+      this._offset.multiply(this._dq).normalize()
+    }
+
+    const maxWobble = 5 * Math.PI / 180 * wobbleAmount
+    const offW = THREE.MathUtils.clamp(this._offset.w, -1, 1)
+    const offAngle = 2 * Math.acos(Math.abs(offW))
+    if (offAngle > maxWobble) {
+      const offS = Math.sqrt(Math.max(0, 1 - offW * offW))
+      if (offS > 1e-6) {
+        this._axis.set(this._offset.x, this._offset.y, this._offset.z).divideScalar(offS)
+        this._offset.setFromAxisAngle(this._axis, maxWobble)
+      }
+    }
+
+    camera.quaternion.copy(this._desired).multiply(this._offset)
   }
 }
 
@@ -357,21 +444,22 @@ class CameraSwitcher {
     this.orbit = new CameraOrbit()
     // Bumper cam: low on the front of the car, looking forward
     this.bumper = new CameraFixed(
-      new THREE.Vector3(0, 0.56, 2.8),     // front of car, just above bumper
-      new THREE.Vector3(0, 0.3, 10),       // look far ahead
-      'Bumper Cam'
+      new THREE.Vector3(0, 0.56, 2.8),
+      new THREE.Vector3(0, 0.3, 10),
+      'Bumper Cam',
+      true,
     )
-    // Side cam: low to the side
     this.side = new CameraFixed(
-      new THREE.Vector3(1.12, 0.56, 0),      // left side, low
-      new THREE.Vector3(0.5, 0.3, 2),         // look slightly ahead of car center
-      'Side Cam'
+      new THREE.Vector3(1.12, 0.56, 0),
+      new THREE.Vector3(0.5, 0.3, 2),
+      'Side Cam',
+      true,
     )
-    // Hood cam: top of the hood, looking forward
     this.hood = new CameraFixed(
-      new THREE.Vector3(0, 1.12, 0.7),      // center of hood
-      new THREE.Vector3(0, 0.7, 10),          // look far ahead
-      'Hood Cam'
+      new THREE.Vector3(0, 1.12, 0.7),
+      new THREE.Vector3(0, 0.7, 10),
+      'Hood Cam',
+      true,
     )
 
     // Ordered list of controllers; index drives everything.

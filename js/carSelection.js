@@ -65,6 +65,16 @@ function selectCar(scene) {
   })
   syncMode()
 
+  const skipIntro = document.getElementById('car-selection-skip-intro')
+  skipIntro.checked = params.skipIntro
+  skipIntro.addEventListener('change', () => {
+    params.skipIntro = skipIntro.checked
+    const url = new URL(window.location)
+    if (params.skipIntro) url.searchParams.set('skipIntro', '1')
+    else url.searchParams.delete('skipIntro')
+    window.history.replaceState({}, '', url)
+  })
+
   for (const stepper of document.querySelectorAll('.car-selection-stepper')) {
     const key = stepper.dataset.param
     const min = Number(stepper.dataset.min)
