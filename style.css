@@ -969,10 +969,19 @@ canvas {
 }
 
 .dg.ac {
+    display: none;
     top: 64px !important;
     right: auto !important;
     left: 20px;
     z-index: 2 !important;
+}
+
+.dg.ac.options-open {
+    display: block;
+}
+
+.dg.ac > .close-button {
+    display: none;
 }
 
 .dg li.gui-search {
@@ -1051,6 +1060,14 @@ canvas {
     background: #2a2a2a;
     text-align: left;
     min-width: 140px;
+}
+
+#game-menu-items button.selected {
+    background: #4caf50;
+}
+
+#game-menu-items button.selected:hover {
+    background: #43a047;
 }
 
 #connection-status {

@@ -52,13 +52,6 @@
             </label>
             <div id="car-selection-settings">
               <div class="car-selection-setting">
-                <span>Mode</span>
-                <div class="car-selection-toggle" id="car-selection-mode">
-                  <button type="button" data-offline="true">Offline</button>
-                  <button type="button" data-offline="false">Online</button>
-                </div>
-              </div>
-              <div class="car-selection-setting">
                 <span>Bots</span>
                 <div class="car-selection-stepper" data-param="numBots" data-min="0" data-max="20">
                   <button type="button" data-step="-1">-</button>
@@ -91,10 +84,10 @@
         <div id="game-menu-items" hidden>
           <button type="button" id="game-menu-home">Home</button>
           <button type="button" id="create-server-btn">Create Server</button>
+          <button type="button" id="game-menu-offline">Offline Mode</button>
           <button type="button" id="game-menu-options">Options</button>
         </div>
       </div>
-      <div id="connection-status" class="status-connecting">Connecting...</div>
     </div>
     <div id="hud-bottom-left">
       <div id="fps-counter">-- fps</div>

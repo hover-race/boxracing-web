@@ -466,6 +466,7 @@ function filterGui(query) {
 }
 
 function openOptionsGui() {
+  gui.domElement.parentElement.classList.add('options-open')
   gui.open()
   guiSearchInput.focus()
   guiSearchInput.select()
@@ -473,13 +474,37 @@ function openOptionsGui() {
 
 function closeOptionsGui() {
   gui.close()
+  gui.domElement.parentElement.classList.remove('options-open')
   guiSearchInput.blur()
 }
 
 window.openOptionsGui = openOptionsGui
 window.closeOptionsGui = closeOptionsGui
 
+function firstFocusableGuiField(g) {
+  for (const controller of g.__controllers) {
+    if (controller.__li.style.display === 'none') continue
+    const field = controller.domElement.querySelector('input, select, textarea')
+    if (field) return field
+  }
+  for (const folder of Object.values(g.__folders)) {
+    if (folder.domElement.parentElement.style.display === 'none') continue
+    const field = firstFocusableGuiField(folder)
+    if (field) return field
+  }
+  return null
+}
+
 guiSearchInput.addEventListener('input', () => filterGui(guiSearchInput.value))
+guiSearchInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return
+  e.preventDefault()
+  if (!guiSearchInput.value.trim()) return
+  const field = firstFocusableGuiField(gui)
+  if (!field) return
+  field.focus()
+  if (field.select && field.type !== 'checkbox' && field.type !== 'range') field.select()
+})
 
 window.addEventListener('keydown', (e) => {
   if (e.key !== '`') return

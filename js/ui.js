@@ -22,6 +22,16 @@ class UIController {
       url.searchParams.delete('skipIntro');
       window.location.assign(url);
     });
+    const offlineBtn = document.getElementById('game-menu-offline');
+    offlineBtn.classList.toggle('selected', params.offlinePlay);
+    offlineBtn.addEventListener('click', () => {
+      const offline = !params.offlinePlay;
+      localStorage.setItem('offlinePlay', String(offline));
+      const url = new URL(window.location);
+      if (offline) url.searchParams.set('offlinePlay', '1');
+      else url.searchParams.delete('offlinePlay');
+      window.location.assign(url);
+    });
     document.getElementById('game-menu-options').addEventListener('click', () => {
       items.hidden = true;
       menu.classList.remove('open');
