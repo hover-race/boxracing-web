@@ -74,6 +74,10 @@
                   <button type="button" data-step="1">+</button>
                 </div>
               </div>
+              <label class="car-selection-setting car-selection-check">
+                <input id="car-selection-skip-intro" type="checkbox" />
+                <span>Skip intro</span>
+              </label>
             </div>
             <button id="car-selection-start" type="button">Race</button>
           </div>
@@ -82,8 +86,15 @@
     </div>
     <!-- <div id="info-text">Car using Raycast Vehicle<br />WASD and SPACE</div> -->
     <div id="top-left-controls">
+      <div id="game-menu">
+        <button type="button" id="game-menu-btn">Menu</button>
+        <div id="game-menu-items" hidden>
+          <button type="button" id="game-menu-home">Home</button>
+          <button type="button" id="create-server-btn">Create Server</button>
+          <button type="button" id="game-menu-options">Options</button>
+        </div>
+      </div>
       <div id="connection-status" class="status-connecting">Connecting...</div>
-      <button id="create-server-btn">Create Server</button>
     </div>
     <div id="hud-bottom-left">
       <div id="fps-counter">-- fps</div>
@@ -154,6 +165,7 @@
     <div id="race-finish" aria-live="polite">
       <div id="race-finish-title"></div>
       <div id="race-finish-standings"></div>
+      <div id="race-finish-next"></div>
     </div>
     <div id="joystick-zone" style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); width: 120px; height: 120px;"></div>
     <script src="js/curves.js"></script>

@@ -465,18 +465,29 @@ function filterGui(query) {
   filterGuiRows(gui, query, false)
 }
 
+function openOptionsGui() {
+  gui.open()
+  guiSearchInput.focus()
+  guiSearchInput.select()
+}
+
+function closeOptionsGui() {
+  gui.close()
+  guiSearchInput.blur()
+}
+
+window.openOptionsGui = openOptionsGui
+window.closeOptionsGui = closeOptionsGui
+
 guiSearchInput.addEventListener('input', () => filterGui(guiSearchInput.value))
 
 window.addEventListener('keydown', (e) => {
   if (e.key !== '`') return
   e.preventDefault()
   if (gui.closed) {
-    gui.open()
-    guiSearchInput.focus()
-    guiSearchInput.select()
+    openOptionsGui()
   } else if (document.activeElement === guiSearchInput) {
-    gui.close()
-    guiSearchInput.blur()
+    closeOptionsGui()
   } else {
     guiSearchInput.focus()
     guiSearchInput.select()

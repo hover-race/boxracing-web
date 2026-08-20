@@ -11,6 +11,7 @@ function off(event, fn) {
 }
 
 function emit(event, detail) {
+  if (event === 'countdownStart') raceStarted = false
   if (event === 'raceStart') raceStarted = true
   for (const fn of listeners.get(event) ?? []) fn(detail)
 }

@@ -4,8 +4,29 @@ class UIController {
   }
 
   setup() {
+    this.setupGameMenu();
     this.setupCreateServerButton();
     this.setupReplayControls();
+  }
+
+  setupGameMenu() {
+    const menu = document.getElementById('game-menu');
+    const menuBtn = document.getElementById('game-menu-btn');
+    const items = document.getElementById('game-menu-items');
+    menuBtn.addEventListener('click', () => {
+      items.hidden = !items.hidden;
+      menu.classList.toggle('open', !items.hidden);
+    });
+    document.getElementById('game-menu-home').addEventListener('click', () => {
+      const url = new URL(window.location);
+      url.searchParams.delete('skipIntro');
+      window.location.assign(url);
+    });
+    document.getElementById('game-menu-options').addEventListener('click', () => {
+      items.hidden = true;
+      menu.classList.remove('open');
+      window.openOptionsGui();
+    });
   }
 
   setupCreateServerButton() {
