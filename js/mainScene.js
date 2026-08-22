@@ -18,6 +18,7 @@ import { CAR_MODELS, getCarModel, selectScene } from './carModels.js';
 import { CarCollisionManager, GROUP_TRACK, GROUP_CAR } from './carCollisions.js';
 import { emit as emitRaceEvent, on as onRaceEvent, isRaceStarted } from './raceEvents.js';
 import { Config } from './config.js';
+import { OffscreenMarkers } from './offscreenMarkers.js';
 import './countdownHud.js';
 
 const RESTART_COUNTDOWN_MS = 4000;
@@ -236,6 +237,7 @@ export class MainScene extends Scene3D {
     }
 
     this.replay = new Replay(this)
+    this.offscreenMarkers = new OffscreenMarkers()
 
 
     // Initialize controls manager instead of setupKeyboardControls
@@ -600,6 +602,7 @@ export class MainScene extends Scene3D {
     this.carCollisionManager?.postPhysicsUpdate((this._deltaTime || 0) / 1000)
     this.replay?.recordFrame()
     this.updateCamera(this._deltaTime || 0)
+    this.offscreenMarkers?.update(this)
   }
 
   updateCamera(deltaTime) {

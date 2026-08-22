@@ -467,6 +467,27 @@ canvas {
     white-space: nowrap;
 }
 
+#offscreen-markers {
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.offscreen-marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    border-left: calc(var(--s) * 0.45) solid transparent;
+    border-right: calc(var(--s) * 0.45) solid transparent;
+    border-bottom: var(--s) solid var(--c);
+    transform-origin: 50% 0;
+    filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.85));
+}
+
 #race-countdown {
     position: fixed;
     top: 16%;
@@ -701,7 +722,8 @@ body.replay-playing #hud-bottom-right,
 body.replay-playing #joystick-zone,
 body.replay-playing #race-hud,
 body.replay-playing #top-left-controls,
-body.replay-playing #race-finish {
+body.replay-playing #race-finish,
+body.replay-playing #offscreen-markers {
     visibility: hidden;
 }
 
