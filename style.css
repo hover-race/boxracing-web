@@ -9,6 +9,7 @@ body {
     font-family: system-ui, -apple-system, sans-serif;
     --hud-inset: clamp(4px, 1.2vmin, 20px);
     --hud-scale: clamp(0.36, 20vmin / 220px, 1);
+    --toggle-scale: clamp(0.82, 22vmin / 68px, 1);
 }
 
 canvas {
@@ -465,7 +466,7 @@ canvas {
     right: var(--hud-inset);
     z-index: 1000;
     box-sizing: border-box;
-    width: min(200px, 44vw);
+    width: min(148px, 32vw);
     overflow: hidden;
     text-align: right;
     padding: calc(14px * var(--hud-scale)) calc(18px * var(--hud-scale)) calc(16px * var(--hud-scale));
@@ -481,7 +482,7 @@ canvas {
 }
 
 #race-hud-position {
-    font-size: clamp(18px, 3.2vw, 44px);
+    font-size: clamp(12px, 2vw, 28px);
     line-height: 1;
     text-shadow: 0 0 14px rgba(255, 255, 255, 0.35);
 }
@@ -920,7 +921,7 @@ body.replay-exporting .dg.ac {
 
 #hud-bottom-right {
     position: fixed;
-    bottom: var(--hud-inset);
+    bottom: calc(var(--hud-inset) + env(safe-area-inset-bottom, 0px));
     right: var(--hud-inset);
     display: flex;
     align-items: flex-end;
@@ -954,7 +955,7 @@ body.replay-exporting .dg.ac {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: calc(8px * var(--hud-scale));
+    gap: calc(8px * var(--toggle-scale));
     cursor: pointer;
     user-select: none;
 }
@@ -1000,11 +1001,11 @@ body.replay-exporting .dg.ac {
 
 .v-toggle-track {
     position: relative;
-    width: calc(34px * var(--hud-scale));
-    height: calc(68px * var(--hud-scale));
+    width: calc(34px * var(--toggle-scale));
+    height: calc(68px * var(--toggle-scale));
     box-sizing: border-box;
-    padding: calc(3px * var(--hud-scale));
-    border-radius: calc(17px * var(--hud-scale));
+    padding: calc(3px * var(--toggle-scale));
+    border-radius: calc(17px * var(--toggle-scale));
     border: 1px solid #3a3a3a;
     background: #2a2a2a;
     box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
@@ -1012,10 +1013,10 @@ body.replay-exporting .dg.ac {
 
 .v-toggle-thumb {
     position: absolute;
-    left: calc(3px * var(--hud-scale));
-    bottom: calc(3px * var(--hud-scale));
-    width: calc(26px * var(--hud-scale));
-    height: calc(26px * var(--hud-scale));
+    left: calc(3px * var(--toggle-scale));
+    bottom: calc(3px * var(--toggle-scale));
+    width: calc(26px * var(--toggle-scale));
+    height: calc(26px * var(--toggle-scale));
     border-radius: 50%;
     background: #f2f2f2;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
@@ -1028,7 +1029,7 @@ body.replay-exporting .dg.ac {
 }
 
 .v-toggle input:checked + .v-toggle-label + .v-toggle-track .v-toggle-thumb {
-    transform: translateY(calc(-36px * var(--hud-scale)));
+    transform: translateY(calc(-36px * var(--toggle-scale)));
     background: #fff;
 }
 
@@ -1045,8 +1046,8 @@ body.replay-exporting .dg.ac {
 
 .auto-steer-toggle .v-toggle-label svg {
     display: block;
-    width: calc(20px * var(--hud-scale));
-    height: calc(20px * var(--hud-scale));
+    width: calc(20px * var(--toggle-scale));
+    height: calc(20px * var(--toggle-scale));
 }
 
 .auto-steer-toggle input:checked + .v-toggle-label {
@@ -1426,12 +1427,12 @@ body.replay-exporting .dg.ac {
 #arrow-pad {
     display: none;
     position: fixed;
-    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-    left: calc(var(--hud-inset) + 232px * var(--hud-scale));
-    right: var(--hud-inset);
+    bottom: calc(var(--hud-inset) + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 2;
-    width: auto;
-    max-width: 360px;
+    width: min(280px, calc(100vw - 24px));
+    max-width: none;
     grid-template-columns: 2fr 1fr 2fr;
     grid-template-rows: 58px 76px;
     gap: 8px;
