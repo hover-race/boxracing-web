@@ -453,7 +453,7 @@ setHudToggleChecked('auto-steer', params.autoSteer)
 bindHudToggles('auto-steer', (checked) => {
   autoSteerController.setValue(checked)
   playToggleClick()
-  showHudToast(checked ? 'Auto Steer ON' : 'Auto Steer OFF')
+  showHudToast(checked ? 'Auto Drive ON' : 'Auto Drive OFF')
 })
 autoSteerController.onChange((enabled) => {
   setHudToggleChecked('auto-steer', enabled)

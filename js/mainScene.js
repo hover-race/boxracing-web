@@ -542,22 +542,29 @@ export class MainScene extends Scene3D {
     }
 
     let vehicleInputs = idle
-    const throttle = Math.max(-1, Math.min(1, inputControls.throttle + params.throttleInput + params.autoThrottle))
+    let throttle = inputControls.throttle + params.throttleInput + params.autoThrottle
+    let brake = inputControls.brake
     if (raceLive) {
       let steering = inputControls.steering;
       if (this.autoSteer) {
         steering = this.autoSteer.drive(this.car, steering, deltaTime);
+        const userOverride = inputControls.throttle !== 0 || inputControls.brake !== 0 || params.throttleInput !== 0
+        if (params.autoSteer && !userOverride) {
+          throttle = 1 + params.autoThrottle
+          brake = 0
+        }
       } else {
         vehicleParams.autoSteerLateral = 0;
       }
 
       vehicleInputs = {
         ...inputControls,
-        throttle,
+        throttle: Math.max(-1, Math.min(1, throttle)),
+        brake,
         steering,
       }
     } else {
-      vehicleInputs = { ...idle, throttle, holdOnGrid: true }
+      vehicleInputs = { ...idle, throttle: Math.max(-1, Math.min(1, throttle)), holdOnGrid: true }
       if (this.autoSteer) vehicleParams.autoSteerLateral = 0;
     }
     this.car.update(vehicleInputs);
