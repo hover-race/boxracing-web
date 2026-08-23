@@ -38,7 +38,6 @@ export class MainScene extends Scene3D {
   }
   vehicleSteering = 0
   light
-  joystick = null
   checkpointManager = null
   portal = null
   controlsManager = null

@@ -3,7 +3,7 @@ import { on } from './raceEvents.js'
 class ControlsManager {
   constructor(scene) {
     this.scene = scene;
-    this.joystick = null;
+    this.pad = { up: false, down: false, left: false, right: false };
     this.tiltControlsActive = false;
     
     this.clearInputs();
@@ -82,41 +82,36 @@ class ControlsManager {
   }
   
   setupTouchControls() {
-    // Initialize joystick
-    this.joystick = nipplejs.create({
-      zone: document.getElementById('joystick-zone'),
-      mode: 'static',
-      position: { left: '50%', bottom: '60px' },
-      color: 'white',
-      size: 220
-    });
+    const pad = document.getElementById('arrow-pad')
+    if (!pad) return
 
-    // Handle joystick events
-    this.joystick.on('move', (evt, data) => {
-      const angle = data.angle.radian;
-      const force = Math.min(data.force, 1.0);
-      
-      // Calculate analog inputs
-      const forwardAmount = Math.sin(angle) * force;
-      const steeringAmount = -Math.sin(angle - Math.PI/2) * force;
-
-      inputControls.throttle = Math.max(0, forwardAmount);
+    const syncPad = () => {
+      inputControls.throttle = this.pad.up ? 1 : 0
       if (!inputControls.enabled) {
-        inputControls.steering = 0;
-        inputControls.brake = 0;
-        return;
+        inputControls.steering = 0
+        inputControls.brake = 0
+        return
       }
-      inputControls.steering = steeringAmount;
-      inputControls.brake = Math.max(0, -forwardAmount);
-    });
+      inputControls.brake = this.pad.down ? 1 : 0
+      inputControls.steering = (this.pad.right ? 1 : 0) - (this.pad.left ? 1 : 0)
+    }
 
-    // Handle joystick release
-    this.joystick.on('end', () => {
-      // Reset input controls
-      inputControls.steering = 0;
-      inputControls.throttle = 0;
-      inputControls.brake = 0;
-    });
+    const setPad = (dir, down, button) => {
+      this.pad[dir] = down
+      button.classList.toggle('is-down', down)
+      syncPad()
+    }
+
+    for (const button of pad.querySelectorAll('[data-pad]')) {
+      const dir = button.dataset.pad
+      button.addEventListener('pointerdown', (e) => {
+        e.preventDefault()
+        button.setPointerCapture(e.pointerId)
+        setPad(dir, true, button)
+      })
+      button.addEventListener('pointerup', () => setPad(dir, false, button))
+      button.addEventListener('pointercancel', () => setPad(dir, false, button))
+    }
   }
   
   setupTiltControls() {
@@ -152,11 +147,7 @@ class ControlsManager {
   }
   
   // Clean up method to remove event listeners
-  cleanup() {
-    if (this.joystick) {
-      this.joystick.destroy();
-    }
-  }
+  cleanup() {}
 
   enableTiltControls() {
     // Set tilt controls as active
@@ -193,8 +184,7 @@ class ControlsManager {
           tiltSteering = 1 + ((-1 - 1) / (maxAlpha - minAlpha)) * (clampedAlpha - minAlpha);
       }
       
-      // Apply to steering if no joystick is active
-      if (!this.joystick || !this.joystick.active) { // Added check for joystick existence
+      if (!this.pad.left && !this.pad.right) {
         inputControls.steering = tiltSteering;
       }
     };

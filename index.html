@@ -26,7 +26,6 @@
     <title>Box Racing</title>
     <script src="lib/enable3d.framework.0.25.4.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.2/nipplejs.min.js"></script>
   </head>
 
   <body>
@@ -226,7 +225,12 @@
         <button type="button" id="replay-export">Export Video</button>
       </div>
     </div>
-    <div id="joystick-zone" style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); width: 120px; height: 120px;"></div>
+    <div id="arrow-pad">
+      <button type="button" id="arrow-up" data-pad="up" aria-label="Throttle">▲</button>
+      <button type="button" id="arrow-left" data-pad="left" aria-label="Steer left">◀</button>
+      <button type="button" id="arrow-down" data-pad="down" aria-label="Brake">▼</button>
+      <button type="button" id="arrow-right" data-pad="right" aria-label="Steer right">▶</button>
+    </div>
     <script src="js/curves.js"></script>
     <script src="js/gui.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>

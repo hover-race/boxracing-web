@@ -773,7 +773,7 @@ canvas {
 
 body.replay-playing #hud-bottom-left,
 body.replay-playing #hud-bottom-right,
-body.replay-playing #joystick-zone,
+body.replay-playing #arrow-pad,
 body.replay-playing #race-hud,
 body.replay-playing #top-left-controls,
 body.replay-playing #race-finish,
@@ -1374,4 +1374,64 @@ body.replay-exporting .dg.ac {
     0% { opacity: 1; }
     50% { opacity: 0.7; }
     100% { opacity: 1; }
+}
+
+#arrow-pad {
+    display: none;
+    position: fixed;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    width: min(260px, calc(100vw - 40px));
+    grid-template-columns: 2fr 1fr 2fr;
+    grid-template-rows: 44px 56px;
+    gap: 6px;
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 800px) {
+    #arrow-pad {
+        display: grid;
+    }
+}
+
+#arrow-pad button {
+    margin: 0;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 10px;
+    background: rgba(28, 28, 30, 0.82);
+    color: #f2f2f7;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#arrow-pad button:active,
+#arrow-pad button.is-down {
+    background: rgba(72, 72, 74, 0.95);
+    color: #fff;
+}
+
+#arrow-up {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+#arrow-left {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+#arrow-down {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+#arrow-right {
+    grid-column: 3;
+    grid-row: 2;
 } 
