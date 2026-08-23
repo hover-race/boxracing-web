@@ -821,7 +821,7 @@ canvas {
 
 body.replay-playing #hud-bottom-left,
 body.replay-playing #hud-bottom-right,
-body.replay-playing #arrow-pad,
+body.replay-playing #mobile-controls,
 body.replay-playing #race-hud,
 body.replay-playing #top-left-controls,
 body.replay-playing #race-finish,
@@ -1497,27 +1497,32 @@ body.replay-exporting .dg.ac {
     100% { opacity: 1; }
 }
 
-#arrow-pad {
+#mobile-controls {
     display: none;
     position: fixed;
     bottom: calc(var(--hud-inset) + env(safe-area-inset-bottom, 0px));
     left: 50%;
     transform: translateX(-50%);
     z-index: 2;
-    width: min(280px, calc(100vw - 24px));
-    max-width: none;
+    align-items: end;
+    gap: 16px;
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 800px) {
+    #mobile-controls {
+        display: flex;
+    }
+}
+
+#arrow-pad {
+    display: grid;
+    width: min(280px, calc(100vw - 96px));
     grid-template-columns: 2fr 1fr 2fr;
     grid-template-rows: 58px 76px;
     gap: 8px;
 }
 
-@media (hover: none), (pointer: coarse), (max-width: 800px) {
-    #arrow-pad {
-        display: grid;
-    }
-}
-
-#arrow-pad button {
+#mobile-controls button {
     margin: 0;
     padding: 0;
     border: 1px solid rgba(255, 255, 255, 0.22);
@@ -1534,10 +1539,21 @@ body.replay-exporting .dg.ac {
     -webkit-tap-highlight-color: transparent;
 }
 
-#arrow-pad button:active,
-#arrow-pad button.is-down {
+#mobile-controls button:active,
+#mobile-controls button.is-down {
     background: rgba(72, 72, 74, 0.95);
     color: #fff;
+}
+
+#arrow-handbrake {
+    width: 72px;
+    height: 76px;
+    margin-right: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.15;
 }
 
 #arrow-up {

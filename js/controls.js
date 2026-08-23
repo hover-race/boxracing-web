@@ -3,7 +3,7 @@ import { on } from './raceEvents.js'
 class ControlsManager {
   constructor(scene) {
     this.scene = scene;
-    this.pad = { up: false, down: false, left: false, right: false };
+    this.pad = { up: false, down: false, left: false, right: false, handbrake: false };
     this.tiltControlsActive = false;
     
     this.clearInputs();
@@ -82,7 +82,7 @@ class ControlsManager {
   }
   
   setupTouchControls() {
-    const pad = document.getElementById('arrow-pad')
+    const pad = document.getElementById('mobile-controls')
     if (!pad) return
     pad.addEventListener('contextmenu', (e) => e.preventDefault())
 
@@ -91,9 +91,11 @@ class ControlsManager {
       if (!inputControls.enabled) {
         inputControls.steering = 0
         inputControls.brake = 0
+        inputControls.handbrake = 0
         return
       }
       inputControls.brake = this.pad.down ? 1 : 0
+      inputControls.handbrake = this.pad.handbrake ? 1 : 0
       inputControls.steering = (this.pad.right ? 1 : 0) - (this.pad.left ? 1 : 0)
     }
 
