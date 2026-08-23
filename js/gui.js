@@ -36,7 +36,60 @@ const playerControl = {
   name: loadPlayerName()
 }
 
-const params = {
+// dat.GUI remember() only writes localStorage on unload or Save — it does not
+// watch the object. This saves on widget / set() after setup so load, URL
+// overrides, and runtime assigns (e.g. runPhysics) are not written back.
+// Storage is origin+pathname, not href — index query strings would otherwise
+// split saves (?skipIntro=1 vs /).
+function rememberedGuiKey(suffix) {
+  return `${location.origin}${location.pathname}.${suffix}`
+}
+
+class RememberedParams {
+  constructor(values) {
+    Object.assign(this, values)
+  }
+
+  bind(gui) {
+    const saved = localStorage.getItem(rememberedGuiKey('gui')) || localStorage.getItem(`${location.href}.gui`)
+    if (saved) {
+      const data = JSON.parse(saved)
+      if (data.remembered) gui.load.remembered = data.remembered
+      if (data.preset) gui.load.preset = data.preset
+    }
+    gui.useLocalStorage = true
+    gui.remember(this)
+    gui.saveToLocalStorageIfPossible = () => {
+      localStorage.setItem(rememberedGuiKey('isLocal'), 'true')
+      localStorage.setItem(rememberedGuiKey('gui'), JSON.stringify(gui.getSaveObject()))
+    }
+    this._gui = gui
+  }
+
+  save() {
+    this._gui.save()
+  }
+
+  set(key, value) {
+    this[key] = value
+    this.save()
+  }
+
+  persist() {
+    const gui = this._gui
+    eachGuiController(gui, (controller) => {
+      if (controller.object !== this) return
+      const setValue = controller.setValue.bind(controller)
+      controller.setValue = (value) => {
+        const result = setValue(value)
+        gui.save()
+        return result
+      }
+    })
+  }
+}
+
+const params = new RememberedParams({
   car_id: localStorage.getItem('car_id') || 'mustang',
   skipIntro: false,
   offlinePlay: localStorage.getItem('offlinePlay') === 'true',
@@ -109,7 +162,7 @@ const params = {
     const savedValue = localStorage.getItem('tiltSteering');
     return savedValue !== null ? savedValue === 'true' : isMobile;
   })()
-}
+})
 
 let playerNameController
 
@@ -172,8 +225,7 @@ const carCollisionDebug = {
   branch: 'none',
 }
 
-gui.useLocalStorage = true
-gui.remember(params)
+params.bind(gui)
 
 playerNameController = gui.add(params, 'playerName').name('Player Name').onChange(applyPlayerName)
 gui.add(params, 'botShader', ['none', 'outline', 'fresnel', 'solid', 'xray', 'digital', 'glitch', 'waves']).onChange(() => window.refreshBotShader?.())
@@ -263,18 +315,23 @@ debugFolder.add(vehicleParams, 'spinAssistActive').listen()
 debugFolder.add(vehicleParams, 'oversteerMetric', 0, 2).step(0.01).listen()
 debugFolder.add(vehicleParams, 'oversteerZone').listen()
 
+function eachGuiController(g, fn) {
+  for (const controller of g.__controllers) fn(controller)
+  for (const folder of Object.values(g.__folders)) eachGuiController(folder, fn)
+}
+
 // Debug overrides from URL query, e.g. ?throttleInput=1&engineTorque=900&autoStopPhysics=true
 // Applied after gui.remember/localStorage restore so the URL is authoritative.
 function applyUrlParamOverrides() {
   const query = new URLSearchParams(window.location.search)
   for (const [key, raw] of query) {
-    if (!(key in params)) continue
+    if (!Object.hasOwn(params, key)) continue
     const current = params[key]
     if (typeof current === 'boolean') params[key] = raw === 'true' || raw === '1'
     else if (typeof current === 'number') params[key] = Number(raw)
     else params[key] = raw
   }
-  gui.__controllers.forEach((c) => c.updateDisplay())
+  eachGuiController(gui, (controller) => controller.updateDisplay())
 }
 applyUrlParamOverrides()
 applyPlayerName(new URLSearchParams(window.location.search).has('playerName') ? params.playerName : playerControl.name)
@@ -299,9 +356,9 @@ function setSoundMuted(muted) {
   soundMuted = muted
   if (muted) {
     if (params.soundVolume > 0) savedSoundVolume = params.soundVolume
-    params.soundVolume = 0
+    params.set('soundVolume', 0)
   } else {
-    params.soundVolume = savedSoundVolume || 50
+    params.set('soundVolume', savedSoundVolume || 50)
   }
   soundVolumeController.updateDisplay()
   syncSoundToggle()
@@ -357,10 +414,8 @@ function driverAidsEnabled() {
 
 function setDriverAids(enabled) {
   // tractionControl is too restrictive — keep it off the TC HUD switch
-  params.spinPrevention = enabled
-  params.steeringAssist = enabled
-  spinPreventionController.updateDisplay()
-  steeringAssistController.updateDisplay()
+  spinPreventionController.setValue(enabled)
+  steeringAssistController.setValue(enabled)
 }
 
 function syncDriverAidsToggle() {
@@ -385,8 +440,7 @@ steeringAssistController.onChange(syncDriverAidsToggle)
 
 autoSteerToggleInput.checked = params.autoSteer
 autoSteerToggleInput.addEventListener('change', () => {
-  params.autoSteer = autoSteerToggleInput.checked
-  autoSteerController.updateDisplay()
+  autoSteerController.setValue(autoSteerToggleInput.checked)
   playToggleClick()
   showHudToast(autoSteerToggleInput.checked ? 'Auto Steer ON' : 'Auto Steer OFF')
   releaseToggleFocus(autoSteerToggleInput)
@@ -519,6 +573,7 @@ window.addEventListener('keydown', (e) => {
   }
 })
 
+params.persist()
 gui.close()
 
 window.bindCameraSwitcherToGui = () => {}

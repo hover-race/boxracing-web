@@ -12,6 +12,7 @@ function selectCar(scene) {
     const name = nameInput.value.trim()
     if (!name) return
     applyPlayerName(name)
+    params.save()
   })
 
   const nameCaret = document.getElementById('player-name-caret')
@@ -39,7 +40,7 @@ function selectCar(scene) {
     applyPlayerName(nameInput.value)
     params.car_id = carId
     localStorage.setItem('car_id', carId)
-    params.botDrive = params.numBots > 0
+    params.set('botDrive', params.numBots > 0)
     overlay.remove()
     return carId
   }
@@ -72,8 +73,7 @@ function selectCar(scene) {
     stepper.addEventListener('click', (e) => {
       const button = e.target.closest('[data-step]')
       if (!button) return
-      params[key] = Math.min(max, Math.max(min, params[key] + Number(button.dataset.step)))
-      localStorage.setItem(key, String(params[key]))
+      params.set(key, Math.min(max, Math.max(min, params[key] + Number(button.dataset.step))))
       syncStepper()
     })
     syncStepper()

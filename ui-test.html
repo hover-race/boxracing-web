@@ -519,6 +519,7 @@
 
     <div class="ui-test-panel">
       <div id="tc-toast" class="tc-toast"></div>
+      <div id="hud-toast" class="hud-toast"></div>
       <label class="tc-rocker">
         <input id="tc-rocker-input" type="checkbox" />
         <span class="tc-rocker-label">TC</span>
@@ -533,21 +534,25 @@
         <span class="v-toggle-label">TC</span>
         <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
       </label>
+
+      <label id="sound-toggle" class="v-toggle" title="Sound">
+        <input id="sound-toggle-input" type="checkbox" />
+        <span class="v-toggle-label">🔊</span>
+        <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
+      </label>
+      <label id="tc-toggle" class="v-toggle" title="Driver Aids">
+        <input id="tc-toggle-input" type="checkbox" />
+        <span class="v-toggle-label">TC</span>
+        <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
+      </label>
+      <label id="auto-steer-toggle" class="v-toggle" title="Auto Steer">
+        <input id="auto-steer-toggle-input" type="checkbox" />
+        <span class="v-toggle-label">AS</span>
+        <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
+      </label>
     </div>
 
     <div class="ui-test-side">
-      <button id="sound-toggle" type="button" class="sound-toggle" aria-label="Mute sound" aria-pressed="false">
-        <svg class="sound-icon-on" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M11 5L6 9H3v6h3l5 4V5z" />
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-        </svg>
-        <svg class="sound-icon-off" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M11 5L6 9H3v6h3l5 4V5z" />
-          <path d="M16 9l5 5" />
-          <path d="M21 9l-5 5" />
-        </svg>
-      </button>
 
       <div id="controls">
         <label>
@@ -747,10 +752,11 @@
       </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
     <script src="lib/enable3d.framework.0.25.4.min.js"></script>
+    <script src="js/gui.js"></script>
     <script>
       window.THREE = ENABLE3D.THREE
-      window.params = { soundVolume: 100 }
     </script>
     <script type="module">
       import { TireScreechSound } from './js/sound.js'
@@ -763,7 +769,6 @@
       const tireSoundCheckbox = document.getElementById('tire-sound-active')
       const tcsIndicator = document.getElementById('tcs-indicator')
       const escIndicator = document.getElementById('esc-indicator')
-      const soundToggle = document.getElementById('sound-toggle')
       const tachometer = new Tachometer(document.getElementById('ui-test-tachometer'), 6500)
 
       const listener = new THREE.AudioListener()
@@ -773,9 +778,6 @@
       let lastSoundTime = performance.now()
       let toastTimeoutId = null
       let clickCtx = null
-      let soundMuted = false
-      let savedSoundVolume = params.soundVolume
-
       const tachDriverStart = performance.now()
 
       function driveTachometer(now) {
@@ -801,26 +803,8 @@
 
       requestAnimationFrame(driveTachometer)
 
-      function setSoundMuted(muted) {
-        soundMuted = muted
-        if (muted) {
-          savedSoundVolume = params.soundVolume || savedSoundVolume
-          params.soundVolume = 0
-          tireSound.update(0, 0.05)
-        } else {
-          params.soundVolume = savedSoundVolume || 100
-        }
-        soundToggle.classList.toggle('muted', muted)
-        soundToggle.setAttribute('aria-pressed', String(muted))
-        soundToggle.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound')
-      }
-
-      soundToggle.addEventListener('click', () => {
-        setSoundMuted(!soundMuted)
-      })
-
       function playToggleClick() {
-        if (soundMuted) return
+        if (params.soundVolume === 0) return
         clickCtx ||= new AudioContext()
         if (clickCtx.state === 'suspended') clickCtx.resume()
         const t = clickCtx.currentTime
