@@ -146,7 +146,7 @@ const params = new RememberedParams({
   carCollisionEnabled: true,
   carCollisionSpeedDiffThreshold: 0.2,
   carCollisionSameDirDot: 0.5,
-  autoSteer: false,
+  autoSteer: true,
   autoSteerStrength: 1.35,
   botLookahead: 3.5,
   botLookaheadTime: 0,
@@ -336,20 +336,35 @@ function applyUrlParamOverrides() {
 applyUrlParamOverrides()
 applyPlayerName(new URLSearchParams(window.location.search).has('playerName') ? params.playerName : playerControl.name)
 
-const tcToggleInput = document.getElementById('tc-toggle-input')
-const autoSteerToggleInput = document.getElementById('auto-steer-toggle-input')
 const hudToast = document.getElementById('hud-toast')
-const soundToggleInput = document.getElementById('sound-toggle-input')
-const soundToggleLabel = document.querySelector('#sound-toggle .v-toggle-label')
 let toastTimeoutId = null
 let clickCtx = null
 let savedSoundVolume = params.soundVolume > 0 ? params.soundVolume : 50
 let soundMuted = params.soundVolume === 0
 
+function hudToggleInputs(name) {
+  return document.querySelectorAll(`[data-hud-toggle="${name}"]`)
+}
+
+function setHudToggleChecked(name, checked) {
+  for (const input of hudToggleInputs(name)) input.checked = checked
+}
+
+function bindHudToggles(name, onChange) {
+  for (const input of hudToggleInputs(name)) {
+    input.addEventListener('change', () => {
+      onChange(input.checked)
+      releaseToggleFocus(input)
+    })
+  }
+}
+
 function syncSoundToggle() {
-  if (!soundToggleInput) return
-  soundToggleInput.checked = !soundMuted
-  if (soundToggleLabel) soundToggleLabel.textContent = soundMuted ? '🔇' : '🔊'
+  for (const input of hudToggleInputs('sound')) {
+    input.checked = !soundMuted
+    const label = input.closest('label')?.querySelector('.v-toggle-label')
+    if (label) label.textContent = soundMuted ? '🔇' : '🔊'
+  }
 }
 
 function setSoundMuted(muted) {
@@ -364,14 +379,11 @@ function setSoundMuted(muted) {
   syncSoundToggle()
 }
 
-if (soundToggleInput) {
-  syncSoundToggle()
-  soundToggleInput.addEventListener('change', () => {
-    setSoundMuted(!soundToggleInput.checked)
-    if (!soundMuted) playToggleClick()
-    releaseToggleFocus(soundToggleInput)
-  })
-}
+syncSoundToggle()
+bindHudToggles('sound', (checked) => {
+  setSoundMuted(!checked)
+  if (!soundMuted) playToggleClick()
+})
 soundVolumeController.onChange((value) => {
   if (value === 0) {
     soundMuted = true
@@ -419,7 +431,7 @@ function setDriverAids(enabled) {
 }
 
 function syncDriverAidsToggle() {
-  tcToggleInput.checked = driverAidsEnabled()
+  setHudToggleChecked('tc', driverAidsEnabled())
 }
 
 function releaseToggleFocus(input) {
@@ -427,26 +439,24 @@ function releaseToggleFocus(input) {
   input.closest('label')?.blur()
 }
 
-tcToggleInput.checked = driverAidsEnabled()
-tcToggleInput.addEventListener('change', () => {
-  setDriverAids(tcToggleInput.checked)
+syncDriverAidsToggle()
+bindHudToggles('tc', (checked) => {
+  setDriverAids(checked)
   playToggleClick()
-  showHudToast(tcToggleInput.checked ? 'Driver Aids ON' : 'Driver Aids OFF')
-  releaseToggleFocus(tcToggleInput)
+  showHudToast(checked ? 'Driver Aids ON' : 'Driver Aids OFF')
 })
 tcController.onChange(syncDriverAidsToggle)
 spinPreventionController.onChange(syncDriverAidsToggle)
 steeringAssistController.onChange(syncDriverAidsToggle)
 
-autoSteerToggleInput.checked = params.autoSteer
-autoSteerToggleInput.addEventListener('change', () => {
-  autoSteerController.setValue(autoSteerToggleInput.checked)
+setHudToggleChecked('auto-steer', params.autoSteer)
+bindHudToggles('auto-steer', (checked) => {
+  autoSteerController.setValue(checked)
   playToggleClick()
-  showHudToast(autoSteerToggleInput.checked ? 'Auto Steer ON' : 'Auto Steer OFF')
-  releaseToggleFocus(autoSteerToggleInput)
+  showHudToast(checked ? 'Auto Steer ON' : 'Auto Steer OFF')
 })
 autoSteerController.onChange((enabled) => {
-  autoSteerToggleInput.checked = enabled
+  setHudToggleChecked('auto-steer', enabled)
 })
 
 const guiSearchLi = document.createElement('li')

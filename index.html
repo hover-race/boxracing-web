@@ -67,10 +67,28 @@
                   <button type="button" data-step="1">+</button>
                 </div>
               </div>
-              <label class="car-selection-setting car-selection-check">
-                <input id="car-selection-skip-intro" type="checkbox" />
-                <span>Skip intro</span>
-              </label>
+              <div id="car-selection-toggles">
+                <label class="h-toggle">
+                  <input data-hud-toggle="sound" type="checkbox" />
+                  <span class="h-toggle-label">Sound</span>
+                  <span class="h-toggle-track"><span class="h-toggle-thumb"></span></span>
+                </label>
+                <label class="h-toggle">
+                  <input data-hud-toggle="tc" type="checkbox" />
+                  <span class="h-toggle-label">Driver Aids</span>
+                  <span class="h-toggle-track"><span class="h-toggle-thumb"></span></span>
+                </label>
+                <label class="h-toggle">
+                  <input data-hud-toggle="auto-steer" type="checkbox" />
+                  <span class="h-toggle-label">Auto Steer</span>
+                  <span class="h-toggle-track"><span class="h-toggle-thumb"></span></span>
+                </label>
+                <label class="h-toggle">
+                  <input id="car-selection-skip-intro" type="checkbox" />
+                  <span class="h-toggle-label">Skip Intro</span>
+                  <span class="h-toggle-track"><span class="h-toggle-thumb"></span></span>
+                </label>
+              </div>
             </div>
             <button id="car-selection-start" type="button">Race</button>
           </div>
@@ -118,18 +136,18 @@
     </div>
     <div id="hud-bottom-right">
       <div id="hud-toast" class="hud-toast"></div>
-      <label id="sound-toggle" class="v-toggle" title="Sound">
-        <input id="sound-toggle-input" type="checkbox" />
+      <label id="sound-toggle" class="v-toggle sound-toggle" data-help="Sound">
+        <input id="sound-toggle-input" data-hud-toggle="sound" type="checkbox" />
         <span class="v-toggle-label">🔊</span>
         <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
       </label>
-      <label id="tc-toggle" class="v-toggle" title="Driver Aids">
-        <input id="tc-toggle-input" type="checkbox" />
+      <label id="tc-toggle" class="v-toggle" data-help="Driver Aids">
+        <input id="tc-toggle-input" data-hud-toggle="tc" type="checkbox" />
         <span class="v-toggle-label">TC</span>
         <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
       </label>
-      <label id="auto-steer-toggle" class="v-toggle" title="Auto Steer">
-        <input id="auto-steer-toggle-input" type="checkbox" />
+      <label id="auto-steer-toggle" class="v-toggle auto-steer-toggle" data-help="Auto Steer">
+        <input id="auto-steer-toggle-input" data-hud-toggle="auto-steer" type="checkbox" />
         <span class="v-toggle-label">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <mask id="as-wheel-cut">

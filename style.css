@@ -239,20 +239,6 @@ canvas {
     color: rgba(255, 255, 255, 0.7);
 }
 
-.car-selection-check {
-    flex-direction: row;
-    gap: 10px;
-    cursor: pointer;
-}
-
-.car-selection-check input {
-    width: 18px;
-    height: 18px;
-    margin: 0;
-    accent-color: #4caf50;
-    cursor: pointer;
-}
-
 .car-selection-toggle,
 .car-selection-stepper {
     display: flex;
@@ -290,6 +276,74 @@ canvas {
     padding: 10px 8px;
     color: #fff;
     font: 400 12px/1.6 'Press Start 2P', monospace;
+}
+
+#car-selection-toggles {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+    max-width: 280px;
+}
+
+.h-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.h-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.h-toggle-label {
+    font: 400 10px/1.6 'Press Start 2P', monospace;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.h-toggle-track {
+    position: relative;
+    flex-shrink: 0;
+    width: 68px;
+    height: 34px;
+    box-sizing: border-box;
+    padding: 3px;
+    border-radius: 17px;
+    border: 1px solid #3a3a3a;
+    background: #2a2a2a;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+.h-toggle-thumb {
+    position: absolute;
+    left: 3px;
+    top: 3px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #f2f2f2;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.h-toggle input:checked + .h-toggle-label + .h-toggle-track {
+    background: #3d8f46;
+    border-color: #357a3d;
+}
+
+.h-toggle input:checked + .h-toggle-label + .h-toggle-track .h-toggle-thumb {
+    transform: translateX(36px);
+    background: #fff;
 }
 
 #car-selection-start {
@@ -849,12 +903,37 @@ body.replay-exporting .dg.ac {
 }
 
 .v-toggle {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
     cursor: pointer;
     user-select: none;
+}
+
+.v-toggle::after {
+    content: attr(data-help);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 7px 14px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font: 700 13px/1 monospace;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 2;
+}
+
+.v-toggle:hover::after {
+    opacity: 1;
 }
 
 .v-toggle input {
@@ -906,24 +985,24 @@ body.replay-exporting .dg.ac {
     background: #fff;
 }
 
-#sound-toggle .v-toggle-label {
+.sound-toggle .v-toggle-label {
     font-size: 16px;
     letter-spacing: 0;
     line-height: 1;
 }
 
-#auto-steer-toggle .v-toggle-label {
+.auto-steer-toggle .v-toggle-label {
     color: #fff;
     line-height: 0;
 }
 
-#auto-steer-toggle .v-toggle-label svg {
+.auto-steer-toggle .v-toggle-label svg {
     display: block;
     width: 20px;
     height: 20px;
 }
 
-#auto-steer-toggle input:checked + .v-toggle-label {
+.auto-steer-toggle input:checked + .v-toggle-label {
     color: #3d8f46;
 }
 
