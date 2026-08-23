@@ -362,11 +362,7 @@ function bindHudToggles(name, onChange) {
 }
 
 function syncSoundToggle() {
-  for (const input of hudToggleInputs('sound')) {
-    input.checked = !soundMuted
-    const label = input.closest('label')?.querySelector('.v-toggle-label')
-    if (label) label.textContent = soundMuted ? '🔇' : '🔊'
-  }
+  for (const input of hudToggleInputs('sound')) input.checked = !soundMuted
 }
 
 function setSoundMuted(muted) {

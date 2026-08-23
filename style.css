@@ -993,6 +993,10 @@ body.replay-exporting .dg.ac {
 }
 
 .v-toggle-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(20px * var(--toggle-scale));
     font: 700 12px/1 monospace;
     letter-spacing: 0.06em;
     color: rgba(255, 255, 255, 0.88);
@@ -1033,18 +1037,12 @@ body.replay-exporting .dg.ac {
     background: #fff;
 }
 
-.sound-toggle .v-toggle-label {
-    font-size: 16px;
-    letter-spacing: 0;
-    line-height: 1;
-}
-
+.sound-toggle .v-toggle-label,
 .auto-steer-toggle .v-toggle-label {
     color: #fff;
-    line-height: 0;
 }
 
-.auto-steer-toggle .v-toggle-label svg {
+.v-toggle-label svg {
     display: block;
     width: calc(20px * var(--toggle-scale));
     height: calc(20px * var(--toggle-scale));
@@ -1052,6 +1050,81 @@ body.replay-exporting .dg.ac {
 
 .auto-steer-toggle input:checked + .v-toggle-label {
     color: #3d8f46;
+}
+
+#hud-toggles {
+    display: flex;
+    align-items: center;
+    gap: calc(10px * var(--hud-scale));
+}
+
+#camera-switcher {
+    position: relative;
+}
+
+#camera-switcher-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid #3a3a3a;
+    border-radius: 50%;
+    background: #2a2a2a;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+#camera-switcher-btn:hover,
+#camera-switcher-btn[aria-expanded="true"] {
+    border-color: #555;
+}
+
+#camera-switcher-menu {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 4px);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 150px;
+    padding: 6px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    z-index: 3;
+}
+
+#camera-switcher-menu[hidden] {
+    display: none;
+}
+
+#camera-switcher-menu button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    background: #2a2a2a;
+    color: #fff;
+    font: 700 13px/1 monospace;
+    letter-spacing: 0.04em;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+#camera-switcher-menu button:hover {
+    background: #444;
+}
+
+#camera-switcher-menu button.active {
+    background: #4caf50;
+}
+
+#camera-switcher-menu button.active:hover {
+    background: #43a047;
 }
 
 #hp-bar {

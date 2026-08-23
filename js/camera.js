@@ -500,42 +500,30 @@ class CameraSwitcher {
   }
 
   createUI() {
-    this.panel = document.createElement('div')
-    this.panel.style.cssText = `
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-    `
-
-    this.select = document.createElement('select')
-    this.select.style.cssText = `
-      padding: 8px 16px;
-      border: 1px solid #666;
-      border-radius: 6px;
-      color: #fff;
-      font-family: monospace;
-      font-size: 14px;
-      cursor: pointer;
-      background: rgba(0, 0, 0, 0.7);
-      outline: none;
-      appearance: auto;
-    `
+    this.panel = document.getElementById('camera-switcher')
+    this.button = document.getElementById('camera-switcher-btn')
+    this.menu = document.getElementById('camera-switcher-menu')
 
     this.controllers.forEach((controller, i) => {
-      const option = document.createElement('option')
-      option.value = i
-      option.textContent = `${i + 1}. ${controller.label}`
-      option.style.cssText = 'background: #222; color: #fff;'
-      this.select.appendChild(option)
+      const item = document.createElement('button')
+      item.type = 'button'
+      item.dataset.index = i
+      item.textContent = `${i + 1}. ${controller.label}`
+      item.onclick = () => {
+        this.setController(i)
+        this.setOpen(false)
+      }
+      this.menu.appendChild(item)
     })
 
-    this.select.value = this._activeIndex
-    this.select.onchange = () => this.setController(Number(this.select.value))
+    this.syncMenu()
 
-    this.panel.appendChild(this.select)
-    document.body.appendChild(this.panel)
+    this.button.onclick = () => this.setOpen(this.menu.hidden)
+    this.panel.addEventListener('mousedown', (e) => e.stopPropagation())
+    this._onDocClick = (e) => {
+      if (!this.panel.contains(e.target)) this.setOpen(false)
+    }
+    document.addEventListener('click', this._onDocClick)
 
     this._onKeyDown = (e) => {
       if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
@@ -553,15 +541,22 @@ class CameraSwitcher {
     window.addEventListener('keydown', this._onKeyDown)
   }
 
+  setOpen(open) {
+    this.menu.hidden = !open
+    this.button.setAttribute('aria-expanded', String(open))
+  }
+
+  syncMenu() {
+    for (const item of this.menu.children) {
+      item.classList.toggle('active', Number(item.dataset.index) === this._activeIndex)
+    }
+  }
+
   setController(index) {
     this._activeController?.deactivate?.(this.scene.camera)
     this._activeIndex = index
     this._activeController.activate?.(this.scene.camera, this._lastTarget)
-
-    // Keep dropdown in sync
-    if (this.select) {
-      this.select.value = index
-    }
+    this.syncMenu()
   }
 
   update(camera, target, deltaTime) {

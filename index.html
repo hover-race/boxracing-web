@@ -105,6 +105,10 @@
           <button type="button" id="game-menu-options">Options</button>
         </div>
       </div>
+      <div id="camera-switcher">
+        <button type="button" id="camera-switcher-btn" aria-label="Camera" aria-haspopup="listbox" aria-expanded="false">🎥</button>
+        <div id="camera-switcher-menu" hidden></div>
+      </div>
     </div>
     <div id="hud-bottom-left">
       <div id="fps-counter">-- fps</div>
@@ -157,36 +161,42 @@
     </div>
     <div id="hud-bottom-right">
       <div id="hud-toast" class="hud-toast"></div>
-      <label id="sound-toggle" class="v-toggle sound-toggle" data-help="Sound">
-        <input id="sound-toggle-input" data-hud-toggle="sound" type="checkbox" />
-        <span class="v-toggle-label">🔊</span>
-        <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
-      </label>
-      <label id="tc-toggle" class="v-toggle" data-help="Driver Aids">
-        <input id="tc-toggle-input" data-hud-toggle="tc" type="checkbox" />
-        <span class="v-toggle-label">TC</span>
-        <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
-      </label>
-      <label id="auto-steer-toggle" class="v-toggle auto-steer-toggle" data-help="Auto Drive">
-        <input id="auto-steer-toggle-input" data-hud-toggle="auto-steer" type="checkbox" />
-        <span class="v-toggle-label">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <mask id="as-wheel-cut">
-              <circle cx="12" cy="12" r="11" fill="#fff"/>
-              <circle cx="12" cy="12" r="7.4" fill="#000"/>
-              <rect x="3.2" y="10.4" width="17.6" height="3.2" rx="0.6" fill="#fff"/>
-              <rect x="10.4" y="12" width="3.2" height="8.8" rx="0.6" fill="#fff"/>
-              <circle cx="12" cy="12" r="4.1" fill="#fff"/>
-              <circle cx="12" cy="12" r="1.7" fill="#000"/>
-              <circle cx="6.1" cy="12" r="1" fill="#000"/>
-              <circle cx="17.9" cy="12" r="1" fill="#000"/>
-              <circle cx="12" cy="17.9" r="1" fill="#000"/>
-            </mask>
-            <rect width="24" height="24" fill="currentColor" mask="url(#as-wheel-cut)"/>
-          </svg>
-        </span>
-        <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
-      </label>
+      <div id="hud-toggles">
+        <label id="sound-toggle" class="v-toggle sound-toggle" data-help="Sound">
+          <input id="sound-toggle-input" data-hud-toggle="sound" type="checkbox" />
+          <span class="v-toggle-label">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M3 9v6h4l5 4V5L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM16 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+            </svg>
+          </span>
+          <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
+        </label>
+        <label id="tc-toggle" class="v-toggle" data-help="Driver Aids">
+          <input id="tc-toggle-input" data-hud-toggle="tc" type="checkbox" />
+          <span class="v-toggle-label">TC</span>
+          <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
+        </label>
+        <label id="auto-steer-toggle" class="v-toggle auto-steer-toggle" data-help="Auto Drive">
+          <input id="auto-steer-toggle-input" data-hud-toggle="auto-steer" type="checkbox" />
+          <span class="v-toggle-label">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <mask id="as-wheel-cut">
+                <circle cx="12" cy="12" r="11" fill="#fff"/>
+                <circle cx="12" cy="12" r="7.4" fill="#000"/>
+                <rect x="3.2" y="10.4" width="17.6" height="3.2" rx="0.6" fill="#fff"/>
+                <rect x="10.4" y="12" width="3.2" height="8.8" rx="0.6" fill="#fff"/>
+                <circle cx="12" cy="12" r="4.1" fill="#fff"/>
+                <circle cx="12" cy="12" r="1.7" fill="#000"/>
+                <circle cx="6.1" cy="12" r="1" fill="#000"/>
+                <circle cx="17.9" cy="12" r="1" fill="#000"/>
+                <circle cx="12" cy="17.9" r="1" fill="#000"/>
+              </mask>
+              <rect width="24" height="24" fill="currentColor" mask="url(#as-wheel-cut)"/>
+            </svg>
+          </span>
+          <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
+        </label>
+      </div>
       <div id="esc-indicator">ESC</div>
       <div id="tcs-indicator">TCS</div>
       <div id="hp-bar"><div id="hp-fill"></div></div>
