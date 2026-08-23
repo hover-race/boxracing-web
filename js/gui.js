@@ -234,6 +234,32 @@ gui.add(params, 'botOutlineThickness', 0.005, 0.06).step(0.001).onChange(() => w
 const soundVolumeController = gui.add(params, 'soundVolume', 0, 100).step(1)
 gui.add(vehicleParams, 'steeringSensitivity', 0.1, 2.0).step(0.1)
 
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement)
+}
+
+function setFullscreen(on) {
+  if (on === isFullscreen()) return
+  if (on) {
+    const root = document.documentElement
+    const requestFullscreen = root.requestFullscreen || root.webkitRequestFullscreen
+    if (requestFullscreen) requestFullscreen.call(root)
+    return
+  }
+  const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen
+  if (exitFullscreen) exitFullscreen.call(document)
+}
+
+const displayParams = { fullscreen: isFullscreen() }
+const fullscreenController = gui.add(displayParams, 'fullscreen')
+fullscreenController.onChange(setFullscreen)
+const syncFullscreenGui = () => {
+  displayParams.fullscreen = isFullscreen()
+  fullscreenController.updateDisplay()
+}
+document.addEventListener('fullscreenchange', syncFullscreenGui)
+document.addEventListener('webkitfullscreenchange', syncFullscreenGui)
+
 const stabilityFolder = gui.addFolder('Driving Assist')
 const tcController = stabilityFolder.add(params, 'tractionControl')
 stabilityFolder.add(params, 'tcSlipLimit', 0, 1).step(0.01)
