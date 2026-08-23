@@ -912,6 +912,21 @@ body.replay-exporting .dg.ac {
     line-height: 1;
 }
 
+#auto-steer-toggle .v-toggle-label {
+    color: #fff;
+    line-height: 0;
+}
+
+#auto-steer-toggle .v-toggle-label svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+}
+
+#auto-steer-toggle input:checked + .v-toggle-label {
+    color: #3d8f46;
+}
+
 #hp-bar {
     width: 240px;
     height: 26px;
