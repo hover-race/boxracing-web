@@ -84,6 +84,7 @@ class ControlsManager {
   setupTouchControls() {
     const pad = document.getElementById('arrow-pad')
     if (!pad) return
+    pad.addEventListener('contextmenu', (e) => e.preventDefault())
 
     const syncPad = () => {
       inputControls.throttle = this.pad.up ? 1 : 0

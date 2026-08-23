@@ -105,6 +105,9 @@ function selectCar(scene) {
     const start = () => {
       if (started) return
       started = true
+      const root = document.documentElement
+      const requestFullscreen = root.requestFullscreen || root.webkitRequestFullscreen
+      if (requestFullscreen) requestFullscreen.call(root)
       resolve(finish(selectedCar.car_id))
     }
     startButton.addEventListener('click', start)
