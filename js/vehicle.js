@@ -17,6 +17,8 @@ class Vehicle {
   wheelMeshes = []
 
   engineForce = 0
+  pedalThrottle = 0
+  pedalBrake = 0
   vehicleSteering = 0
   driverSteering = 0
   breakingForce = 0
@@ -130,6 +132,9 @@ class Vehicle {
 
     this.speedometer = document.getElementById('speedometer')
     this.tachometer = new Tachometer(document.getElementById('tachometer'), carModel.redline)
+    this.inputSteer = document.getElementById('input-steer')?.querySelector('svg')
+    this.inputThrottle = document.querySelector('#input-hud .input-pedal.throttle span')
+    this.inputBrake = document.querySelector('#input-hud .input-pedal.brake span')
     this.accelerometerDot = document.getElementById('accel-dot')
     this.hpFill = document.getElementById('hp-fill')
     this.hp = params.carMaxHp
@@ -357,6 +362,7 @@ class Vehicle {
 
     this.speedometer.textContent = `${speed.toFixed(0)} mph`
     this.tachometer.update(this.gearbox.engineRpm, this.gearbox.getGearLabel())
+    this.updateInputHud(inputs)
 
     // Update speed display in dat.gui
     vehicleParams.speed = speed
@@ -780,6 +786,21 @@ class Vehicle {
     this.stabilityActuation = actuation
   }
 
+  updateInputHud(inputs) {
+    if (!this.inputSteer) return
+    const lock = this.steeringClamp || 0.3
+    this.inputSteer.style.transform = `rotate(${-(this.vehicleSteering / lock) * 90}deg)`
+    this.inputThrottle.style.transform = `scaleY(${Math.max(0, Math.min(1, this.pedalThrottle))})`
+    this.inputBrake.style.transform = `scaleY(${Math.max(0, Math.min(1, this.pedalBrake))})`
+  }
+
+  smoothPedalToward(key, target) {
+    const step = params.pedalIncrement
+    const diff = target - this[key]
+    if (step <= 0 || Math.abs(diff) <= step) this[key] = target
+    else this[key] += Math.sign(diff) * step
+  }
+
   applySteering(inputs) {
     // Apply steering with sensitivity adjustment
     this.driverSteering = -this.steeringClamp * inputs.steering
@@ -855,7 +876,9 @@ class Vehicle {
 
     this.holdOnGrid = !!inputs.holdOnGrid
     const throttleInput = this.holdOnGrid ? Math.max(0, inputs.throttle) : inputs.throttle + reverseThrottle
-    this.engineForce = this.maxEngineForce * throttleInput;
+    this.smoothPedalToward('pedalThrottle', throttleInput)
+    this.smoothPedalToward('pedalBrake', footBrakeInput)
+    this.engineForce = this.maxEngineForce * this.pedalThrottle;
     this.applyStabilityActuation()
     const tcsActive = this.applyTractionControl()
     this.applyDriveForces()
@@ -867,7 +890,7 @@ class Vehicle {
 
     // Brakes are applied as brake torque inside the JS wheel model. Foot brake
     // hits all four wheels; handbrake adds extra torque to the rears only.
-    this.footBrake = footBrakeInput * 100;
+    this.footBrake = this.pedalBrake * 100;
     this.handBrake = inputs.handbrake * 150;
 
     // Bullet only provides steering geometry now; drive and brake are JS-side.

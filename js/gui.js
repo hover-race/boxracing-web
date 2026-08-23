@@ -110,6 +110,7 @@ const params = new RememberedParams({
   shiftDuration: 0.5,
   rpmRoadCoupling: 0.75,
   brakeTorque: 450,
+  pedalIncrement: 0.1,
   tireLongitudinalStiffness: 12,
   tireLateralStiffness: 2,
   tireSlipDamping: 450,
@@ -250,6 +251,7 @@ stabilityFolder.add(vehicleParams, 'autoSteerLateral', -15, 15).step(0.1).listen
 stabilityFolder.add(vehicleParams, 'autoSteerHeadingDeg', -45, 45).step(0.1).listen()
 
 const drivetrainFolder = gui.addFolder('Drivetrain')
+drivetrainFolder.add(params, 'pedalIncrement', 0, 0.5).step(0.01)
 drivetrainFolder.add(params, 'shiftTorqueFactor', 0, 1).step(0.05)
 drivetrainFolder.add(params, 'shiftDuration', 0.1, 2).step(0.05)
 drivetrainFolder.add(params, 'rpmRoadCoupling', 0, 1).step(0.05)

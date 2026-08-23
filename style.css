@@ -1035,8 +1035,55 @@ body.replay-exporting .dg.ac {
     filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.65));
 }
 
-#tachometer {
+#tach-cluster {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
     margin-top: 6px;
+}
+
+#input-hud {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+#input-steer {
+    width: 44px;
+    height: 44px;
+    color: #f4f4f4;
+}
+
+#input-steer svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    transform-origin: 50% 50%;
+}
+
+.input-pedal {
+    position: relative;
+    width: 6px;
+    height: 56px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.input-pedal span {
+    position: absolute;
+    inset: 0;
+    transform: scaleY(0);
+    transform-origin: bottom;
+}
+
+.input-pedal.throttle span {
+    background: #3d8f46;
+}
+
+.input-pedal.brake span {
+    background: #e23b32;
 }
 
 .tachometer svg {
