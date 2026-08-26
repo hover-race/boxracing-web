@@ -10,6 +10,10 @@ body {
     --hud-inset: clamp(4px, 1.2vmin, 20px);
     --hud-scale: clamp(0.36, 20vmin / 220px, 1);
     --toggle-scale: clamp(0.82, 22vmin / 68px, 1);
+    --input-steer-size: min(11vw, 13vh);
+    --input-pedal-w: min(1.6vw, 1.9vh);
+    --input-pedal-h: min(14vw, 16vh);
+    --input-hud-gap: min(1vw, 1.2vh);
 }
 
 canvas {
@@ -1178,13 +1182,13 @@ body.replay-exporting .dg.ac {
 #input-hud {
     display: flex;
     align-items: flex-end;
-    gap: calc(6px * var(--hud-scale));
-    margin-bottom: calc(16px * var(--hud-scale));
+    gap: var(--input-hud-gap);
+    margin-bottom: calc(8px * var(--hud-scale));
 }
 
 #input-steer {
-    width: calc(44px * var(--hud-scale));
-    height: calc(44px * var(--hud-scale));
+    width: var(--input-steer-size);
+    height: var(--input-steer-size);
     color: #f4f4f4;
 }
 
@@ -1197,10 +1201,10 @@ body.replay-exporting .dg.ac {
 
 .input-pedal {
     position: relative;
-    width: calc(6px * var(--hud-scale));
-    height: calc(56px * var(--hud-scale));
+    width: var(--input-pedal-w);
+    height: var(--input-pedal-h);
     overflow: hidden;
-    border-radius: 3px;
+    border-radius: min(0.4vw, 0.5vh);
     background: rgba(255, 255, 255, 0.12);
 }
 
