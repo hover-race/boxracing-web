@@ -211,22 +211,25 @@
       <div id="tcs-indicator">TCS</div>
       <div id="hp-bar"><div id="hp-fill"></div></div>
     </div>
-    <div id="race-hud">
-      <div id="race-hud-position">P-</div>
-      <div id="race-hud-player-name"></div>
-      <div class="race-hud-row">
-        <span class="race-hud-label">LAP</span>
-        <span id="lap-counter">-/-</span>
+    <div id="race-hud" aria-expanded="false">
+      <div id="race-hud-summary">P-  -/-  0:00.0</div>
+      <div id="race-hud-expanded">
+        <div id="race-hud-position">P-</div>
+        <div id="race-hud-player-name"></div>
+        <div class="race-hud-row">
+          <span class="race-hud-label">LAP</span>
+          <span id="lap-counter">-/-</span>
+        </div>
+        <div class="race-hud-row race-hud-time">
+          <span class="lap-time-whole">
+            <span class="race-hud-label">TIME</span>
+            <span id="lap-time-whole">0:00</span>
+          </span>
+          <span class="lap-time-dot">.</span>
+          <span id="lap-time-frac" class="lap-time-frac">0</span>
+        </div>
+        <div id="race-hud-standings"></div>
       </div>
-      <div class="race-hud-row race-hud-time">
-        <span class="lap-time-whole">
-          <span class="race-hud-label">TIME</span>
-          <span id="lap-time-whole">0:00</span>
-        </span>
-        <span class="lap-time-dot">.</span>
-        <span id="lap-time-frac" class="lap-time-frac">0</span>
-      </div>
-      <div id="race-hud-standings"></div>
     </div>
     <div id="offscreen-markers"></div>
     <div id="race-countdown"></div>

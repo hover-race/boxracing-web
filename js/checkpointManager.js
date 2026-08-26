@@ -31,6 +31,8 @@ class CheckpointManager {
     this.positionElement = document.getElementById('race-hud-position');
     this.playerNameElement = document.getElementById('race-hud-player-name');
     this.standingsElement = document.getElementById('race-hud-standings');
+    this.raceHudElement = document.getElementById('race-hud');
+    this.raceHudSummary = document.getElementById('race-hud-summary');
     this.finishElement = document.getElementById('race-finish');
     this.finishTitleElement = document.getElementById('race-finish-title');
     this.finishStandingsElement = document.getElementById('race-finish-standings');
@@ -39,6 +41,14 @@ class CheckpointManager {
       this.raceStartTime = performance.now();
     };
     on('raceStart', this.onRaceStart);
+
+    this._raceHudMobile = window.matchMedia('(max-width: 800px)');
+    this._onRaceHudTap = () => {
+      if (!this._raceHudMobile.matches) return;
+      const expanded = this.raceHudElement.classList.toggle('is-expanded');
+      this.raceHudElement.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    };
+    this.raceHudElement?.addEventListener('click', this._onRaceHudTap);
 
     this.updateTimerInterval = setInterval(() => this.updateRaceHud(), 100);
   }
@@ -59,6 +69,7 @@ class CheckpointManager {
     this.resetLapTimer();
     this.updatePlayerLapDisplay();
     this.updateStandings();
+    this.updateRaceHudSummary();
     if (this.bestLapTimeElement) {
       this.bestLapTimeElement.textContent = `Best: ${this.formatTime(this.bestLapTime)}`;
     }
@@ -120,6 +131,15 @@ class CheckpointManager {
     this.updateCurrentLapTime();
     this.pollSplits();
     this.updateStandings();
+    this.updateRaceHudSummary();
+  }
+
+  updateRaceHudSummary() {
+    if (!this.raceHudSummary || !this.playerRacer) return;
+    const place = this.rankedRacers().indexOf(this.playerRacer) + 1;
+    const lap = this.lapCountElement?.textContent ?? '-/-';
+    const time = `${this.lapTimeWholeElement?.textContent ?? '0:00'}.${this.lapTimeFracElement?.textContent ?? '0'}`;
+    this.raceHudSummary.textContent = `P${place}  ${lap}  ${time}`;
   }
 
   initTimingSplits() {
@@ -541,6 +561,8 @@ class CheckpointManager {
     }
     this.raceFinished = false;
     this.raceStartTime = 0;
+    this.raceHudElement?.classList.remove('is-expanded');
+    this.raceHudElement?.setAttribute('aria-expanded', 'false');
     if (this.finishTitleElement) this.finishTitleElement.textContent = '';
     const finishNext = document.getElementById('race-finish-next');
     if (finishNext) finishNext.textContent = '';
@@ -549,6 +571,7 @@ class CheckpointManager {
     this.bestLapTime = Infinity;
     this.updatePlayerLapDisplay();
     this.updateStandings();
+    this.updateRaceHudSummary();
     if (this.bestLapTimeElement) {
       this.bestLapTimeElement.textContent = 'Best: --:--.---';
     }
@@ -559,6 +582,7 @@ class CheckpointManager {
       clearInterval(this.updateTimerInterval);
     }
     off('raceStart', this.onRaceStart);
+    this.raceHudElement?.removeEventListener('click', this._onRaceHudTap);
 
     this.finishElement?.classList.remove('visible');
   }
