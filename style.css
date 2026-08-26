@@ -291,6 +291,16 @@ canvas {
     max-width: 280px;
 }
 
+#car-selection-tilt {
+    display: none;
+}
+
+@media (pointer: coarse) {
+    #car-selection-tilt {
+        display: flex;
+    }
+}
+
 .h-toggle {
     display: flex;
     align-items: center;
@@ -1501,11 +1511,11 @@ body.replay-exporting .dg.ac {
     display: none;
     position: fixed;
     bottom: calc(var(--hud-inset) + env(safe-area-inset-bottom, 0px));
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
+    right: 0;
     z-index: 2;
+    justify-content: center;
     align-items: end;
-    gap: 16px;
 }
 
 @media (hover: none), (pointer: coarse), (max-width: 800px) {
@@ -1516,7 +1526,7 @@ body.replay-exporting .dg.ac {
 
 #arrow-pad {
     display: grid;
-    width: min(280px, calc(100vw - 96px));
+    width: min(280px, calc(100vw - 24px));
     grid-template-columns: 2fr 1fr 2fr;
     grid-template-rows: 58px 76px;
     gap: 8px;
@@ -1546,9 +1556,13 @@ body.replay-exporting .dg.ac {
 }
 
 #arrow-handbrake {
-    width: 72px;
+    position: absolute;
+    right: calc(50% + min(140px, 50vw - 12px) + 28px);
+    bottom: 0;
+    box-sizing: border-box;
+    width: 80px;
     height: 76px;
-    margin-right: 8px;
+    padding: 10px 8px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     font-weight: 700;

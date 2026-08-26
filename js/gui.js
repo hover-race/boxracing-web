@@ -158,11 +158,8 @@ const params = new RememberedParams({
   botMaxSpeed: 180,
   botMaxLatAccel: 12,
   botCurvatureSpacing: 10,
-  tiltSteering: (() => {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const savedValue = localStorage.getItem('tiltSteering');
-    return savedValue !== null ? savedValue === 'true' : isMobile;
-  })()
+  tiltSteering: window.matchMedia('(pointer: coarse)').matches,
+  tiltSensitivity: 1,
 })
 
 let playerNameController
@@ -233,6 +230,24 @@ gui.add(params, 'botShader', ['none', 'outline', 'fresnel', 'solid', 'xray', 'di
 gui.add(params, 'botOutlineThickness', 0.005, 0.06).step(0.001).onChange(() => window.refreshBotShader?.())
 const soundVolumeController = gui.add(params, 'soundVolume', 0, 100).step(1)
 gui.add(vehicleParams, 'steeringSensitivity', 0.1, 2.0).step(0.1)
+const tiltController = gui.add(params, 'tiltSteering')
+gui.add(params, 'tiltSensitivity', 0.2, 3).step(0.1)
+
+function requestTiltPermission() {
+  const pending = []
+  const ask = (EventC) => {
+    if (typeof EventC === 'undefined' || typeof EventC.requestPermission !== 'function') return
+    pending.push(EventC.requestPermission())
+  }
+  ask(window.DeviceMotionEvent)
+  ask(window.DeviceOrientationEvent)
+  if (!pending.length) return
+  Promise.all(pending).then((states) => {
+    if (states.some((state) => state === 'granted')) return
+    tiltController.setValue(false)
+  })
+}
+window.requestTiltPermission = requestTiltPermission
 
 function isFullscreen() {
   return !!(document.fullscreenElement || document.webkitFullscreenElement)
@@ -481,6 +496,17 @@ bindHudToggles('auto-steer', (checked) => {
 })
 autoSteerController.onChange((enabled) => {
   setHudToggleChecked('auto-steer', enabled)
+})
+
+setHudToggleChecked('tilt', params.tiltSteering)
+bindHudToggles('tilt', (checked) => {
+  tiltController.setValue(checked)
+  playToggleClick()
+})
+tiltController.onChange((on) => {
+  setHudToggleChecked('tilt', on)
+  if (on) requestTiltPermission()
+  else inputControls.steering = 0
 })
 
 const guiSearchLi = document.createElement('li')

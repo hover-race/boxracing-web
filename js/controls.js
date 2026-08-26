@@ -4,7 +4,6 @@ class ControlsManager {
   constructor(scene) {
     this.scene = scene;
     this.pad = { up: false, down: false, left: false, right: false, handbrake: false };
-    this.tiltControlsActive = false;
     
     this.clearInputs();
     
@@ -96,7 +95,11 @@ class ControlsManager {
       }
       inputControls.brake = this.pad.down ? 1 : 0
       inputControls.handbrake = this.pad.handbrake ? 1 : 0
-      inputControls.steering = (this.pad.right ? 1 : 0) - (this.pad.left ? 1 : 0)
+      if (this.pad.left || this.pad.right) {
+        inputControls.steering = (this.pad.right ? 1 : 0) - (this.pad.left ? 1 : 0)
+      } else if (!params.tiltSteering) {
+        inputControls.steering = 0
+      }
     }
 
     const setPad = (dir, down, button) => {
@@ -118,119 +121,38 @@ class ControlsManager {
   }
   
   setupTiltControls() {
-    // Check if device orientation is supported
-    if (!window.DeviceOrientationEvent) {
-      console.log('Device orientation not supported');
-      return;
+    this.onDeviceMotion = (event) => {
+      const g = event.accelerationIncludingGravity
+      if (!g || (g.x === 0 && g.y === 0 && g.z === 0)) return
+      this._tiltFromMotion = true
+      this.applyScreenRoll(g.x, g.y)
     }
-
-    const tiltSteeringEnabled = params.tiltSteering || false;
-    
-    if (!tiltSteeringEnabled) {
-      console.log('Tilt steering is disabled in settings');
-      return;
+    this.onDeviceOrientation = (event) => {
+      if (this._tiltFromMotion) return
+      const beta = ((event.beta ?? 0) * Math.PI) / 180
+      const gamma = ((event.gamma ?? 0) * Math.PI) / 180
+      this.applyScreenRoll(Math.cos(beta) * Math.sin(gamma), -Math.sin(beta))
     }
-
-    // For iOS devices, request permission
-    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-      DeviceOrientationEvent.requestPermission()
-        .then(permissionState => {
-          if (permissionState === 'granted') {
-            // Enable tilt controls
-            this.enableTiltControls();
-          } else {
-            console.log('Permission to use device orientation was denied');
-          }
-        })
-        .catch(console.error);
-    } else {
-      // For non-iOS devices, just enable tilt controls
-      this.enableTiltControls();
-    }
-  }
-  
-  // Clean up method to remove event listeners
-  cleanup() {}
-
-  enableTiltControls() {
-    // Set tilt controls as active
-    this.tiltControlsActive = true;
-    
-    // Function to handle device orientation
-    const handleOrientation = (event) => {
-      if (!this.tiltControlsActive || !inputControls.enabled) return;
-      vehicleParams.forceDirX = event.alpha;
-      vehicleParams.forceDirZ = event.beta;
-      vehicleParams.forceDirY = event.gamma;
-
-      // Get alpha rotation (compass direction, 0-360)
-      let alpha = event.alpha;
-
-      // Normalize alpha to be centered around 0 (-180 to 180)
-      // This helps in handling the wrap-around (e.g., 350 degrees becomes -10)
-      if (alpha > 180) {
-        alpha -= 360;
-      }
-
-      // Define the control range (degrees)
-      const minAlpha = -30; // Corresponds to steering = 1 (turn right)
-      const maxAlpha = 30;  // Corresponds to steering = -1 (turn left)
-
-      // Clamp the normalized alpha to the control range [-30, 30]
-      const clampedAlpha = Math.max(minAlpha, Math.min(maxAlpha, alpha));
-
-      let tiltSteering = 0;
-      // Check if alpha is within the active range to avoid mapping outside values
-      if (clampedAlpha >= minAlpha && clampedAlpha <= maxAlpha) {
-          // Linearly map clampedAlpha from [-30, 30] to steering [1, -1]
-          // Formula: output = output_start + ((output_end - output_start) / (input_end - input_start)) * (input - input_start)
-          tiltSteering = 1 + ((-1 - 1) / (maxAlpha - minAlpha)) * (clampedAlpha - minAlpha);
-      }
-      
-      if (!this.pad.left && !this.pad.right) {
-        inputControls.steering = tiltSteering;
-      }
-    };
-    
-    // Add orientation event listener
-    window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-    
-    // Store the handler for cleanup
-    this.orientationHandler = handleOrientation;
+    window.addEventListener('devicemotion', this.onDeviceMotion)
+    window.addEventListener('deviceorientation', this.onDeviceOrientation)
   }
 
-  disableTiltControls() {
-    // Set tilt controls as inactive
-    this.tiltControlsActive = false;
-    
-    // Remove the orientation event listener if it exists
-    if (this.orientationHandler) {
-      window.removeEventListener('deviceorientation', this.orientationHandler, true);
-      this.orientationHandler = null;
-    }
+  applyScreenRoll(gx, gy) {
+    if (!params.tiltSteering || !inputControls.enabled) return
+    if (this.pad.left || this.pad.right) return
+    const angle = ((screen.orientation?.angle ?? window.orientation ?? 0) * Math.PI) / 180
+    const sx = gx * Math.cos(angle) + gy * Math.sin(angle)
+    const sy = -gx * Math.sin(angle) + gy * Math.cos(angle)
+    const range = ((35 * Math.PI) / 180) / Math.max(Number(params.tiltSensitivity) || 1, 0.05)
+    inputControls.steering = Math.max(-1, Math.min(1, Math.atan2(sx, -sy) / range))
   }
-  
-  update() {
-    // Check if tilt controls are available on this device
-    if (!this.tiltAvailable) {
-      return; // Do nothing if tilt is not supported
-    }
-    
-    // Check if tilt controls are enabled in the GUI
-    const tiltSteeringEnabled = document.getElementById('tiltSteering')?.checked || false;
-    
-    // Enabling Tilt Controls (if checkbox is checked and not already active)
-    if (tiltSteeringEnabled && !this.tiltControlsActive) {
-      // Permission request is now handled by the GUI interaction
-      console.log('ControlsManager.update: Enabling tilt controls.');
-      this.enableTiltControls();
-    } 
-    // Disabling Tilt Controls (if checkbox is unchecked and currently active)
-    else if (!tiltSteeringEnabled && this.tiltControlsActive) {
-      console.log('ControlsManager.update: Disabling tilt controls.');
-      this.disableTiltControls();
-    }
+
+  cleanup() {
+    window.removeEventListener('devicemotion', this.onDeviceMotion)
+    window.removeEventListener('deviceorientation', this.onDeviceOrientation)
   }
+
+  update() {}
 }
 
 export { ControlsManager }; 

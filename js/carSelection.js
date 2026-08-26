@@ -105,6 +105,7 @@ function selectCar(scene) {
     const start = () => {
       if (started) return
       started = true
+      if (params.tiltSteering) window.requestTiltPermission?.()
       if (window.matchMedia('(pointer: coarse)').matches) {
         const root = document.documentElement
         const requestFullscreen = root.requestFullscreen || root.webkitRequestFullscreen
