@@ -541,7 +541,8 @@ export class MainScene extends Scene3D {
     }
 
     let vehicleInputs = idle
-    let throttle = inputControls.throttle + params.throttleInput + params.autoThrottle
+    let throttle = inputControls.throttle + params.throttleInput
+    if (inputControls.brake <= 0) throttle += params.autoThrottle
     let brake = inputControls.brake
     if (raceLive) {
       let steering = inputControls.steering;
@@ -563,7 +564,12 @@ export class MainScene extends Scene3D {
         steering,
       }
     } else {
-      vehicleInputs = { ...idle, throttle: Math.max(-1, Math.min(1, throttle)), holdOnGrid: true }
+      vehicleInputs = {
+        ...idle,
+        steering: inputControls.steering,
+        throttle: Math.max(-1, Math.min(1, throttle)),
+        holdOnGrid: true,
+      }
       if (this.autoSteer) vehicleParams.autoSteerLateral = 0;
     }
     this.car.update(vehicleInputs);

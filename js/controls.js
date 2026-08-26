@@ -40,15 +40,17 @@ class ControlsManager {
     };
 
     const keyEvent = (e, down) => {
-      if (!inputControls.enabled) {
+      if (isEditable(e.target)) return;
+
+      const steerKey = e.code === 'KeyA' || e.code === 'ArrowLeft'
+        || e.code === 'KeyD' || e.code === 'ArrowRight'
+      if (!inputControls.enabled && !steerKey) {
         if (e.code === 'KeyW' || e.code === 'ArrowUp') {
           inputControls.throttle = down ? 1 : 0;
           e.preventDefault();
         }
         return;
       }
-      // Don't drive the car while typing into a GUI field; let the input keep the event.
-      if (isEditable(e.target)) return;
 
       switch (e.code) {
         case 'KeyW':
@@ -100,19 +102,18 @@ class ControlsManager {
 
     const syncPad = () => {
       inputControls.throttle = this.pad.up ? 1 : 0
-      if (!inputControls.enabled) {
+      if (this.pad.left || this.pad.right) {
+        inputControls.steering = (this.pad.right ? 1 : 0) - (this.pad.left ? 1 : 0)
+      } else if (!params.tiltSteering) {
         inputControls.steering = 0
+      }
+      if (!inputControls.enabled) {
         inputControls.brake = 0
         inputControls.handbrake = 0
         return
       }
       inputControls.brake = this.pad.down ? 1 : 0
       inputControls.handbrake = this.pad.handbrake ? 1 : 0
-      if (this.pad.left || this.pad.right) {
-        inputControls.steering = (this.pad.right ? 1 : 0) - (this.pad.left ? 1 : 0)
-      } else if (!params.tiltSteering) {
-        inputControls.steering = 0
-      }
     }
 
     const setPad = (dir, down, button) => {
@@ -155,7 +156,7 @@ class ControlsManager {
   }
 
   applyScreenRoll(gx, gy) {
-    if (!params.tiltSteering || !inputControls.enabled) return
+    if (!params.tiltSteering) return
     if (this.pad.left || this.pad.right) return
     inputControls.steering = screenRoll(gx, gy, params.tiltSensitivity).steering
   }
