@@ -10,7 +10,7 @@
     <style>
       :root { color-scheme: dark; }
       * { box-sizing: border-box; }
-      html, body { margin: 0; height: 100%; }
+      html, body { margin: 0; min-height: 100%; }
       body {
         font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
         background: #111;
@@ -28,42 +28,23 @@
         color: #fff;
       }
       button:disabled { opacity: 0.4; }
-      label { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
-      input[type='range'] { flex: 1; }
-      .stage {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin: 16px 0;
+      #wheel-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        margin: 24px 0;
       }
-      canvas {
-        width: 100%;
-        height: auto;
-        background: #1c1c1c;
-        border-radius: 8px;
+      #wheel {
+        width: min(48vw, 180px);
+        height: min(48vw, 180px);
+        color: #eee;
       }
-      .bar {
-        position: relative;
-        height: 28px;
-        background: #1c1c1c;
-        border-radius: 8px;
-        overflow: hidden;
-        margin: 8px 0 16px;
+      #steer {
+        font-size: 28px;
+        font-variant-numeric: tabular-nums;
       }
-      .bar > i {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 3px;
-        background: #3d7eff;
-        left: 50%;
-        margin-left: -1.5px;
-      }
-      pre {
-        margin: 0;
-        white-space: pre-wrap;
-        color: #bbb;
-      }
+      pre { margin: 0; white-space: pre-wrap; color: #bbb; }
       .ok { color: #6f6; }
       .wait { color: #fc6; }
       .no { color: #f66; }
@@ -71,135 +52,41 @@
   </head>
   <body>
     <h1>Tilt test</h1>
-    <p>Same roll-around-screen-Z math as the game. Hold the phone facing you and rotate like a steering wheel. Gravity dot should stay near the bottom and slide left/right.</p>
     <button id="enable" type="button">Enable sensors</button>
-    <label>sensitivity <input id="sens" type="range" min="0.2" max="3" step="0.1" value="1" /> <span id="sens-val">1.0</span></label>
-    <div class="bar"><i id="needle"></i></div>
-    <div class="stage">
-      <canvas id="wheel" width="240" height="240"></canvas>
-      <canvas id="grav" width="240" height="240"></canvas>
+    <div id="wheel-wrap">
+      <svg id="wheel" viewBox="0 0 24 24" aria-hidden="true">
+        <mask id="tilt-wheel-cut">
+          <circle cx="12" cy="12" r="11" fill="#fff"/>
+          <circle cx="12" cy="12" r="7.4" fill="#000"/>
+          <rect x="3.2" y="10.4" width="17.6" height="3.2" rx="0.6" fill="#fff"/>
+          <rect x="10.4" y="12" width="3.2" height="8.8" rx="0.6" fill="#fff"/>
+          <circle cx="12" cy="12" r="4.1" fill="#fff"/>
+          <circle cx="12" cy="12" r="1.7" fill="#000"/>
+          <circle cx="6.1" cy="12" r="1" fill="#000"/>
+          <circle cx="17.9" cy="12" r="1" fill="#000"/>
+          <circle cx="12" cy="17.9" r="1" fill="#000"/>
+        </mask>
+        <rect width="24" height="24" fill="currentColor" mask="url(#tilt-wheel-cut)"/>
+      </svg>
+      <div id="steer">0.00</div>
     </div>
     <pre id="out"></pre>
-    <script>
-      // Mirrors js/controls.js applyScreenRoll / setupTiltControls
+    <script type="module">
+      import {
+        gravityFromMotion,
+        gravityFromOrientation,
+        requestTiltPermission,
+        screenRoll,
+      } from './js/tilt.js'
+
       const enable = document.getElementById('enable')
-      const sens = document.getElementById('sens')
-      const sensVal = document.getElementById('sens-val')
-      const needle = document.getElementById('needle')
-      const out = document.getElementById('out')
       const wheel = document.getElementById('wheel')
-      const grav = document.getElementById('grav')
-      const wctx = wheel.getContext('2d')
-      const gctx = grav.getContext('2d')
+      const steerEl = document.getElementById('steer')
+      const out = document.getElementById('out')
 
       let usedMotion = false
       let last = null
-
-      function screenRoll(gx, gy) {
-        const angle = ((screen.orientation?.angle ?? window.orientation ?? 0) * Math.PI) / 180
-        const sx = gx * Math.cos(angle) + gy * Math.sin(angle)
-        const sy = -gx * Math.sin(angle) + gy * Math.cos(angle)
-        const sensitivity = Math.max(Number(sens.value) || 1, 0.05)
-        const range = ((35 * Math.PI) / 180) / sensitivity
-        const roll = Math.atan2(sx, -sy)
-        return {
-          angleDeg: (angle * 180) / Math.PI,
-          sx,
-          sy,
-          rollDeg: (roll * 180) / Math.PI,
-          steering: Math.max(-1, Math.min(1, roll / range)),
-        }
-      }
-
-      function drawWheel(steering, rollDeg) {
-        const s = wheel.width
-        const c = s / 2
-        wctx.clearRect(0, 0, s, s)
-        wctx.save()
-        wctx.translate(c, c)
-        wctx.strokeStyle = '#444'
-        wctx.lineWidth = 8
-        wctx.beginPath()
-        wctx.arc(0, 0, c - 16, 0, Math.PI * 2)
-        wctx.stroke()
-        wctx.rotate((rollDeg * Math.PI) / 180)
-        wctx.strokeStyle = '#3d7eff'
-        wctx.lineWidth = 10
-        wctx.beginPath()
-        wctx.moveTo(-c + 28, 0)
-        wctx.lineTo(c - 28, 0)
-        wctx.stroke()
-        wctx.fillStyle = '#eee'
-        wctx.fillRect(-6, -c + 20, 12, 36)
-        wctx.restore()
-        wctx.fillStyle = '#eee'
-        wctx.font = '14px ui-monospace, monospace'
-        wctx.fillText('wheel ' + steering.toFixed(2), 8, 18)
-      }
-
-      function drawGrav(sx, sy) {
-        const s = grav.width
-        const c = s / 2
-        const mag = Math.hypot(sx, sy) || 1
-        const x = c + (sx / mag) * (c - 24)
-        const y = c - (sy / mag) * (c - 24)
-        gctx.clearRect(0, 0, s, s)
-        gctx.strokeStyle = '#444'
-        gctx.strokeRect(12, 12, s - 24, s - 24)
-        gctx.fillStyle = '#666'
-        gctx.font = '12px ui-monospace, monospace'
-        gctx.fillText('screen up', c - 28, 28)
-        gctx.fillText('down', c - 14, s - 18)
-        gctx.beginPath()
-        gctx.moveTo(c, c)
-        gctx.lineTo(x, y)
-        gctx.strokeStyle = '#888'
-        gctx.stroke()
-        gctx.fillStyle = '#fc6'
-        gctx.beginPath()
-        gctx.arc(x, y, 10, 0, Math.PI * 2)
-        gctx.fill()
-        gctx.fillStyle = '#eee'
-        gctx.fillText('gravity in screen', 8, 18)
-      }
-
-      function apply(gx, gy, extra) {
-        const r = screenRoll(gx, gy)
-        last = { gx, gy, ...r, ...extra, t: Date.now() }
-        needle.style.left = ((r.steering + 1) / 2) * 100 + '%'
-        drawWheel(r.steering, r.rollDeg)
-        drawGrav(r.sx, r.sy)
-        out.className = 'ok'
-        out.textContent = [
-          'source     ' + extra.source,
-          'steering   ' + r.steering.toFixed(3),
-          'roll deg   ' + r.rollDeg.toFixed(1),
-          'screen °   ' + r.angleDeg.toFixed(0),
-          'gx gy      ' + gx.toFixed(2) + '  ' + gy.toFixed(2),
-          'sx sy      ' + r.sx.toFixed(2) + '  ' + r.sy.toFixed(2),
-          extra.lines || '',
-        ].filter(Boolean).join('\n')
-      }
-
-      function onMotion(event) {
-        const g = event.accelerationIncludingGravity
-        if (!g || (g.x === 0 && g.y === 0 && g.z === 0)) return
-        usedMotion = true
-        apply(g.x, g.y, {
-          source: 'devicemotion',
-          lines: 'acc xyz    ' + [g.x, g.y, g.z].map((n) => n.toFixed(2)).join('  '),
-        })
-      }
-
-      function onOrientation(event) {
-        if (usedMotion) return
-        const beta = ((event.beta ?? 0) * Math.PI) / 180
-        const gamma = ((event.gamma ?? 0) * Math.PI) / 180
-        apply(Math.cos(beta) * Math.sin(gamma), -Math.sin(beta), {
-          source: 'deviceorientation',
-          lines: 'α β γ      ' + [event.alpha, event.beta, event.gamma].map((n) => Number(n).toFixed(1)).join('  '),
-        })
-      }
+      let status = 'waiting — tap Enable'
 
       function reqType(EventC) {
         if (typeof EventC === 'undefined') return 'missing'
@@ -207,20 +94,63 @@
         return 'function'
       }
 
-      function contextLines() {
-        return [
-          'url        ' + location.href,
+      function readout(extra) {
+        const r = last
+        const lines = [
+          'status     ' + status,
           'secure     ' + String(window.isSecureContext),
-          'motion     ' + typeof DeviceMotionEvent,
           'motion.req ' + reqType(window.DeviceMotionEvent),
-          'orient     ' + typeof DeviceOrientationEvent,
           'orient.req ' + reqType(window.DeviceOrientationEvent),
-        ].join('\n')
+          'win.ori    ' + String(window.orientation),
+          'scr.angle  ' + String(screen.orientation?.angle),
+          'scr.type   ' + String(screen.orientation?.type),
+        ]
+        if (r) {
+          lines.push(
+            'source     ' + r.source,
+            'steering   ' + r.steering.toFixed(3),
+            'roll deg   ' + r.rollDeg.toFixed(1),
+            'screen °   ' + r.angleDeg.toFixed(0),
+            'gx gy      ' + r.gx.toFixed(2) + '  ' + r.gy.toFixed(2),
+            'sx sy      ' + r.sx.toFixed(2) + '  ' + r.sy.toFixed(2),
+          )
+          if (r.lines) lines.push(r.lines)
+        }
+        if (extra) lines.push('', extra)
+        return lines.join('\n')
       }
 
       function show(kind, extra) {
         out.className = kind
-        out.textContent = [contextLines(), extra].filter(Boolean).join('\n\n')
+        out.textContent = readout(extra)
+      }
+
+      function apply(gx, gy, extra) {
+        const r = screenRoll(gx, gy)
+        last = { gx, gy, ...r, ...extra, t: Date.now() }
+        status = extra.source
+        wheel.style.transform = 'rotate(' + r.rollDeg.toFixed(1) + 'deg)'
+        steerEl.textContent = r.steering.toFixed(2)
+        show('ok')
+      }
+
+      function onMotion(event) {
+        const g = gravityFromMotion(event)
+        if (!g) return
+        usedMotion = true
+        apply(g.gx, g.gy, {
+          source: 'devicemotion',
+          lines: 'acc xyz    ' + [g.gx, g.gy, g.gz].map((n) => n.toFixed(2)).join('  '),
+        })
+      }
+
+      function onOrientation(event) {
+        if (usedMotion) return
+        const g = gravityFromOrientation(event)
+        apply(g.gx, g.gy, {
+          source: 'deviceorientation',
+          lines: 'α β γ      ' + [event.alpha, event.beta, event.gamma].map((n) => Number(n).toFixed(1)).join('  '),
+        })
       }
 
       function listen() {
@@ -228,49 +158,49 @@
         window.addEventListener('deviceorientation', onOrientation)
         enable.disabled = true
         enable.textContent = 'Listening'
-        show('wait', 'listening — tilt the phone')
+        status = 'listening'
+        show('wait')
         setTimeout(() => {
           if (last) return
+          status = 'no events'
           show('no', window.isSecureContext
-            ? 'no sensor events. if this is a phone, check iOS Settings → Safari → Motion & Orientation Access.'
-            : 'no sensor events. LAN http is not a secure context, so the phone will not send motion/orientation (iOS will not even expose requestPermission). use https:// via ./run-https.sh, then tap Enable.')
+            ? 'if this is a phone, check iOS Settings → Safari → Motion & Orientation Access.'
+            : 'LAN http is not a secure context. use https:// via ./run-https.sh, then tap Enable.')
         }, 1500)
       }
 
-      function requestPermission() {
-        const pending = []
-        const ask = (EventC) => {
-          if (typeof EventC === 'undefined' || typeof EventC.requestPermission !== 'function') return
-          pending.push(EventC.requestPermission())
-        }
-        ask(window.DeviceMotionEvent)
-        ask(window.DeviceOrientationEvent)
-        if (!pending.length) {
-          if (!window.isSecureContext) {
-            show('no', 'no requestPermission API because this origin is not secure. ./run-https.sh then open the https URL on the phone.')
+      function enableSensors() {
+        requestTiltPermission().then((states) => {
+          if (!states.length) {
+            if (!window.isSecureContext) {
+              status = 'not secure'
+              show('no', 'no requestPermission API. ./run-https.sh then open the https URL.')
+              return
+            }
+            listen()
             return
           }
-          listen()
-          return
-        }
-        Promise.all(pending).then((states) => {
           if (states.some((state) => state === 'granted')) listen()
           else {
             enable.disabled = false
-            show('no', 'permission  ' + states.join(', '))
+            status = 'permission ' + states.join(', ')
+            show('no')
           }
         })
       }
 
-      sens.addEventListener('input', () => {
-        sensVal.textContent = Number(sens.value).toFixed(1)
+      enable.addEventListener('click', enableSensors)
+      window.addEventListener('orientationchange', () => {
         if (last) apply(last.gx, last.gy, { source: last.source, lines: last.lines })
+        else show(out.className || 'wait')
       })
-      enable.addEventListener('click', requestPermission)
-      drawWheel(0, 0)
-      drawGrav(0, -1)
-      if (window.isSecureContext) show('wait', 'tap Enable (iOS needs this gesture for permission)')
-      else show('no', 'LAN http cannot read sensors. run ./run-https.sh and open the https URL on the phone (accept the cert warning), then tap Enable.')
+      if (window.isSecureContext) {
+        status = 'waiting — tap Enable'
+        show('wait')
+      } else {
+        status = 'not secure'
+        show('no', 'LAN http cannot read sensors. ./run-https.sh and open the https URL, then tap Enable.')
+      }
     </script>
   </body>
 </html>

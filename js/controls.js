@@ -1,4 +1,5 @@
 import { on } from './raceEvents.js'
+import { gravityFromMotion, gravityFromOrientation, screenRoll } from './tilt.js'
 
 class ControlsManager {
   constructor(scene) {
@@ -122,16 +123,15 @@ class ControlsManager {
   
   setupTiltControls() {
     this.onDeviceMotion = (event) => {
-      const g = event.accelerationIncludingGravity
-      if (!g || (g.x === 0 && g.y === 0 && g.z === 0)) return
+      const g = gravityFromMotion(event)
+      if (!g) return
       this._tiltFromMotion = true
-      this.applyScreenRoll(g.x, g.y)
+      this.applyScreenRoll(g.gx, g.gy)
     }
     this.onDeviceOrientation = (event) => {
       if (this._tiltFromMotion) return
-      const beta = ((event.beta ?? 0) * Math.PI) / 180
-      const gamma = ((event.gamma ?? 0) * Math.PI) / 180
-      this.applyScreenRoll(Math.cos(beta) * Math.sin(gamma), -Math.sin(beta))
+      const g = gravityFromOrientation(event)
+      this.applyScreenRoll(g.gx, g.gy)
     }
     window.addEventListener('devicemotion', this.onDeviceMotion)
     window.addEventListener('deviceorientation', this.onDeviceOrientation)
@@ -140,11 +140,7 @@ class ControlsManager {
   applyScreenRoll(gx, gy) {
     if (!params.tiltSteering || !inputControls.enabled) return
     if (this.pad.left || this.pad.right) return
-    const angle = ((screen.orientation?.angle ?? window.orientation ?? 0) * Math.PI) / 180
-    const sx = gx * Math.cos(angle) + gy * Math.sin(angle)
-    const sy = -gx * Math.sin(angle) + gy * Math.cos(angle)
-    const range = ((35 * Math.PI) / 180) / Math.max(Number(params.tiltSensitivity) || 1, 0.05)
-    inputControls.steering = Math.max(-1, Math.min(1, Math.atan2(sx, -sy) / range))
+    inputControls.steering = screenRoll(gx, gy, params.tiltSensitivity).steering
   }
 
   cleanup() {
