@@ -331,7 +331,7 @@ debugFolder.add(params, 'damageHpPerG', 0.5, 15).step(0.125)
 debugFolder.add(vehicleParams, 'crashG', 0, 20).step(0.1).listen()
 debugFolder.add(params, 'recordLaps')
 debugFolder.add(params, 'throttleInput', -1, 1).step(0.01)
-debugFolder.add(params, 'autoThrottle', 0, 1).step(0.05)
+const autoThrottleController = debugFolder.add(params, 'autoThrottle', 0, 1).step(0.05)
 debugFolder.add(params, 'runPhysics')
 debugFolder.add(params, 'physicsDebug').onChange((enabled) => window.setPhysicsDebug?.(enabled))
 debugFolder.add(params, 'fixedCamWobble', 0, 3).step(0.05)
@@ -507,6 +507,15 @@ tiltController.onChange((on) => {
   setHudToggleChecked('tilt', on)
   if (on) requestTiltPermission()
   else inputControls.steering = 0
+})
+
+setHudToggleChecked('auto-throttle', params.autoThrottle > 0)
+bindHudToggles('auto-throttle', (checked) => {
+  autoThrottleController.setValue(checked ? 1 : 0)
+  playToggleClick()
+})
+autoThrottleController.onChange((value) => {
+  setHudToggleChecked('auto-throttle', value > 0)
 })
 
 const guiSearchLi = document.createElement('li')

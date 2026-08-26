@@ -291,12 +291,14 @@ canvas {
     max-width: 280px;
 }
 
-#car-selection-tilt {
+#car-selection-tilt,
+#car-selection-auto-throttle {
     display: none;
 }
 
 @media (pointer: coarse) {
-    #car-selection-tilt {
+    #car-selection-tilt,
+    #car-selection-auto-throttle {
         display: flex;
     }
 }
@@ -1530,6 +1532,12 @@ body.replay-exporting .dg.ac {
     grid-template-columns: 2fr 1fr 2fr;
     grid-template-rows: 58px 76px;
     gap: 8px;
+    opacity: 1;
+    transition: opacity 0.6s ease;
+}
+
+#arrow-pad.is-dim {
+    opacity: 0.12;
 }
 
 #mobile-controls button {

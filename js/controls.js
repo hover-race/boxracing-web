@@ -85,6 +85,18 @@ class ControlsManager {
     const pad = document.getElementById('mobile-controls')
     if (!pad) return
     pad.addEventListener('contextmenu', (e) => e.preventDefault())
+    const arrowPad = document.getElementById('arrow-pad')
+    const PAD_DIM_MS = 3000
+    const padHeld = () => this.pad.up || this.pad.down || this.pad.left || this.pad.right
+    const wakeArrows = () => {
+      arrowPad.classList.remove('is-dim')
+      clearTimeout(this._padDimTimer)
+    }
+    const scheduleDimArrows = () => {
+      if (padHeld()) return
+      clearTimeout(this._padDimTimer)
+      this._padDimTimer = setTimeout(() => arrowPad.classList.add('is-dim'), PAD_DIM_MS)
+    }
 
     const syncPad = () => {
       inputControls.throttle = this.pad.up ? 1 : 0
@@ -106,6 +118,10 @@ class ControlsManager {
     const setPad = (dir, down, button) => {
       this.pad[dir] = down
       button.classList.toggle('is-down', down)
+      if (dir !== 'handbrake') {
+        if (down) wakeArrows()
+        else scheduleDimArrows()
+      }
       syncPad()
     }
 
@@ -119,6 +135,7 @@ class ControlsManager {
       button.addEventListener('pointerup', () => setPad(dir, false, button))
       button.addEventListener('pointercancel', () => setPad(dir, false, button))
     }
+    scheduleDimArrows()
   }
   
   setupTiltControls() {
