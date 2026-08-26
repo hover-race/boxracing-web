@@ -344,7 +344,6 @@ class CheckpointManager {
       }
     }
 
-    this.showLapCompletionMessage(isNewBest, lastLapTime);
     this.currentLapStartTime = performance.now();
   }
 
@@ -382,7 +381,6 @@ class CheckpointManager {
     if (racer.finished) return;
     if (racer.checkpointProgress === 1) {
       racer.checkpointProgress = 2;
-      if (racer.isPlayer) this.showCheckpointMessage();
     }
   }
 
@@ -440,75 +438,6 @@ class CheckpointManager {
       row.append(position, name, time);
       this.finishStandingsElement.appendChild(row);
     }
-  }
-
-  showLapCompletionMessage(isNewBest, lastLapTime) {
-    let messageElement = document.getElementById('lap-completion-message');
-    if (!messageElement) {
-      messageElement = document.createElement('div');
-      messageElement.id = 'lap-completion-message';
-      messageElement.style.position = 'fixed';
-      messageElement.style.top = '50%';
-      messageElement.style.left = '50%';
-      messageElement.style.transform = 'translate(-50%, -50%)';
-      messageElement.style.color = 'white';
-      messageElement.style.fontFamily = 'monospace';
-      messageElement.style.fontSize = '28px';
-      messageElement.style.fontWeight = 'bold';
-      messageElement.style.textAlign = 'center';
-      messageElement.style.background = 'rgba(0, 0, 0, 0.7)';
-      messageElement.style.padding = '20px 30px';
-      messageElement.style.borderRadius = '10px';
-      messageElement.style.zIndex = '2000';
-      messageElement.style.opacity = '0';
-      messageElement.style.transition = 'opacity 0.5s ease';
-      document.body.appendChild(messageElement);
-    }
-
-    if (isNewBest) {
-      messageElement.innerHTML = `🏆 NEW BEST LAP! 🏆<br>${this.formatTime(lastLapTime)}`;
-      messageElement.style.color = '#00ff00';
-    } else {
-      messageElement.innerHTML = `✅ LAP COMPLETE!<br>${this.formatTime(lastLapTime)}`;
-      messageElement.style.color = 'white';
-    }
-
-    messageElement.style.opacity = '1';
-    clearTimeout(this.messageTimeout);
-    this.messageTimeout = setTimeout(() => {
-      messageElement.style.opacity = '0';
-    }, 3000);
-  }
-
-  showCheckpointMessage() {
-    let messageElement = document.getElementById('checkpoint-message');
-    if (!messageElement) {
-      messageElement = document.createElement('div');
-      messageElement.id = 'checkpoint-message';
-      messageElement.style.position = 'fixed';
-      messageElement.style.top = '60%';
-      messageElement.style.left = '50%';
-      messageElement.style.transform = 'translate(-50%, -50%)';
-      messageElement.style.color = '#0088ff';
-      messageElement.style.fontFamily = 'monospace';
-      messageElement.style.fontSize = '24px';
-      messageElement.style.fontWeight = 'bold';
-      messageElement.style.textAlign = 'center';
-      messageElement.style.background = 'rgba(0, 0, 0, 0.7)';
-      messageElement.style.padding = '15px 25px';
-      messageElement.style.borderRadius = '8px';
-      messageElement.style.zIndex = '1900';
-      messageElement.style.opacity = '0';
-      messageElement.style.transition = 'opacity 0.5s ease';
-      document.body.appendChild(messageElement);
-    }
-
-    messageElement.textContent = '🔵 CHECKPOINT PASSED!';
-    messageElement.style.opacity = '1';
-    clearTimeout(this.checkpointMessageTimeout);
-    this.checkpointMessageTimeout = setTimeout(() => {
-      messageElement.style.opacity = '0';
-    }, 2000);
   }
 
   setupFinishLine(cube) {
@@ -630,15 +559,8 @@ class CheckpointManager {
       clearInterval(this.updateTimerInterval);
     }
     off('raceStart', this.onRaceStart);
-    clearTimeout(this.messageTimeout);
-    clearTimeout(this.checkpointMessageTimeout);
 
     this.finishElement?.classList.remove('visible');
-
-    for (const id of ['lap-completion-message', 'checkpoint-message']) {
-      const element = document.getElementById(id);
-      element?.remove();
-    }
   }
 }
 
