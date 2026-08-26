@@ -79,7 +79,7 @@
       <canvas id="wheel" width="240" height="240"></canvas>
       <canvas id="grav" width="240" height="240"></canvas>
     </div>
-    <pre id="out" class="wait">waiting — tap Enable</pre>
+    <pre id="out"></pre>
     <script>
       // Mirrors js/controls.js applyScreenRoll / setupTiltControls
       const enable = document.getElementById('enable')
@@ -201,17 +201,39 @@
         })
       }
 
+      function reqType(EventC) {
+        if (typeof EventC === 'undefined') return 'missing'
+        if (typeof EventC.requestPermission !== 'function') return 'none'
+        return 'function'
+      }
+
+      function contextLines() {
+        return [
+          'url        ' + location.href,
+          'secure     ' + String(window.isSecureContext),
+          'motion     ' + typeof DeviceMotionEvent,
+          'motion.req ' + reqType(window.DeviceMotionEvent),
+          'orient     ' + typeof DeviceOrientationEvent,
+          'orient.req ' + reqType(window.DeviceOrientationEvent),
+        ].join('\n')
+      }
+
+      function show(kind, extra) {
+        out.className = kind
+        out.textContent = [contextLines(), extra].filter(Boolean).join('\n\n')
+      }
+
       function listen() {
         window.addEventListener('devicemotion', onMotion)
         window.addEventListener('deviceorientation', onOrientation)
         enable.disabled = true
         enable.textContent = 'Listening'
-        out.className = 'wait'
-        out.textContent = 'listening — no events yet (needs a phone, https or localhost)'
+        show('wait', 'listening — tilt the phone')
         setTimeout(() => {
           if (last) return
-          out.className = 'no'
-          out.textContent = 'no sensor events. desktop browsers usually send nothing. open this page on a phone.'
+          show('no', window.isSecureContext
+            ? 'no sensor events. if this is a phone, check iOS Settings → Safari → Motion & Orientation Access.'
+            : 'no sensor events. LAN http is not a secure context, so the phone will not send motion/orientation (iOS will not even expose requestPermission). use https:// via ./run-https.sh, then tap Enable.')
         }, 1500)
       }
 
@@ -224,15 +246,18 @@
         ask(window.DeviceMotionEvent)
         ask(window.DeviceOrientationEvent)
         if (!pending.length) {
+          if (!window.isSecureContext) {
+            show('no', 'no requestPermission API because this origin is not secure. ./run-https.sh then open the https URL on the phone.')
+            return
+          }
           listen()
           return
         }
         Promise.all(pending).then((states) => {
-          out.textContent = 'permission  ' + states.join(', ')
           if (states.some((state) => state === 'granted')) listen()
           else {
-            out.className = 'no'
             enable.disabled = false
+            show('no', 'permission  ' + states.join(', '))
           }
         })
       }
@@ -244,6 +269,8 @@
       enable.addEventListener('click', requestPermission)
       drawWheel(0, 0)
       drawGrav(0, -1)
+      if (window.isSecureContext) show('wait', 'tap Enable (iOS needs this gesture for permission)')
+      else show('no', 'LAN http cannot read sensors. run ./run-https.sh and open the https URL on the phone (accept the cert warning), then tap Enable.')
     </script>
   </body>
 </html>
