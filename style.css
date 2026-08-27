@@ -534,21 +534,16 @@ canvas {
 }
 
 .race-hud-time {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    display: flex;
     align-items: baseline;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    white-space: nowrap;
 }
 
 .lap-time-whole {
-    text-align: right;
-}
-
-.lap-time-dot {
-    padding: 0 1px;
-}
-
-.lap-time-frac {
-    text-align: left;
+    display: inline-flex;
+    align-items: baseline;
 }
 
 #lap-time-whole,
