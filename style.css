@@ -1108,7 +1108,8 @@ body.replay-exporting .dg.ac {
     color: #fff;
 }
 
-.v-toggle-label svg {
+.v-toggle-label svg,
+.v-toggle-label .steering-wheel {
     display: block;
     width: calc(20px * var(--toggle-scale));
     height: calc(20px * var(--toggle-scale));
@@ -1239,10 +1240,10 @@ body.replay-exporting .dg.ac {
 #input-steer {
     width: var(--input-steer-size);
     height: var(--input-steer-size);
-    color: #f4f4f4;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.55));
 }
 
-#input-steer svg {
+#input-steer .steering-wheel {
     display: block;
     width: 100%;
     height: 100%;

@@ -447,30 +447,42 @@
         right: auto;
       }
 
-      #ui-test-tachometer {
+      #ui-test-tach-cluster {
         position: fixed;
         left: 24px;
         bottom: 24px;
         z-index: 10;
+        display: flex;
+        align-items: flex-end;
+        gap: calc(10px * var(--hud-scale, 1));
       }
     </style>
   </head>
   <body class="ui-test-body">
-    <div id="ui-test-tachometer" class="tachometer" aria-label="Tachometer">
+    <div id="ui-test-tach-cluster">
+      <div id="ui-test-tachometer" class="tachometer" aria-label="Tachometer">
         <svg viewBox="0 0 220 220" role="img">
-        <circle class="tach-face" cx="110" cy="110" r="104" />
-        <circle class="tach-inner-ring" cx="110" cy="110" r="94" />
-        <path class="tach-redline-arc" data-tach-redline />
-        <g data-tach-ticks></g>
-        <g data-tach-numbers></g>
-        <text class="tach-label" x="110" y="82">RPM × 1000</text>
-        <text class="tach-gear" data-tach-gear x="110" y="153">1</text>
-        <g class="tach-needle-group" data-tach-needle>
-          <path class="tach-needle-outer" d="M 110 118 L 110 34" />
-          <path class="tach-needle-inner" d="M 110 116 L 110 38" />
-          <circle class="tach-hub" cx="110" cy="110" r="9" />
-        </g>
-      </svg>
+          <circle class="tach-face" cx="110" cy="110" r="104" />
+          <circle class="tach-inner-ring" cx="110" cy="110" r="94" />
+          <path class="tach-redline-arc" data-tach-redline />
+          <g data-tach-ticks></g>
+          <g data-tach-numbers></g>
+          <text class="tach-label" x="110" y="82">RPM × 1000</text>
+          <text class="tach-gear" data-tach-gear x="110" y="153">1</text>
+          <g class="tach-needle-group" data-tach-needle>
+            <path class="tach-needle-outer" d="M 110 118 L 110 34" />
+            <path class="tach-needle-inner" d="M 110 116 L 110 38" />
+            <circle class="tach-hub" cx="110" cy="110" r="9" />
+          </g>
+        </svg>
+      </div>
+      <div id="input-hud" aria-label="Inputs">
+        <div id="input-steer">
+          <img class="steering-wheel" src="svg/steering-wheel.svg" alt="" aria-hidden="true">
+        </div>
+        <div class="input-pedal throttle"><span></span></div>
+        <div class="input-pedal brake"><span></span></div>
+      </div>
     </div>
 
     <div id="race-hud">
@@ -548,20 +560,7 @@
       <label id="auto-steer-toggle" class="v-toggle auto-steer-toggle" data-help="Auto Drive">
         <input id="auto-steer-toggle-input" data-hud-toggle="auto-steer" type="checkbox" />
         <span class="v-toggle-label">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <mask id="as-wheel-cut">
-              <circle cx="12" cy="12" r="11" fill="#fff"/>
-              <circle cx="12" cy="12" r="7.4" fill="#000"/>
-              <rect x="3.2" y="10.4" width="17.6" height="3.2" rx="0.6" fill="#fff"/>
-              <rect x="10.4" y="12" width="3.2" height="8.8" rx="0.6" fill="#fff"/>
-              <circle cx="12" cy="12" r="4.1" fill="#fff"/>
-              <circle cx="12" cy="12" r="1.7" fill="#000"/>
-              <circle cx="6.1" cy="12" r="1" fill="#000"/>
-              <circle cx="17.9" cy="12" r="1" fill="#000"/>
-              <circle cx="12" cy="17.9" r="1" fill="#000"/>
-            </mask>
-            <rect width="24" height="24" fill="currentColor" mask="url(#as-wheel-cut)"/>
-          </svg>
+          <img class="steering-wheel" src="svg/steering-wheel.svg" alt="" aria-hidden="true">
         </span>
         <span class="v-toggle-track"><span class="v-toggle-thumb"></span></span>
       </label>
@@ -794,6 +793,23 @@
       let toastTimeoutId = null
       let clickCtx = null
       const tachDriverStart = performance.now()
+      const inputDriverStart = performance.now()
+      const inputSteerSvg = document.querySelector('#input-steer .steering-wheel')
+      const inputThrottle = document.querySelector('#input-hud .input-pedal.throttle span')
+      const inputBrake = document.querySelector('#input-hud .input-pedal.brake span')
+
+      function driveInputs(now) {
+        const t = (now - inputDriverStart) / 1000
+        const steer = Math.sin(t * 0.65) * 0.9
+        const throttle = Math.max(0, Math.sin(t * 1.05) * 0.45 + 0.4)
+        const brake = Math.max(0, Math.sin(t * 2.1 + 0.8) * 0.55)
+        inputSteerSvg.style.transform = `rotate(${-steer * 90}deg)`
+        inputThrottle.style.transform = `scaleY(${throttle})`
+        inputBrake.style.transform = `scaleY(${brake})`
+        requestAnimationFrame(driveInputs)
+      }
+
+      requestAnimationFrame(driveInputs)
 
       function driveTachometer(now) {
         const elapsed = (now - tachDriverStart) / 1000

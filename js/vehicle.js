@@ -132,7 +132,7 @@ class Vehicle {
 
     this.speedometer = document.getElementById('speedometer')
     this.tachometer = new Tachometer(document.getElementById('tachometer'), carModel.redline)
-    this.inputSteer = document.getElementById('input-steer')?.querySelector('svg')
+    this.inputSteer = document.getElementById('input-steer')?.querySelector('.steering-wheel')
     this.inputThrottle = document.querySelector('#input-hud .input-pedal.throttle span')
     this.inputBrake = document.querySelector('#input-hud .input-pedal.brake span')
     this.accelerometerDot = document.getElementById('accel-dot')
