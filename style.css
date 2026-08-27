@@ -1103,9 +1103,20 @@ body.replay-exporting .dg.ac {
     background: #fff;
 }
 
-.sound-toggle .v-toggle-label,
-.auto-steer-toggle .v-toggle-label {
+.sound-toggle .v-toggle-label {
     color: #fff;
+}
+
+.auto-steer-toggle .v-toggle-label {
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.auto-steer-toggle input:checked + .v-toggle-label {
+    color: #fff;
+}
+
+.auto-steer-toggle.is-steering input:checked + .v-toggle-label {
+    color: #3d8f46;
 }
 
 .v-toggle-label svg,
@@ -1113,10 +1124,6 @@ body.replay-exporting .dg.ac {
     display: block;
     width: calc(20px * var(--toggle-scale));
     height: calc(20px * var(--toggle-scale));
-}
-
-.auto-steer-toggle input:checked + .v-toggle-label {
-    color: #3d8f46;
 }
 
 #hud-toggles {

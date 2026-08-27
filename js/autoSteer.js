@@ -84,7 +84,7 @@ class AutoSteer {
     }
     const lap = this.measureLateral(car);
     this._logFrame(car, lap);
-    vehicleParams.autoSteerAssist = 0;
+    this._setAssist(0);
     return manualSteering;
   }
 
@@ -105,6 +105,13 @@ class AutoSteer {
   _setAssist(amount) {
     this.assist = amount;
     vehicleParams.autoSteerAssist = amount;
+    this._syncToggleIcon();
+  }
+
+  _syncToggleIcon() {
+    const toggle = document.getElementById('auto-steer-toggle');
+    if (!toggle) return;
+    toggle.classList.toggle('is-steering', params.autoSteer && this.assist > 0);
   }
 
   // Tangent/normal at u from three curve samples spaced `spacingM` apart (chord prev→next).

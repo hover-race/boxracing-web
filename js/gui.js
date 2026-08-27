@@ -488,14 +488,24 @@ tcController.onChange(syncDriverAidsToggle)
 spinPreventionController.onChange(syncDriverAidsToggle)
 steeringAssistController.onChange(syncDriverAidsToggle)
 
+function updateAutoSteerToggleState() {
+  const toggle = document.getElementById('auto-steer-toggle')
+  if (!toggle) return
+  toggle.classList.remove('is-steering')
+}
+
+window.updateAutoSteerToggleState = updateAutoSteerToggleState
+
 setHudToggleChecked('auto-steer', params.autoSteer)
 bindHudToggles('auto-steer', (checked) => {
   autoSteerController.setValue(checked)
   playToggleClick()
   showHudToast(checked ? 'Auto Drive ON' : 'Auto Drive OFF')
+  updateAutoSteerToggleState()
 })
 autoSteerController.onChange((enabled) => {
   setHudToggleChecked('auto-steer', enabled)
+  updateAutoSteerToggleState()
 })
 
 setHudToggleChecked('tilt', params.tiltSteering)
