@@ -1119,6 +1119,18 @@ body.replay-exporting .dg.ac {
     color: #3d8f46;
 }
 
+#tc-toggle .v-toggle-label {
+    color: rgba(255, 255, 255, 0.35);
+}
+
+#tc-toggle input:checked + .v-toggle-label {
+    color: #fff;
+}
+
+#tc-toggle.is-intervening input:checked + .v-toggle-label {
+    color: #ffb300;
+}
+
 .v-toggle-label svg,
 .v-toggle-label .steering-wheel {
     display: block;
@@ -1365,49 +1377,6 @@ body.replay-exporting .dg.ac {
     font-size: 28px;
     font-weight: 700;
     text-anchor: middle;
-}
-
-#tcs-indicator,
-#esc-indicator {
-    width: calc(40px * var(--hud-scale));
-    height: calc(40px * var(--hud-scale));
-    border-radius: 50%;
-    background: transparent;
-    font-family: monospace;
-    font-size: 16px;
-    font-weight: 900;
-    letter-spacing: 0.05em;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    opacity: 0;
-    visibility: hidden;
-    box-sizing: border-box;
-}
-
-#tcs-indicator {
-    border: 3px solid #ffb300;
-    color: #ffb300;
-}
-
-#esc-indicator {
-    border: 3px solid #ff3b30;
-    color: #ff3b30;
-}
-
-#tcs-indicator.active,
-#esc-indicator.active {
-    opacity: 1;
-    visibility: visible;
-    animation: tcs-blink 0.5s steps(1, end) infinite;
-}
-
-@keyframes tcs-blink {
-    0% { opacity: 1; }
-    49.999% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 0.5; }
 }
 
 #controls {

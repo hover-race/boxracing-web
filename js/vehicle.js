@@ -52,10 +52,6 @@ class Vehicle {
   escBrakeBL = 0
   escBrakeBR = 0
   stabilityActuation = null
-  tcsWasActive = false
-  escWasActive = false
-  tcsLightOffTimeoutId = null
-  escLightOffTimeoutId = null
   _smoothLongG = 0
   _smoothLatG = 0
   currentG = 0
@@ -153,8 +149,7 @@ class Vehicle {
     this._pushTintBackups = null
     this._pushTintAmount = 0
     this._desiredPushTint = 0
-    this.tcsIndicator = document.getElementById('tcs-indicator')
-    this.escIndicator = document.getElementById('esc-indicator')
+    this.tcToggle = document.getElementById('tc-toggle')
 
     // Initialize wheels array after adding wheels to vehicle
     this.wheels = this.wheelMeshes.map((mesh, index) => {
@@ -176,27 +171,11 @@ class Vehicle {
     physics.carCollisionManager?.register(this)
   }
 
-  updateIndicatorOnActivation(indicator, enabled, activeNow, wasActiveProp, timeoutProp) {
-    if (!indicator) return
-    if (!enabled) {
-      indicator.classList.remove('active')
-      if (this[timeoutProp]) {
-        clearTimeout(this[timeoutProp])
-        this[timeoutProp] = null
-      }
-      this[wasActiveProp] = false
-      return
-    }
-    if (activeNow && !this[wasActiveProp]) {
-      indicator.classList.add('active')
-      if (this[timeoutProp]) clearTimeout(this[timeoutProp])
-      this[timeoutProp] = setTimeout(() => {
-        indicator.classList.remove('active')
-        this[timeoutProp] = null
-      }, 2000)
-    }
-
-    this[wasActiveProp] = activeNow
+  updateTcToggle() {
+    if (!this.tcToggle) return
+    const enabled = params.spinPrevention && params.steeringAssist
+    const active = vehicleParams.spinAssistActive || vehicleParams.steerAssistActive
+    this.tcToggle.classList.toggle('is-intervening', enabled && active)
   }
 
   get chassis() {
@@ -352,13 +331,7 @@ class Vehicle {
     ) * (180 / Math.PI)
 
     this.applyStabilityControl(dt)
-    this.updateIndicatorOnActivation(
-      this.escIndicator,
-      params.spinPrevention,
-      vehicleParams.spinAssistActive,
-      'escWasActive',
-      'escLightOffTimeoutId'
-    )
+    this.updateTcToggle()
 
     this.speedometer.textContent = `${speed.toFixed(0)} mph`
     this.tachometer.update(this.gearbox.engineRpm, this.gearbox.getGearLabel())
@@ -880,10 +853,9 @@ class Vehicle {
     this.smoothPedalToward('pedalBrake', footBrakeInput)
     this.engineForce = this.maxEngineForce * this.pedalThrottle;
     this.applyStabilityActuation()
-    const tcsActive = this.applyTractionControl()
+    this.applyTractionControl()
     this.applyDriveForces()
     vehicleParams.curThrottle = this.maxEngineForce > 0 ? this.engineForce / this.maxEngineForce : 0
-    this.updateIndicatorOnActivation(this.tcsIndicator, params.tractionControl, tcsActive, 'tcsWasActive', 'tcsLightOffTimeoutId')
 
     this.applySteering(inputs)
     this.applySteeringAssist()

@@ -257,19 +257,6 @@
         gap: 8px;
       }
 
-      #esc-indicator,
-      #tcs-indicator {
-        position: static;
-        opacity: 1;
-        visibility: visible;
-      }
-
-      #tcs-indicator:not(.active),
-      #esc-indicator:not(.active) {
-        opacity: 0.35;
-        animation: none;
-      }
-
       .sound-toggle {
         display: flex;
         align-items: center;
@@ -592,8 +579,7 @@
         </label>
       </div>
 
-      <div id="esc-indicator">ESC</div>
-      <div id="tcs-indicator">TCS</div>
+      <div id="hp-bar"><div id="hp-fill"></div></div>
     </div>
 
     <div class="font-panel">
@@ -794,8 +780,7 @@
       const tcToast = document.getElementById('tc-toast')
       const escCheckbox = document.getElementById('esc-active')
       const tireSoundCheckbox = document.getElementById('tire-sound-active')
-      const tcsIndicator = document.getElementById('tcs-indicator')
-      const escIndicator = document.getElementById('esc-indicator')
+      const tcToggle = document.getElementById('tc-toggle')
       const tachometer = new Tachometer(document.getElementById('ui-test-tachometer'), 6500)
 
       const listener = new THREE.AudioListener()
@@ -875,7 +860,8 @@
       function setTcEnabled(enabled) {
         tcRocker.checked = enabled
         tcVToggle.checked = enabled
-        tcsIndicator.classList.toggle('active', enabled)
+        tcToggle.querySelector('input').checked = enabled
+        if (!enabled) tcToggle.classList.remove('is-intervening')
         playToggleClick()
         showTcToast(enabled)
       }
@@ -889,7 +875,7 @@
       })
 
       escCheckbox.addEventListener('change', () => {
-        escIndicator.classList.toggle('active', escCheckbox.checked)
+        tcToggle.classList.toggle('is-intervening', escCheckbox.checked && tcRocker.checked)
       })
 
       tireSoundCheckbox.addEventListener('change', () => {
