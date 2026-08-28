@@ -1376,8 +1376,10 @@ body.replay-exporting .dg.ac {
     dominant-baseline: middle;
 }
 
-.tachometer .tach-speed-line {
-    dominant-baseline: middle;
+.tachometer .tach-speed-panel {
+    fill: rgba(6, 6, 6, 0.97);
+    stroke: #4a4a4a;
+    stroke-width: 2;
 }
 
 .tachometer .tach-speed {
@@ -1400,24 +1402,24 @@ body.replay-exporting .dg.ac {
 
 .tachometer2 {
     position: relative;
+    container-type: inline-size;
 }
 
 .tachometer2 .tach2-panel {
     position: absolute;
     left: 50%;
-    bottom: -1%;
+    bottom: -10%;
     z-index: 2;
     display: flex;
-    align-items: baseline;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    gap: 3%;
     box-sizing: border-box;
-    width: 65%;
-    height: 31%;
-    padding: 4% 5% 3%;
+    width: 48%;
+    height: 34%;
+    padding: 4% 6%;
     border: 1px solid #4a4a4a;
-    border-radius: 5%;
-    font-size: 15.5%;
+    border-radius: 10%;
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 35%),
         rgba(6, 6, 6, 0.97);
@@ -1428,13 +1430,43 @@ body.replay-exporting .dg.ac {
     transform: translateX(-50%);
 }
 
+.tachometer2 .tach2-gear-readout {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.3em;
+    color: #ffdc46;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 6cqw;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.tachometer2 .tach2-gear-label {
+    color: #969696;
+    font-size: 0.5em;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.tachometer2 .tach2-speed-readout {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.15em;
+    width: 100%;
+    font-size: 12cqw;
+    line-height: 1;
+}
+
 .tachometer2 .tach2-speed-value {
     color: #fff;
     font-family: 'JetBrains Mono', monospace;
     font-size: 1em;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-    line-height: 1;
+    width: 3ch;
+    text-align: right;
 }
 
 .tachometer2 .tach2-speed-unit {
@@ -1442,7 +1474,7 @@ body.replay-exporting .dg.ac {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.32em;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     line-height: 1;
     text-transform: uppercase;
 }
