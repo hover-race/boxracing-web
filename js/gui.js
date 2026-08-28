@@ -119,6 +119,7 @@ const params = new RememberedParams({
   autoThrottle: 0,
   runPhysics: true,
   physicsDebug: false,
+  debugUi: false,
   fixedCamWobble: 1,
   autoStopPhysicsAfterSec: 0,
   debugSpawnU: -1,
@@ -323,6 +324,11 @@ carCollisionFolder.add(carCollisionDebug, 'depth', 0, 1).step(0.001).listen()
 carCollisionFolder.add(carCollisionDebug, 'branch', ['none', 'speedDiffGray', 'oppositeDirSkip', 'softPushRear']).listen()
 
 const debugFolder = gui.addFolder('Debug')
+function applyDebugUi(enabled) {
+  document.body.classList.toggle('debug-ui', enabled)
+}
+debugFolder.add(params, 'debugUi').onChange(applyDebugUi)
+applyDebugUi(params.debugUi)
 debugFolder.add(params, 'explosionEnabled')
 debugFolder.add(params, 'explodeGSmoothing', 0.02, 1).step(0.01)
 debugFolder.add(params, 'carMaxHp', 10, 500).step(10)

@@ -904,6 +904,12 @@ body.replay-exporting .dg.ac {
     z-index: 1;
 }
 
+body:not(.debug-ui) #fps-counter,
+body:not(.debug-ui) #physics-timer,
+body:not(.debug-ui) #accelerometer {
+    display: none;
+}
+
 #fps-counter {
     font-size: 14px;
     opacity: 0.7;
@@ -1240,6 +1246,7 @@ body.replay-exporting .dg.ac {
     align-items: flex-end;
     gap: calc(10px * var(--hud-scale));
     margin-top: calc(6px * var(--hud-scale));
+    padding-bottom: calc(28px * var(--hud-scale));
 }
 
 #tach2-cluster {
