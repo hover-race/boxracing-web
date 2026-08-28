@@ -487,10 +487,11 @@ canvas {
 #race-hud {
     position: fixed;
     top: var(--hud-inset);
-    right: var(--hud-inset);
+    left: calc(100% - var(--hud-inset) - var(--race-hud-width));
     z-index: 1000;
     box-sizing: border-box;
     width: var(--race-hud-width);
+    max-height: 72vh;
     overflow: hidden;
     text-align: right;
     padding: var(--race-hud-pad-y) var(--race-hud-pad-x);
@@ -502,13 +503,23 @@ canvas {
     font-family: 'JetBrains Mono', monospace;
     font-style: italic;
     font-weight: 700;
-    pointer-events: none;
+    pointer-events: auto;
+    cursor: pointer;
+    transition:
+        left 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        width 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        height 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        max-height 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        padding 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        background-color 0.38s ease,
+        border-radius 0.38s ease;
 }
 
 #race-hud-position {
     font-size: var(--race-hud-pos-size);
     line-height: 1;
     text-shadow: 0 0 14px rgba(255, 255, 255, 0.35);
+    transition: font-size 0.38s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 #race-hud-player-name {
@@ -518,6 +529,7 @@ canvas {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transition: font-size 0.38s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .race-hud-row {
@@ -525,6 +537,7 @@ canvas {
     font-size: var(--race-hud-row-size);
     letter-spacing: 0.04em;
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+    transition: font-size 0.38s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .race-hud-label {
@@ -562,7 +575,7 @@ canvas {
 
 .race-hud-racer {
     display: grid;
-    grid-template-columns: 2.1em 1fr 5.2em;
+    grid-template-columns: 2.1em 1fr 0fr 0fr 0fr 5.2em;
     gap: min(0.45vw, 0.5vh);
     align-items: baseline;
     margin-top: min(0.35vw, 0.4vh);
@@ -570,6 +583,32 @@ canvas {
     letter-spacing: 0.03em;
     color: rgba(255, 255, 255, 0.72);
     text-shadow: none;
+    transition:
+        grid-template-columns 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        font-size 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        margin 0.38s ease;
+}
+
+.race-hud-stat {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    text-align: right;
+    white-space: nowrap;
+    transition: opacity 0.22s ease 0.12s;
+}
+
+.race-hud-standings-head {
+    display: grid;
+    max-height: 0;
+    margin: 0;
+    overflow: hidden;
+    opacity: 0;
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 0.08em;
+    font-size: 0.7em;
+    transition: opacity 0.22s ease, max-height 0.38s ease, margin 0.38s ease;
 }
 
 .race-hud-racer.is-player {
@@ -597,10 +636,64 @@ canvas {
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
 }
 
+#race-hud.is-expanded {
+    left: var(--hud-inset);
+    width: calc(100% - 2 * var(--hud-inset));
+    height: calc(100% - 2 * var(--hud-inset));
+    max-height: calc(100% - 2 * var(--hud-inset));
+    text-align: left;
+    padding: min(2.2vw, 2.6vh) min(2.4vw, 2.8vh);
+    background: rgba(8, 0, 18, 0.92);
+    z-index: 2000;
+}
+
+#race-hud.is-expanded #race-hud-summary {
+    display: none;
+}
+
+#race-hud.is-expanded #race-hud-expanded {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+#race-hud.is-expanded #race-hud-position {
+    font-size: min(5vw, 6vh);
+}
+
+#race-hud.is-expanded #race-hud-player-name,
+#race-hud.is-expanded .race-hud-row {
+    font-size: min(2.4vw, 2.8vh);
+}
+
+#race-hud.is-expanded #race-hud-standings {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    margin-top: min(1.4vw, 1.6vh);
+    padding-top: min(1.2vw, 1.4vh);
+}
+
+#race-hud.is-expanded .race-hud-standings-head,
+#race-hud.is-expanded .race-hud-stat {
+    opacity: 1;
+}
+
+#race-hud.is-expanded .race-hud-standings-head {
+    max-height: 3em;
+    margin-top: 0;
+    margin-bottom: min(0.6vw, 0.7vh);
+}
+
+#race-hud.is-expanded .race-hud-racer {
+    grid-template-columns: 3.2em minmax(8em, 1fr) 4.5em 6.5em 5.5em 6em;
+    margin-top: min(0.8vw, 0.9vh);
+    font-size: min(2.2vw, 2.6vh);
+}
+
 @media (max-width: 800px) {
     #race-hud {
-        pointer-events: auto;
-        cursor: pointer;
         width: auto;
         min-width: 0;
         max-width: min(96vw, 320px);
@@ -615,18 +708,11 @@ canvas {
         display: none;
     }
 
-    #race-hud.is-expanded #race-hud-summary {
-        display: none;
-    }
-
-    #race-hud.is-expanded #race-hud-expanded {
-        display: block;
-    }
-
     #race-hud.is-expanded {
-        width: var(--race-hud-width);
-        max-width: min(96vw, 320px);
-        padding: var(--race-hud-pad-y) var(--race-hud-pad-x);
+        left: var(--hud-inset);
+        width: calc(100% - 2 * var(--hud-inset));
+        max-width: none;
+        padding: min(2.2vw, 2.6vh) min(2.4vw, 2.8vh);
     }
 }
 
@@ -1388,7 +1474,7 @@ body:not(.debug-ui) #accelerometer {
 .tach-panel {
     position: absolute;
     left: 50%;
-    bottom: -12%;
+    bottom: 7%;
     z-index: 2;
     display: flex;
     flex-direction: column;
