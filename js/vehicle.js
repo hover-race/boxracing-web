@@ -126,7 +126,6 @@ class Vehicle {
       wheelRadiusBack,
     )
 
-    this.speedometer = document.getElementById('speedometer')
     this.tachometer = new Tachometer(document.getElementById('tachometer'), carModel.redline)
     this.inputSteer = document.getElementById('input-steer')?.querySelector('.steering-wheel')
     this.inputThrottle = document.querySelector('#input-hud .input-pedal.throttle span')
@@ -333,8 +332,7 @@ class Vehicle {
     this.applyStabilityControl(dt)
     this.updateTcToggle()
 
-    this.speedometer.textContent = `${speed.toFixed(0)} mph`
-    this.tachometer.update(this.gearbox.engineRpm, this.gearbox.getGearLabel())
+    this.tachometer.update(this.gearbox.engineRpm, this.gearbox.getGearLabel(), speed)
     this.updateInputHud(inputs)
 
     // Update speed display in dat.gui

@@ -15,6 +15,7 @@ class Tachometer {
   constructor(element, redline) {
     this.needle = element.querySelector('[data-tach-needle]')
     this.gear = element.querySelector('[data-tach-gear]')
+    this.speedValue = element.querySelector('[data-tach-speed]')
     const ticks = element.querySelector('[data-tach-ticks]')
     const numbers = element.querySelector('[data-tach-numbers]')
 
@@ -50,11 +51,14 @@ class Tachometer {
     )
   }
 
-  update(rpm, gear) {
+  update(rpm, gear, speedMph = 0) {
     const clampedRpm = Math.max(0, Math.min(MAX_RPM, rpm))
     const angle = MIN_ANGLE + (clampedRpm / MAX_RPM) * (MAX_ANGLE - MIN_ANGLE)
     this.needle.style.transform = `rotate(${angle}deg)`
     this.gear.textContent = gear
+    if (this.speedValue) {
+      this.speedValue.textContent = Math.abs(speedMph).toFixed(0)
+    }
   }
 }
 
