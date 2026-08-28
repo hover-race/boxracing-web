@@ -3,29 +3,19 @@ const MAX_ANGLE = 135
 const MAX_RPM = 8000
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
-function renderTachometer(element, panelVariant) {
-  const readout = panelVariant
+// The gear digit lives on the dial face by default; the panel variant moves it
+// into the readout so the panel can clear the 0 and 8 dial numbers.
+function renderTachometer(element, gearInPanel) {
+  const dialGear = gearInPanel
     ? ''
-    : `
-      <text class="tach-gear" data-tach-gear x="110" y="140">1</text>
-      <rect class="tach-speed-panel" x="54" y="166" width="116" height="48" rx="8" />
-      <text class="tach-speed" data-tach-speed-value x="136" y="194" text-anchor="end">0</text>
-      <text class="tach-speed-unit" x="140" y="196">mph</text>
-    `
+    : '<text class="tach-gear" data-tach-gear x="110" y="140">1</text>'
 
-  const panel = panelVariant
+  const panelGear = gearInPanel
     ? `
-      <div class="tach2-panel" aria-label="Gear and speed">
-        <div class="tach2-gear-readout">
-          <span class="tach2-gear-value" data-tach-gear>1</span>
-          <span class="tach2-gear-label">gear</span>
-        </div>
-        <div class="tach2-speed-readout">
-          <span class="tach2-speed-value" data-tach-speed-value>0</span>
-          <span class="tach2-speed-unit">mph</span>
-        </div>
-      </div>
-    `
+        <div class="tach-gear-row">
+          <span class="tach-gear-value" data-tach-gear>1</span>
+          <span class="tach-gear-label">gear</span>
+        </div>`
     : ''
 
   element.innerHTML = `
@@ -36,14 +26,19 @@ function renderTachometer(element, panelVariant) {
       <g data-tach-ticks></g>
       <g data-tach-numbers></g>
       <text class="tach-label" x="110" y="82">RPM × 1000</text>
-      ${readout}
+      ${dialGear}
       <g class="tach-needle-group" data-tach-needle>
         <path class="tach-needle-outer" d="M 110 118 L 110 34" />
         <path class="tach-needle-inner" d="M 110 116 L 110 38" />
         <circle class="tach-hub" cx="110" cy="110" r="9" />
       </g>
     </svg>
-    ${panel}
+    <div class="tach-panel" aria-label="Speed">${panelGear}
+      <div class="tach-speed-row">
+        <span class="tach-speed-value" data-tach-speed-value>0</span>
+        <span class="tach-speed-unit">mph</span>
+      </div>
+    </div>
   `
 }
 
@@ -56,8 +51,8 @@ function point(radius, angle) {
 }
 
 class Tachometer {
-  constructor(element, redline, panelVariant = false) {
-    renderTachometer(element, panelVariant)
+  constructor(element, redline, gearInPanel = false) {
+    renderTachometer(element, gearInPanel)
     this.needle = element.querySelector('[data-tach-needle]')
     this.gear = element.querySelector('[data-tach-gear]')
     this.speedValue = element.querySelector('[data-tach-speed-value]')

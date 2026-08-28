@@ -1226,6 +1226,8 @@ body.replay-exporting .dg.ac {
 }
 
 .tachometer {
+    position: relative;
+    container-type: inline-size;
     width: calc(220px * var(--hud-scale));
     height: calc(220px * var(--hud-scale));
     color: #f4f4f4;
@@ -1376,50 +1378,20 @@ body.replay-exporting .dg.ac {
     dominant-baseline: middle;
 }
 
-.tachometer .tach-speed-panel {
-    fill: rgba(6, 6, 6, 0.97);
-    stroke: #4a4a4a;
-    stroke-width: 2;
-}
-
-.tachometer .tach-speed {
-    fill: #fff;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 38px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    dominant-baseline: middle;
-}
-
-.tachometer .tach-speed-unit {
-    fill: #969696;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    dominant-baseline: middle;
-}
-
-.tachometer2 {
-    position: relative;
-    container-type: inline-size;
-}
-
-.tachometer2 .tach2-panel {
+.tach-panel {
     position: absolute;
     left: 50%;
-    bottom: -10%;
+    bottom: -6%;
     z-index: 2;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    width: 48%;
-    height: 34%;
-    padding: 4% 6%;
+    width: 58%;
+    padding: 5% 7%;
     border: 1px solid #4a4a4a;
-    border-radius: 10%;
+    border-radius: 10%/22%;
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 35%),
         rgba(6, 6, 6, 0.97);
@@ -1430,7 +1402,7 @@ body.replay-exporting .dg.ac {
     transform: translateX(-50%);
 }
 
-.tachometer2 .tach2-gear-readout {
+.tach-gear-row {
     display: flex;
     align-items: baseline;
     justify-content: center;
@@ -1442,24 +1414,23 @@ body.replay-exporting .dg.ac {
     line-height: 1;
 }
 
-.tachometer2 .tach2-gear-label {
+.tach-gear-label {
     color: #969696;
     font-size: 0.5em;
     letter-spacing: 0.12em;
     text-transform: uppercase;
 }
 
-.tachometer2 .tach2-speed-readout {
+.tach-speed-row {
     display: flex;
     align-items: baseline;
     justify-content: center;
     gap: 0.15em;
-    width: 100%;
-    font-size: 12cqw;
+    font-size: 17cqw;
     line-height: 1;
 }
 
-.tachometer2 .tach2-speed-value {
+.tach-speed-value {
     color: #fff;
     font-family: 'JetBrains Mono', monospace;
     font-size: 1em;
@@ -1469,7 +1440,7 @@ body.replay-exporting .dg.ac {
     text-align: right;
 }
 
-.tachometer2 .tach2-speed-unit {
+.tach-speed-unit {
     color: #969696;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.32em;
@@ -1477,6 +1448,16 @@ body.replay-exporting .dg.ac {
     letter-spacing: 0.14em;
     line-height: 1;
     text-transform: uppercase;
+}
+
+.tachometer2 .tach-panel {
+    bottom: -5%;
+    width: 48%;
+    gap: 2%;
+}
+
+.tachometer2 .tach-speed-row {
+    font-size: 12cqw;
 }
 
 #controls {
