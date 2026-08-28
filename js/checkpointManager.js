@@ -75,10 +75,16 @@ class CheckpointManager {
     }
   }
 
-  registerRacer(vehicle, { isPlayer = false, name = 'Racer' } = {}) {
+  registerRacer(vehicle, { isPlayer = false, isRemote = false, name = 'Racer' } = {}) {
+    const existing = this.chassisToRacer.get(vehicle.chassis);
+    if (existing) {
+      existing.name = name;
+      return existing;
+    }
     const racer = {
       vehicle,
       isPlayer,
+      isRemote,
       name,
       checkpointProgress: 0,
       lapCount: 0,
@@ -94,6 +100,14 @@ class CheckpointManager {
     this.chassisToRacer.set(vehicle.chassis, racer);
     if (isPlayer) this.playerRacer = racer;
     return racer;
+  }
+
+  unregisterRacer(vehicle) {
+    const racer = this.chassisToRacer.get(vehicle.chassis);
+    if (!racer) return;
+    this.racers.splice(this.racers.indexOf(racer), 1);
+    this.chassisToRacer.delete(vehicle.chassis);
+    this.updateStandings();
   }
 
   racerForChassis(chassis) {
@@ -208,12 +222,21 @@ class CheckpointManager {
       racer.trackU = u;
       if (racer.gridFrac == null) racer.gridFrac = this.signedFrac(u);
 
-      if (racer.checkpointProgress === 0 || racer.lastFrac == null) {
+      if (racer.lastFrac == null) {
         racer.lastFrac = frac;
         continue;
       }
 
       const d = this.forwardDelta(racer.lastFrac, frac);
+      if (racer.isRemote && d > 0 && d <= maxStep) {
+        if (this.crossedGate(racer.lastFrac, frac, 0)) this.onFinishLineCross(racer);
+        if (this.crossedGate(racer.lastFrac, frac, this.splitFracs[2])) this.onCheckpointCross(racer);
+      }
+
+      if (racer.checkpointProgress === 0) {
+        racer.lastFrac = frac;
+        continue;
+      }
       if (d > 0 && d <= maxStep) {
         const next = this.splitFracs[racer.splitIndex % n];
         if (this.crossedGate(racer.lastFrac, frac, next)) {

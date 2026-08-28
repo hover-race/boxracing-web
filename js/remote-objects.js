@@ -32,6 +32,7 @@ class RemoteObjectManager {
           const car_id = this.carModels.has(objectState.car_id) ? objectState.car_id : 'mustang';
           const existingCar = this.remoteCars.get(compoundKey);
           if (existingCar && existingCar.car_id !== car_id) {
+            this.scene.checkpointManager.unregisterRacer(existingCar)
             existingCar.destroy();
             this.remoteCars.delete(compoundKey);
           }
@@ -39,15 +40,19 @@ class RemoteObjectManager {
           if (!this.remoteCars.has(compoundKey)) {
             console.log(`Creating a RemoteCar for peer ${peerId}, object ${objectId}`);
             const { definition, prefab } = this.carModels.get(car_id);
-            this.remoteCars.set(
-              compoundKey,
-              new RemoteCar(this.scene, prefab.clone(true), definition)
-            );
+            const remoteCar = new RemoteCar(this.scene, prefab.clone(true), definition)
+            this.remoteCars.set(compoundKey, remoteCar)
+            this.scene.checkpointManager.registerRacer(remoteCar, {
+              isRemote: true,
+              name: objectState.playerName || 'Racer',
+            })
           }
           
           // Update the car with the latest state
           const remoteCar = this.remoteCars.get(compoundKey);
           remoteCar.deserialize(objectState);
+          const racer = this.scene.checkpointManager.racerForChassis(remoteCar.chassis)
+          if (racer && remoteCar.playerName) racer.name = remoteCar.playerName
         }
       }
     }
@@ -74,8 +79,8 @@ class RemoteObjectManager {
   }
 
   clearAll() {
-    // Remove all remote cars from the scene and clear the map
-    for (const [key, remoteCar] of this.remoteCars.entries()) {
+    for (const remoteCar of this.remoteCars.values()) {
+      this.scene.checkpointManager.unregisterRacer(remoteCar)
       remoteCar.destroy()
     }
     this.remoteCars.clear();
