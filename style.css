@@ -1381,7 +1381,7 @@ body.replay-exporting .dg.ac {
 .tach-panel {
     position: absolute;
     left: 50%;
-    bottom: -6%;
+    bottom: -12%;
     z-index: 2;
     display: flex;
     flex-direction: column;
@@ -1451,7 +1451,7 @@ body.replay-exporting .dg.ac {
 }
 
 .tachometer2 .tach-panel {
-    bottom: -5%;
+    bottom: -50%;
     width: 48%;
     gap: 2%;
 }
