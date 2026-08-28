@@ -1236,6 +1236,7 @@ body:not(.debug-ui) #accelerometer {
     container-type: inline-size;
     width: calc(220px * var(--hud-scale));
     height: calc(220px * var(--hud-scale));
+    padding-bottom: 12%;
     color: #f4f4f4;
     font-family: 'Chakra Petch', sans-serif;
     filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.65));
@@ -1246,7 +1247,6 @@ body:not(.debug-ui) #accelerometer {
     align-items: flex-end;
     gap: calc(10px * var(--hud-scale));
     margin-top: calc(6px * var(--hud-scale));
-    padding-bottom: calc(28px * var(--hud-scale));
 }
 
 #tach2-cluster {

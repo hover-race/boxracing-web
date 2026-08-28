@@ -60,6 +60,7 @@ class Vehicle {
 
   constructor(scene, physics, collisionMesh, visualRoot, wheelMeshes, audioListener, {
     carModel,
+    showHud = false,
   } = {}) {
     this.scene = scene
     this.physics = physics
@@ -126,12 +127,12 @@ class Vehicle {
       wheelRadiusBack,
     )
 
-    this.tachometer = new Tachometer(document.getElementById('tachometer'), carModel.redline)
-    this.inputSteer = document.getElementById('input-steer')?.querySelector('.steering-wheel')
-    this.inputThrottle = document.querySelector('#input-hud .input-pedal.throttle span')
-    this.inputBrake = document.querySelector('#input-hud .input-pedal.brake span')
-    this.accelerometerDot = document.getElementById('accel-dot')
-    this.hpFill = document.getElementById('hp-fill')
+    this.tachometer = showHud ? new Tachometer(document.getElementById('tachometer'), carModel.redline) : null
+    this.inputSteer = showHud ? document.getElementById('input-steer')?.querySelector('.steering-wheel') : null
+    this.inputThrottle = showHud ? document.querySelector('#input-hud .input-pedal.throttle span') : null
+    this.inputBrake = showHud ? document.querySelector('#input-hud .input-pedal.brake span') : null
+    this.accelerometerDot = showHud ? document.getElementById('accel-dot') : null
+    this.hpFill = showHud ? document.getElementById('hp-fill') : null
     this.hp = params.carMaxHp
     // Damage only applies while the chassis itself is in contact with something.
     // The wheels ride on raycasts, so sliding/braking G never counts — wall hits
@@ -148,7 +149,7 @@ class Vehicle {
     this._pushTintBackups = null
     this._pushTintAmount = 0
     this._desiredPushTint = 0
-    this.tcToggle = document.getElementById('tc-toggle')
+    this.tcToggle = showHud ? document.getElementById('tc-toggle') : null
 
     // Initialize wheels array after adding wheels to vehicle
     this.wheels = this.wheelMeshes.map((mesh, index) => {
@@ -332,7 +333,7 @@ class Vehicle {
     this.applyStabilityControl(dt)
     this.updateTcToggle()
 
-    this.tachometer.update(this.gearbox.engineRpm, this.gearbox.getGearLabel(), speed)
+    this.tachometer?.update(this.gearbox.engineRpm, this.gearbox.getGearLabel(), speed)
     this.updateInputHud(inputs)
 
     // Update speed display in dat.gui
@@ -903,6 +904,7 @@ class Vehicle {
 
     const vehicle = new Vehicle(scene.scene, scene.physics, collisionMesh, visualRoot, wheels, scene.listener, {
       carModel,
+      showHud: !isBot,
     })
     if (isBot) applyBotShader(vehicle, params.botShader, botColor)
     vehicle.particles.enableAudioOnFirstGesture()
