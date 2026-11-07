@@ -220,27 +220,42 @@
     <div id="replay-overlay">
       <div id="replay-badge">REPLAY</div>
       <div id="replay-bar">
-        <button type="button" id="replay-play">Pause</button>
-        <input id="replay-timeline" type="range" min="0" max="1" value="0" step="1">
-        <span id="replay-time">0:00 / 0:00</span>
-        <label id="replay-speed-label" for="replay-speed">Speed</label>
-        <select id="replay-speed" aria-label="Replay speed">
-          <option value="0.25">0.25x</option>
-          <option value="0.5">0.5x</option>
-          <option value="1" selected>1x</option>
-          <option value="2">2x</option>
-          <option value="4">4x</option>
-        </select>
-        <label id="replay-car-label" for="replay-car">Car</label>
-        <select id="replay-car" aria-label="Replay target car"></select>
-        <label id="replay-camera-label" for="replay-camera">Camera</label>
-        <select id="replay-camera" aria-label="Replay camera"></select>
-        <button type="button" id="replay-save">Save JSON</button>
-        <button type="button" id="replay-load">Load JSON</button>
-        <input type="file" id="replay-file-input" accept=".json,application/json" hidden>
-        <button type="button" id="replay-screenshot">Screenshot</button>
-        <button type="button" id="replay-export">Export Video</button>
-        <button type="button" id="replay-close">Exit Replay</button>
+        <div id="replay-timeline-row">
+          <button type="button" id="replay-play">Pause</button>
+          <div id="replay-timeline-wrap">
+            <div id="replay-cut-track" aria-label="Camera cuts timeline"></div>
+            <input id="replay-timeline" type="range" min="0" max="1" value="0" step="1">
+          </div>
+          <span id="replay-time">0:00 / 0:00</span>
+        </div>
+        <div id="replay-controls-row">
+          <label id="replay-car-label" for="replay-car">Car</label>
+          <select id="replay-car" aria-label="Replay target car"></select>
+          <label id="replay-camera-label" for="replay-camera">Cam</label>
+          <select id="replay-camera" aria-label="Replay camera"></select>
+          <label id="replay-speed-label" for="replay-speed">Speed</label>
+          <select id="replay-speed" aria-label="Replay speed">
+            <option value="0.25">0.25x</option>
+            <option value="0.5">0.5x</option>
+            <option value="1" selected>1x</option>
+            <option value="2">2x</option>
+            <option value="4">4x</option>
+          </select>
+          <span class="replay-divider" aria-hidden="true"></span>
+          <button type="button" id="replay-director" title="Follow timeline camera cuts (D)">Director</button>
+          <button type="button" id="replay-rec-cuts" title="Auto-record cuts when switching camera or car (R)">Rec Cuts</button>
+          <button type="button" id="replay-add-cut" title="Add or update camera cut at playhead (K)">+ Cut</button>
+          <button type="button" id="replay-del-cut" title="Delete camera cut at playhead (Backspace/Delete)">- Cut</button>
+          <button type="button" id="replay-auto-cut" title="Generate smart multi-camera broadcast cuts">Auto-Cut</button>
+          <button type="button" id="replay-clear-cuts" title="Clear all camera cuts">Clear</button>
+          <span class="replay-divider" aria-hidden="true"></span>
+          <button type="button" id="replay-save">Save JSON</button>
+          <button type="button" id="replay-load">Load JSON</button>
+          <input type="file" id="replay-file-input" accept=".json,application/json" hidden>
+          <button type="button" id="replay-screenshot">Screenshot</button>
+          <button type="button" id="replay-export">Export Video</button>
+          <button type="button" id="replay-close">Exit</button>
+        </div>
       </div>
     </div>
     <div id="mobile-controls">

@@ -764,14 +764,19 @@ class CameraSwitcher {
       if (this.scene.replay?.exporting || e.target?.closest?.('input, select, textarea')) return
       // C cycles to next camera
       if (e.code === 'KeyC') {
-        this.setController((this._activeIndex + 1) % this.controllers.length)
+        const next = (this._activeIndex + 1) % this.controllers.length
+        if (this.scene.replay?.active) this.scene.replay.setCamera(next, { fromUser: true })
+        else this.setController(next)
       }
       // 1–9 selects camera by index, 0 selects 10th
       const digit = e.code.match(/^Digit(\d)$/)?.[1]
       if (digit !== undefined) {
         const d = Number(digit)
         const i = d === 0 ? 9 : d - 1
-        if (i >= 0 && i < this.controllers.length) this.setController(i)
+        if (i >= 0 && i < this.controllers.length) {
+          if (this.scene.replay?.active) this.scene.replay.setCamera(i, { fromUser: true })
+          else this.setController(i)
+        }
       }
     }
     window.addEventListener('keydown', this._onKeyDown)

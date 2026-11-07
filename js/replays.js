@@ -1,4 +1,5 @@
 import { on, off } from './raceEvents.js'
+import { refreshAllBotShaders } from './botShaders.js'
 
 const POSE_FLOATS = 7 + 4 * 7
 const WHEEL_COUNT = 4
@@ -41,9 +42,9 @@ function lerpPose(a, b, alpha, out) {
     out[o] = a[o] + (b[o] - a[o]) * alpha
     out[o + 1] = a[o + 1] + (b[o + 1] - a[o + 1]) * alpha
     out[o + 2] = a[o + 2] + (b[o + 2] - a[o + 2]) * alpha
-    _qa.set(a[o + 3], a[o + 4], a[o + 5], a[o + 6])
-    _qb.set(b[o + 3], b[o + 4], b[o + 5], b[o + 6])
-    _qt.slerpQuaternions(_qa, _qb, alpha)
+    _qa.set(a[o + 3], a[o + 4], a[o + 5], a[o + 6]).normalize()
+    _qb.set(b[o + 3], b[o + 4], b[o + 5], b[o + 6]).normalize()
+    _qt.slerpQuaternions(_qa, _qb, alpha).normalize()
     out[o + 3] = _qt.x
     out[o + 4] = _qt.y
     out[o + 5] = _qt.z
@@ -53,29 +54,48 @@ function lerpPose(a, b, alpha, out) {
 
 function applyPose(vehicle, pose, btQuat) {
   _pos.set(pose[0], pose[1], pose[2])
-  _quat.set(pose[3], pose[4], pose[5], pose[6])
+  _quat.set(pose[3], pose[4], pose[5], pose[6]).normalize()
   vehicle.syncBodyTransform(_pos, _quat)
 
   const ammoBody = vehicle.chassis.body.ammo
   const transform = ammoBody.getWorldTransform()
   transform.getOrigin().setValue(pose[0], pose[1], pose[2])
-  btQuat.setValue(pose[3], pose[4], pose[5], pose[6])
+  btQuat.setValue(_quat.x, _quat.y, _quat.z, _quat.w)
   transform.setRotation(btQuat)
   ammoBody.setWorldTransform(transform)
+  ammoBody.getMotionState()?.setWorldTransform(transform)
 
   for (let i = 0; i < WHEEL_COUNT; i++) {
     const o = 7 + i * 7
     const wheel = vehicle.wheelMeshes[i]
     wheel.position.set(pose[o], pose[o + 1], pose[o + 2])
-    wheel.quaternion.set(pose[o + 3], pose[o + 4], pose[o + 5], pose[o + 6])
+    wheel.quaternion.set(pose[o + 3], pose[o + 4], pose[o + 5], pose[o + 6]).normalize()
   }
 }
 
 function formatReplayTime(ms) {
-  const totalSec = Math.max(0, Math.floor(ms / 1000))
+  const clamped = Math.max(0, Number(ms) || 0)
+  const totalSec = Math.floor(clamped / 1000)
   const minutes = Math.floor(totalSec / 60)
   const seconds = totalSec % 60
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  const tenths = Math.floor((clamped % 1000) / 100)
+  return `${minutes}:${seconds.toString().padStart(2, '0')}.${tenths}`
+}
+
+function shortCamLabel(camId) {
+  const map = {
+    follow: 'Follow',
+    overhead: 'Overhead',
+    orbit: 'Orbit',
+    bumper: 'Bumper',
+    hood: 'Hood',
+    side: 'Side',
+    rear: 'Rear',
+    trackside: 'Trackside',
+    drone: 'Drone',
+    rotate: 'Rotate',
+  }
+  return map[camId] || camId
 }
 
 function downloadBlob(blob, filename) {
@@ -111,6 +131,11 @@ class Replay {
     this.targetCarIndex = 0
     this.times = []
     this.tracks = []
+    this.cuts = []
+    this.directorMode = true
+    this.recordCuts = false
+    this._activeCutIndex = -1
+    this._cutTrackKey = ''
     this._playTimeout = 0
     this._exportDone = null
     this._stopAfterCapture = false
@@ -121,10 +146,17 @@ class Replay {
     this.badge = document.getElementById('replay-badge')
     this.playBtn = document.getElementById('replay-play')
     this.timeline = document.getElementById('replay-timeline')
+    this.cutTrack = document.getElementById('replay-cut-track')
     this.timeLabel = document.getElementById('replay-time')
     this.speedSelect = document.getElementById('replay-speed')
     this.carSelect = document.getElementById('replay-car')
     this.cameraSelect = document.getElementById('replay-camera')
+    this.directorBtn = document.getElementById('replay-director')
+    this.recCutsBtn = document.getElementById('replay-rec-cuts')
+    this.addCutBtn = document.getElementById('replay-add-cut')
+    this.delCutBtn = document.getElementById('replay-del-cut')
+    this.autoCutBtn = document.getElementById('replay-auto-cut')
+    this.clearCutsBtn = document.getElementById('replay-clear-cuts')
     this.saveBtn = document.getElementById('replay-save')
     this.loadBtn = document.getElementById('replay-load')
     this.fileInput = document.getElementById('replay-file-input')
@@ -156,14 +188,21 @@ class Replay {
       this.enter()
       e.target.value = ''
     })
+    this.directorBtn?.addEventListener('click', () => this.setDirectorMode(!this.directorMode))
+    this.recCutsBtn?.addEventListener('click', () => this.setRecordCuts(!this.recordCuts))
+    this.addCutBtn?.addEventListener('click', () => this.addCut())
+    this.delCutBtn?.addEventListener('click', () => this.removeCut())
+    this.autoCutBtn?.addEventListener('click', () => this.autoGenerateCuts())
+    this.clearCutsBtn?.addEventListener('click', () => this.clearCuts())
+
     this.cameraSelect.addEventListener('change', () => {
-      if (!this.exporting) this.setCamera(Number(this.cameraSelect.value))
+      if (!this.exporting) this.setCamera(Number(this.cameraSelect.value), { fromUser: true })
     })
     this.carSelect?.addEventListener('change', () => {
-      if (!this.exporting) this.setTargetCar(Number(this.carSelect.value))
+      if (!this.exporting) this.setTargetCar(Number(this.carSelect.value), { fromUser: true })
     })
     this.speedSelect?.addEventListener('change', () => {
-      this.setSpeed(Number(this.speedSelect.value))
+      if (!this.exporting) this.setSpeed(Number(this.speedSelect.value), { fromUser: true })
     })
     this.timeline.addEventListener('pointerdown', () => {
       if (!this.exporting) this.pause()
@@ -179,10 +218,28 @@ class Replay {
         e.preventDefault()
         this.togglePlay()
       } else if (e.code === 'BracketRight' || e.code === 'KeyN') {
-        this.setTargetCar((this.targetCarIndex + 1) % Math.max(1, this.vehicles().length))
+        this.setTargetCar((this.targetCarIndex + 1) % Math.max(1, this.vehicles().length), { fromUser: true })
       } else if (e.code === 'BracketLeft' || e.code === 'KeyP') {
         const count = Math.max(1, this.vehicles().length)
-        this.setTargetCar((this.targetCarIndex - 1 + count) % count)
+        this.setTargetCar((this.targetCarIndex - 1 + count) % count, { fromUser: true })
+      } else if (e.code === 'KeyK' || e.code === 'KeyM') {
+        e.preventDefault()
+        this.addCut()
+      } else if (e.code === 'Backspace' || e.code === 'Delete') {
+        e.preventDefault()
+        this.removeCut()
+      } else if (e.code === 'KeyD') {
+        this.setDirectorMode(!this.directorMode)
+      } else if (e.code === 'KeyR') {
+        this.setRecordCuts(!this.recordCuts)
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault()
+        this.pause()
+        this.seek(this.time - (e.shiftKey ? 100 : 500))
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault()
+        this.pause()
+        this.seek(this.time + (e.shiftKey ? 100 : 500))
       }
     }
     window.addEventListener('keydown', this._onKeyDown)
@@ -199,6 +256,7 @@ class Replay {
   }
 
   vehicleMeta(vehicle, index) {
+    if (!vehicle) return { index: 0, name: 'Player', carId: 'mustang', isPlayer: true }
     const racer = this.scene.checkpointManager?.racerForChassis(vehicle.chassis)
     const trackMeta = this.tracks[index]
     return {
@@ -207,6 +265,10 @@ class Replay {
       carId: trackMeta?.carId || vehicle.car_id || 'mustang',
       isPlayer: index === 0,
     }
+  }
+
+  currentCameraId() {
+    return this.scene.cameraSwitcher._activeController?.id || 'follow'
   }
 
   refreshCarOptions() {
@@ -242,16 +304,299 @@ class Replay {
     if (/^\d+$/.test(raw)) {
       return Math.max(0, Math.min(list.length - 1, Number(raw)))
     }
-    if (raw === 'player' || raw === 'me') return 0
-    const botMatch = raw.match(/^bot\s*(\d+)$/)
+    if (raw === 'player' || raw === 'me' || raw === 'p1') return 0
+    const botMatch = raw.match(/^(?:bot|p)\s*(\d+)$/)
     if (botMatch) {
-      return Math.max(0, Math.min(list.length - 1, Number(botMatch[1])))
+      const n = Number(botMatch[1])
+      return Math.max(0, Math.min(list.length - 1, raw.startsWith('p') ? n - 1 : n))
     }
     const found = list.findIndex((v, i) => {
       const meta = this.vehicleMeta(v, i)
       return meta.name.toLowerCase().includes(raw) || meta.carId.toLowerCase() === raw
     })
     return found >= 0 ? found : this.targetCarIndex
+  }
+
+  normalizeCut(raw = {}) {
+    let t = this.time
+    if (raw.tSec !== undefined && raw.tSec !== null && raw.tSec !== '') {
+      t = Number(raw.tSec) * 1000
+    } else if (raw.t !== undefined && raw.t !== null && raw.t !== '') {
+      t = Number(raw.t)
+    }
+    if (!Number.isFinite(t) || t < 0) t = 0
+    const dur = this.duration()
+    if (dur > 0) t = Math.min(dur, t)
+
+    const camIdx = this.scene.cameraSwitcher.resolveIndex(
+      raw.cam ?? raw.camera ?? this.scene.cameraSwitcher._activeIndex
+    )
+    const camCtrl = this.scene.cameraSwitcher.controllers[camIdx]
+    const cam = camCtrl?.id || 'follow'
+
+    const car = this.resolveCarIndex(
+      raw.car !== undefined && raw.car !== '' ? raw.car : this.targetCarIndex
+    )
+    const speed = Number(raw.speed) > 0 ? Number(raw.speed) : 1
+
+    return {
+      t: Math.round(t),
+      cam,
+      car,
+      speed,
+    }
+  }
+
+  parseCutsSpec(spec) {
+    if (!spec) return []
+    if (Array.isArray(spec)) {
+      return spec.map(item => this.normalizeCut(item))
+    }
+    const text = String(spec).trim()
+    if (!text) return []
+    if (text.startsWith('[') || text.startsWith('{')) {
+      const parsed = JSON.parse(text)
+      const arr = Array.isArray(parsed) ? parsed : (parsed.cuts || [])
+      return arr.map(item => this.normalizeCut(item))
+    }
+    const out = []
+    for (const token of text.split(/[;,]/)) {
+      const trimmed = token.trim()
+      if (!trimmed) continue
+      const [tStr, camStr, carStr, speedStr] = trimmed.split(':')
+      const tSec = Number(tStr)
+      if (!Number.isFinite(tSec)) continue
+      out.push(this.normalizeCut({
+        tSec,
+        cam: camStr || 'follow',
+        car: carStr !== undefined && carStr !== '' ? carStr : 0,
+        speed: speedStr !== undefined && speedStr !== '' ? Number(speedStr) : 1,
+      }))
+    }
+    return out
+  }
+
+  _sortAndDedupeCuts(cuts) {
+    const sorted = cuts.slice().sort((a, b) => a.t - b.t)
+    const deduped = []
+    for (const c of sorted) {
+      if (deduped.length && Math.abs(deduped[deduped.length - 1].t - c.t) <= 60) {
+        deduped[deduped.length - 1] = c
+      } else {
+        deduped.push(c)
+      }
+    }
+    return deduped
+  }
+
+  activeCutIndexAt(ms = this.time) {
+    if (!this.cuts.length) return -1
+    let idx = 0
+    for (let i = 0; i < this.cuts.length; i++) {
+      if (this.cuts[i].t <= ms + 1) idx = i
+      else break
+    }
+    return idx
+  }
+
+  applyCutAt(ms = this.time, force = false) {
+    if (!this.directorMode || !this.cuts.length) {
+      this._activeCutIndex = -1
+      return false
+    }
+    const idx = this.activeCutIndexAt(ms)
+    if (idx < 0) return false
+    const cut = this.cuts[idx]
+    const camIdx = this.scene.cameraSwitcher.resolveIndex(cut.cam)
+    const carIdx = this.resolveCarIndex(cut.car)
+    const nextSpeed = cut.speed && cut.speed > 0 ? cut.speed : 1
+
+    const changed = force ||
+      idx !== this._activeCutIndex ||
+      this.scene.cameraSwitcher._activeIndex !== camIdx ||
+      this.targetCarIndex !== carIdx
+
+    this._activeCutIndex = idx
+    if (!changed) return false
+
+    this.targetCarIndex = carIdx
+    this.speed = nextSpeed
+    this.scene.cameraSwitcher.setController(camIdx)
+    const root = this.targetRoot()
+    if (root) {
+      this.scene.cameraSwitcher._lastTarget = root
+      this.scene.cameraSwitcher._activeController?.activate?.(this.scene.camera, root)
+    }
+    return true
+  }
+
+  setDirectorMode(enabled) {
+    this.directorMode = Boolean(enabled)
+    this._activeCutIndex = -1
+    if (this.directorMode && this.cuts.length) {
+      this.applyCutAt(this.time, true)
+      this.renderImmediate()
+    }
+    this.syncUi()
+    return this.directorMode
+  }
+
+  setRecordCuts(enabled) {
+    this.recordCuts = Boolean(enabled)
+    if (this.recordCuts) {
+      this.directorMode = true
+      if (!this.cuts.length) {
+        this.addCut({ t: this.time })
+      }
+    }
+    this.syncUi()
+    return this.recordCuts
+  }
+
+  addCut(raw = {}) {
+    const cut = this.normalizeCut(raw)
+    const existingIdx = this.cuts.findIndex(c => Math.abs(c.t - cut.t) <= 150)
+    if (existingIdx >= 0) {
+      this.cuts[existingIdx] = cut
+    } else {
+      this.cuts.push(cut)
+    }
+    this.cuts = this._sortAndDedupeCuts(this.cuts)
+    this.directorMode = true
+    this._cutTrackKey = ''
+    this.applyCutAt(this.time, true)
+    this.renderImmediate()
+    this.syncUi()
+    return this.serializeCut(cut)
+  }
+
+  removeCut(indexOrTime) {
+    if (!this.cuts.length) return []
+    let idx = -1
+    if (indexOrTime === undefined) {
+      idx = this.activeCutIndexAt(this.time)
+    } else if (typeof indexOrTime === 'number' && Number.isInteger(indexOrTime) && indexOrTime >= 0 && indexOrTime < this.cuts.length) {
+      idx = indexOrTime
+    } else {
+      const rawT = Number(indexOrTime)
+      const targetMs = rawT <= this.duration() / 1000 ? rawT * 1000 : rawT
+      let bestDist = Infinity
+      this.cuts.forEach((c, i) => {
+        const d = Math.abs(c.t - targetMs)
+        if (d < bestDist) {
+          bestDist = d
+          idx = i
+        }
+      })
+    }
+    if (idx >= 0 && idx < this.cuts.length) {
+      this.cuts.splice(idx, 1)
+      this._activeCutIndex = -1
+      this._cutTrackKey = ''
+      if (this.cuts.length && this.directorMode) {
+        this.applyCutAt(this.time, true)
+        this.renderImmediate()
+      }
+      this.syncUi()
+    }
+    return this.getCuts()
+  }
+
+  clearCuts() {
+    this.cuts = []
+    this._activeCutIndex = -1
+    this.directorMode = false
+    this._cutTrackKey = ''
+    this.syncUi()
+    return []
+  }
+
+  setCuts(spec) {
+    const parsed = this.parseCutsSpec(spec)
+    this.cuts = this._sortAndDedupeCuts(parsed)
+    this.directorMode = this.cuts.length > 0
+    this._activeCutIndex = -1
+    this._cutTrackKey = ''
+    if (this.active && this.directorMode) {
+      this.applyCutAt(this.time, true)
+      this.renderImmediate()
+    }
+    this.syncUi()
+    return this.getCuts()
+  }
+
+  serializeCut(c) {
+    return {
+      t: Math.round(c.t),
+      tSec: Number((c.t / 1000).toFixed(2)),
+      cam: c.cam,
+      car: c.car,
+      ...(c.speed && c.speed !== 1 ? { speed: c.speed } : {}),
+    }
+  }
+
+  getCuts() {
+    return this.cuts.map(c => this.serializeCut(c))
+  }
+
+  getCutsParam() {
+    return this.cuts.map(c => {
+      const tSec = Number((c.t / 1000).toFixed(2))
+      const base = `${tSec}:${c.cam}:${c.car}`
+      return c.speed && c.speed !== 1 ? `${base}:${c.speed}` : base
+    }).join(',')
+  }
+
+  autoGenerateCuts(intervalSec = 3) {
+    const total = this.duration()
+    if (total <= 0) return []
+    const stepMs = Math.max(1200, (Number(intervalSec) || 3) * 1000)
+    const camCycle = ['trackside', 'hood', 'drone', 'rear', 'rotate', 'follow', 'side', 'bumper']
+    const carCount = Math.max(1, this.vehicles().length)
+    const generated = []
+    let t = 0
+    let shot = 0
+    while (t < total - 600) {
+      const cam = camCycle[shot % camCycle.length]
+      const car = shot % carCount
+      generated.push(this.normalizeCut({ t, cam, car, speed: 1 }))
+      t += stepMs
+      shot++
+    }
+    this.cuts = this._sortAndDedupeCuts(generated)
+    this.directorMode = true
+    this._activeCutIndex = -1
+    this._cutTrackKey = ''
+    if (this.active) {
+      this.applyCutAt(this.time, true)
+      this.renderImmediate()
+    }
+    this.syncUi()
+    return this.getCuts()
+  }
+
+  _maybeRecordUserCut() {
+    if (this.recordCuts) {
+      this.addCut({
+        t: this.time,
+        cam: this.currentCameraId(),
+        car: this.targetCarIndex,
+        speed: this.speed,
+      })
+      return
+    }
+    if (!this.playing && this.directorMode && this.cuts.length) {
+      const nearIdx = this.cuts.findIndex(c => Math.abs(c.t - this.time) <= 180)
+      if (nearIdx >= 0) {
+        this.cuts[nearIdx] = this.normalizeCut({
+          t: this.cuts[nearIdx].t,
+          cam: this.currentCameraId(),
+          car: this.targetCarIndex,
+          speed: this.speed,
+        })
+        this._cutTrackKey = ''
+      }
+    }
   }
 
   renderImmediate() {
@@ -269,26 +614,29 @@ class Replay {
     this.scene.renderer?.render(this.scene.scene, this.scene.camera)
   }
 
-  setTargetCar(indexOrName) {
+  setTargetCar(indexOrName, { fromUser = false } = {}) {
     this.targetCarIndex = this.resolveCarIndex(indexOrName)
+    if (fromUser) this._maybeRecordUserCut()
     this.renderImmediate()
     this.syncUi()
     return this.vehicleMeta(this.targetVehicle(), this.targetCarIndex)
   }
 
-  setCamera(idOrIndex) {
+  setCamera(idOrIndex, { fromUser = false } = {}) {
     this.scene.cameraSwitcher.setController(idOrIndex)
+    if (fromUser) this._maybeRecordUserCut()
     this.renderImmediate()
     this.syncUi()
     const ctrl = this.scene.cameraSwitcher._activeController
     return { index: this.scene.cameraSwitcher._activeIndex, id: ctrl?.id, label: ctrl?.label }
   }
 
-  setSpeed(multiplier) {
+  setSpeed(multiplier, { fromUser = false } = {}) {
     const n = Number(multiplier)
     if (Number.isFinite(n) && n > 0) {
       this.speed = n
     }
+    if (fromUser) this._maybeRecordUserCut()
     this.syncUi()
     return this.speed
   }
@@ -317,6 +665,11 @@ class Replay {
       frames: this.times.length,
       speed: this.speed,
       loop: this.loop,
+      directorMode: this.directorMode,
+      recordCuts: this.recordCuts,
+      activeCutIndex: this._activeCutIndex,
+      cuts: this.getCuts(),
+      cutsParam: this.getCutsParam(),
       camera: { index: this.scene.cameraSwitcher._activeIndex, id: ctrl?.id, label: ctrl?.label },
       targetCar: this.vehicleMeta(this.targetVehicle(), this.targetCarIndex),
     }
@@ -335,6 +688,8 @@ class Replay {
   startRecording() {
     this.resetForNextRace()
     this.times = []
+    this.cuts = []
+    this._cutTrackKey = ''
     this.tracks = this.vehicles().map((vehicle, index) => {
       const meta = this.vehicleMeta(vehicle, index)
       return {
@@ -446,7 +801,7 @@ class Replay {
       if (params.autosaveReplay) {
         this.downloadJson()
       }
-      if (params.replay || params.replayCam || params.replayCar || params.replayTime >= 0 || params.replayExport) {
+      if (params.replay || params.replayCam || params.replayCar || params.replayCuts || params.replayTime >= 0 || params.replayExport) {
         this.enterFromParams()
       }
     }
@@ -457,6 +812,7 @@ class Replay {
       version: 1,
       recordedAt: new Date().toISOString(),
       duration: Math.round(this.duration()),
+      cuts: this.getCuts(),
       times: this.times.map(t => Math.round(t * 10) / 10),
       tracks: this.tracks.map((track, index) => {
         const meta = this.vehicleMeta(track.vehicle, index)
@@ -464,7 +820,10 @@ class Replay {
           name: track.name || meta.name,
           carId: track.carId || meta.carId,
           isPlayer: index === 0,
-          poses: track.poses.map(pose => Array.from(pose, v => Math.round(v * 1000) / 1000)),
+          poses: track.poses.map(pose => Array.from(pose, (v, idx) => {
+            const scale = (idx % 7) < 3 ? 1000 : 100000
+            return Math.round(v * scale) / scale
+          })),
         }
       }),
     }
@@ -491,6 +850,15 @@ class Replay {
     this.recording = false
     this._stopAfterCapture = false
     this.refreshCarOptions()
+    if (Array.isArray(data.cuts)) {
+      this.cuts = this._sortAndDedupeCuts(data.cuts.map(c => this.normalizeCut(c)))
+      this.directorMode = this.cuts.length > 0
+    } else {
+      this.cuts = []
+      this.directorMode = false
+    }
+    this._activeCutIndex = -1
+    this._cutTrackKey = ''
     return this.status()
   }
 
@@ -521,6 +889,10 @@ class Replay {
   }
 
   enterFromParams() {
+    if (params.replayCuts) {
+      this.setCuts(params.replayCuts)
+    }
+    const hasExplicitSingleCam = Boolean((params.replayCam || params.replayCar) && !params.replayCuts)
     this.enter({
       camera: params.replayCam || 'follow',
       car: params.replayCar || 0,
@@ -528,6 +900,7 @@ class Replay {
       speed: params.replaySpeed,
       playing: params.replayPlaying,
       loop: params.replayLoop,
+      directorMode: hasExplicitSingleCam ? false : this.cuts.length > 0,
       exportVideo: params.replayExport,
     })
   }
@@ -565,10 +938,20 @@ class Replay {
     params.runPhysics = false
     this.freezeAll()
     this.silenceAll()
+    refreshAllBotShaders(this.scene, 'none')
     this.scene.checkpointManager.finishElement.classList.remove('visible')
     document.body.classList.add('replay-playing')
     this.overlay.classList.add('visible')
     this.refreshCarOptions()
+
+    if (options.cuts !== undefined) {
+      this.setCuts(options.cuts)
+    }
+    if (options.directorMode !== undefined) {
+      this.directorMode = Boolean(options.directorMode)
+    } else if (this.cuts.length > 0) {
+      this.directorMode = true
+    }
 
     if (options.speed !== undefined && Number(options.speed) > 0) {
       this.speed = Number(options.speed)
@@ -580,15 +963,16 @@ class Replay {
     const initialCar = options.car !== undefined && options.car !== '' ? options.car : this.targetCarIndex
     this.targetCarIndex = this.resolveCarIndex(initialCar)
 
+    const initialCamera = options.camera !== undefined && options.camera !== '' ? options.camera : 0
+    this.scene.cameraSwitcher.setController(initialCamera)
+
     let initialTimeMs = 0
     if (options.time !== undefined && Number(options.time) >= 0) {
       const rawTime = Number(options.time)
       initialTimeMs = rawTime <= this.duration() / 1000 ? rawTime * 1000 : rawTime
     }
+    this._activeCutIndex = -1
     this.seek(initialTimeMs)
-
-    const initialCamera = options.camera !== undefined && options.camera !== '' ? options.camera : 0
-    this.setCamera(initialCamera)
 
     this.playing = options.playing !== undefined ? Boolean(options.playing) : true
     this.syncUi()
@@ -638,6 +1022,7 @@ class Replay {
       for (const vehicle of this.vehicles()) vehicle.chassis.body.ammo.activate()
     }
     this.active = false
+    refreshAllBotShaders(this.scene)
     this.scene.cameraSwitcher.setController(this._cameraBeforeReplay)
     document.body.classList.remove('replay-playing')
     this.overlay.classList.remove('visible')
@@ -646,6 +1031,12 @@ class Replay {
   freezeAll() {
     this.ensureAmmo()
     for (const vehicle of this.vehicles()) {
+      vehicle.applyCollisionPushTint?.(0)
+      if (vehicle._grayUntil) {
+        vehicle._grayUntil = 1
+        vehicle.updateCollisionGrayOut?.()
+      }
+      vehicle.chassis.body.skipUpdate = true
       const ammoBody = vehicle.chassis.body.ammo
       if (vehicle._replayCollisionFlags === undefined) {
         vehicle._replayCollisionFlags = ammoBody.getCollisionFlags()
@@ -665,11 +1056,13 @@ class Replay {
     document.body.classList.remove('replay-playing')
     this.overlay.classList.remove('visible')
     this.restorePhysics()
+    refreshAllBotShaders(this.scene)
     params.runPhysics = true
   }
 
   restorePhysics() {
     for (const vehicle of this.vehicles()) {
+      vehicle.chassis.body.skipUpdate = false
       if (vehicle._replayCollisionFlags === undefined) continue
       const body = vehicle.chassis.body.ammo
       body.setCollisionFlags(vehicle._replayCollisionFlags)
@@ -696,6 +1089,8 @@ class Replay {
     if (!this.active || this.times.length === 0) return
     if (this.time >= this.duration()) {
       this.time = 0
+      this._activeCutIndex = -1
+      this.applyCutAt(0, true)
       const root = this.targetRoot()
       if (root) this.scene.cameraSwitcher._activeController?.activate?.(this.scene.camera, root)
     }
@@ -712,6 +1107,7 @@ class Replay {
   seek(ms) {
     this.time = Math.max(0, Math.min(this.duration(), ms))
     this.applyAt(this.time)
+    this.applyCutAt(this.time, true)
     this.renderImmediate()
     this.syncUi()
   }
@@ -733,8 +1129,7 @@ class Replay {
           done()
         } else if (this.loop) {
           this.time = 0
-          const root = this.targetRoot()
-          if (root) this.scene.cameraSwitcher._activeController?.activate?.(this.scene.camera, root)
+          this._activeCutIndex = -1
         } else {
           this.time = this.duration()
           this.playing = false
@@ -742,6 +1137,9 @@ class Replay {
       }
     }
     this.applyAt(this.time)
+    if (this.applyCutAt(this.time, false)) {
+      this.renderImmediate()
+    }
     this.syncUi()
   }
 
@@ -770,6 +1168,44 @@ class Replay {
     }
   }
 
+  renderCutTrack() {
+    if (!this.cutTrack) return
+    const total = Math.max(1, this.duration())
+    const key = `${total}:${this.getCutsParam()}`
+    if (key !== this._cutTrackKey) {
+      this._cutTrackKey = key
+      this.cutTrack.replaceChildren()
+      this.cuts.forEach((cut, idx) => {
+        const nextT = idx + 1 < this.cuts.length ? this.cuts[idx + 1].t : total
+        const leftPct = Math.max(0, Math.min(99, (cut.t / total) * 100))
+        const widthPct = Math.max(1.5, ((nextT - cut.t) / total) * 100)
+        const btn = document.createElement('button')
+        btn.type = 'button'
+        btn.className = 'replay-cut-marker'
+        btn.dataset.cutIndex = String(idx)
+        btn.style.left = `${leftPct.toFixed(2)}%`
+        btn.style.width = `calc(${widthPct.toFixed(2)}% - 2px)`
+        const carIdx = this.resolveCarIndex(cut.car)
+        const carMeta = this.vehicleMeta(this.vehicles()[carIdx], carIdx)
+        const speedTag = cut.speed && cut.speed !== 1 ? ` · ${cut.speed}x` : ''
+        const label = `${shortCamLabel(cut.cam)} · P${carIdx + 1}${speedTag}`
+        btn.textContent = label
+        btn.title = `${formatReplayTime(cut.t)} — ${shortCamLabel(cut.cam)} on ${carMeta.name}${speedTag}`
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          if (this.exporting) return
+          this.directorMode = true
+          this.seek(cut.t)
+        })
+        this.cutTrack.appendChild(btn)
+      })
+    }
+    const activeIdx = this.directorMode ? this.activeCutIndexAt(this.time) : -1
+    for (const child of this.cutTrack.children) {
+      child.classList.toggle('active', Number(child.dataset.cutIndex) === activeIdx)
+    }
+  }
+
   syncUi() {
     const total = this.duration()
     this.timeline.max = String(Math.max(1, total))
@@ -778,9 +1214,12 @@ class Replay {
     this.playBtn.textContent = this.playing ? 'Pause' : 'Play'
     const ctrl = this.scene.cameraSwitcher._activeController
     const carMeta = this.vehicleMeta(this.targetVehicle(), this.targetCarIndex)
+    const modeTag = this.recordCuts
+      ? ' · REC CUTS'
+      : (this.directorMode && this.cuts.length ? ` · CUT ${this.activeCutIndexAt(this.time) + 1}/${this.cuts.length}` : '')
     this.badge.textContent = this.exporting
       ? 'EXPORTING'
-      : `REPLAY · ${carMeta.name} · ${ctrl?.label || ''}`
+      : `REPLAY · ${carMeta.name} · ${ctrl?.label || ''}${modeTag}`
     const busy = this.exporting
     this.playBtn.disabled = busy
     this.timeline.disabled = busy
@@ -789,6 +1228,18 @@ class Replay {
     this.closeBtn.disabled = busy
     if (this.saveBtn) this.saveBtn.disabled = busy
     if (this.loadBtn) this.loadBtn.disabled = busy
+    if (this.directorBtn) {
+      this.directorBtn.disabled = busy
+      this.directorBtn.classList.toggle('active', this.directorMode && this.cuts.length > 0)
+    }
+    if (this.recCutsBtn) {
+      this.recCutsBtn.disabled = busy
+      this.recCutsBtn.classList.toggle('active', this.recordCuts)
+    }
+    if (this.addCutBtn) this.addCutBtn.disabled = busy
+    if (this.delCutBtn) this.delCutBtn.disabled = busy || this.cuts.length === 0
+    if (this.autoCutBtn) this.autoCutBtn.disabled = busy
+    if (this.clearCutsBtn) this.clearCutsBtn.disabled = busy || this.cuts.length === 0
     this.cameraSelect.disabled = busy
     this.cameraSelect.value = String(this.scene.cameraSwitcher._activeIndex)
     if (this.carSelect) {
@@ -799,6 +1250,7 @@ class Replay {
       this.speedSelect.disabled = busy
       this.speedSelect.value = String(this.speed)
     }
+    this.renderCutTrack()
   }
 
   screenshot(filename = `boxracing-${Date.now()}.png`) {
@@ -817,6 +1269,7 @@ class Replay {
 
     this.exporting = true
     this.playing = false
+    this._activeCutIndex = -1
     this.seek(0)
     const root = this.targetRoot()
     this.scene.cameraSwitcher._activeController?.activate?.(

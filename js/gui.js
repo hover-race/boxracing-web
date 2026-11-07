@@ -169,6 +169,7 @@ const params = new RememberedParams({
   replayPlaying: true,
   replayLoop: false,
   replayExport: false,
+  replayCuts: '',
   autosaveReplay: false,
   simRecordSec: 0,
 })
@@ -396,6 +397,7 @@ function applyUrlParamOverrides() {
     replayPlaying: true,
     replayLoop: false,
     replayExport: false,
+    replayCuts: '',
     autosaveReplay: false,
   })
   const query = new URLSearchParams(window.location.search)

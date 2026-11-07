@@ -643,6 +643,7 @@ export class MainScene extends Scene3D {
 
   preRender() {
     if (this.replay?.active) {
+      this.replay.applyAt(this.replay.time)
       this.updateCamera(this._deltaTime || 0)
       return
     }

@@ -911,15 +911,14 @@ canvas {
     left: 50%;
     bottom: 20px;
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
+    gap: 10px;
     box-sizing: border-box;
-    width: min(920px, calc(100vw - 24px));
+    width: min(1140px, calc(100vw - 24px));
     padding: 12px 16px;
     border-radius: 12px;
     transform: translateX(-50%);
-    background: rgba(10, 0, 22, 0.9);
+    background: rgba(10, 0, 22, 0.92);
     border: 1px solid rgba(196, 77, 255, 0.65);
     box-shadow:
         0 12px 32px rgba(0, 0, 0, 0.55),
@@ -927,9 +926,80 @@ canvas {
     pointer-events: auto;
 }
 
+#replay-timeline-row,
+#replay-controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+#replay-timeline-wrap {
+    flex: 1 1 240px;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#replay-cut-track {
+    position: relative;
+    height: 22px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(196, 77, 255, 0.3);
+    overflow: hidden;
+}
+
+#replay-cut-track:empty {
+    display: none;
+}
+
+.replay-cut-marker {
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    min-width: 14px;
+    padding: 0 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(196, 77, 255, 0.7);
+    background: rgba(196, 77, 255, 0.24);
+    color: #f3e5ff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+.replay-cut-marker:hover {
+    background: rgba(196, 77, 255, 0.42);
+}
+
+.replay-cut-marker.active {
+    background: rgba(196, 77, 255, 0.68);
+    border-color: #fff;
+    color: #fff;
+    box-shadow: 0 0 8px rgba(196, 77, 255, 0.65);
+    z-index: 2;
+}
+
+.replay-divider {
+    width: 1px;
+    height: 22px;
+    background: rgba(196, 77, 255, 0.35);
+    margin: 0 2px;
+}
+
 #replay-bar button {
     flex: 0 0 auto;
-    padding: 8px 12px;
+    padding: 6px 10px;
     border: 1px solid rgba(196, 77, 255, 0.65);
     border-radius: 6px;
     background: rgba(196, 77, 255, 0.18);
@@ -937,12 +1007,26 @@ canvas {
     font-family: 'JetBrains Mono', monospace;
     font-style: italic;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 12px;
     cursor: pointer;
 }
 
 #replay-bar button:hover:not(:disabled) {
     background: rgba(196, 77, 255, 0.35);
+}
+
+#replay-bar button.active {
+    background: #c44dff;
+    border-color: #f2cfff;
+    color: #120024;
+    box-shadow: 0 0 12px rgba(196, 77, 255, 0.6);
+}
+
+#replay-bar #replay-rec-cuts.active {
+    background: #ff3b5c;
+    border-color: #ffc2cd;
+    color: #fff;
+    box-shadow: 0 0 12px rgba(255, 59, 92, 0.65);
 }
 
 #replay-bar button:disabled {
@@ -951,8 +1035,8 @@ canvas {
 }
 
 #replay-timeline {
-    flex: 1 1 auto;
-    min-width: 80px;
+    width: 100%;
+    margin: 0;
     accent-color: #c44dff;
 }
 
@@ -962,6 +1046,7 @@ canvas {
     font-family: 'JetBrains Mono', monospace;
     font-style: italic;
     font-weight: 700;
+    font-size: 13px;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
@@ -971,21 +1056,21 @@ canvas {
 #replay-speed-label {
     color: #fff;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 #replay-camera,
 #replay-car,
 #replay-speed {
-    min-height: 34px;
-    max-width: 150px;
-    padding: 0 8px;
+    min-height: 30px;
+    max-width: 145px;
+    padding: 0 6px;
     border: 1px solid rgba(196, 77, 255, 0.65);
     border-radius: 6px;
     background: #21112c;
     color: #fff;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 body.replay-playing #hud-bottom-left,

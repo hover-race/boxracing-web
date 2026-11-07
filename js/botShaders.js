@@ -407,9 +407,10 @@ function applyBotShader(car, shader, color) {
   }
 }
 
-function refreshAllBotShaders(mainScene) {
+function refreshAllBotShaders(mainScene, shaderOverride = null) {
+  const shader = shaderOverride ?? (mainScene.replay?.active ? 'none' : params.botShader)
   for (const { car } of mainScene.bots ?? []) {
-    if (car?.visualRoot) applyBotShader(car, params.botShader, car.visualRoot.userData.botColor)
+    if (car?.visualRoot) applyBotShader(car, shader, car.visualRoot.userData.botColor)
   }
 }
 
@@ -423,6 +424,7 @@ function xrayTmp() {
 }
 
 function updateBotFade(mainScene) {
+  if (mainScene.replay?.active) return
   if (ANIMATED_BOT_SHADERS.has(params.botShader)) {
     const t = performance.now() * 0.001
     const inv = new THREE.Matrix4()
