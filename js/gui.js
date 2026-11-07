@@ -161,6 +161,15 @@ const params = new RememberedParams({
   botCurvatureSpacing: 10,
   tiltSteering: window.matchMedia('(pointer: coarse)').matches,
   tiltSensitivity: 1,
+  replay: '',
+  replayCam: '',
+  replayCar: '',
+  replayTime: -1,
+  replaySpeed: 1,
+  replayPlaying: true,
+  replayLoop: false,
+  replayExport: false,
+  autosaveReplay: false,
 })
 
 let playerNameController
@@ -379,6 +388,10 @@ function applyUrlParamOverrides() {
     if (typeof current === 'boolean') params[key] = raw === 'true' || raw === '1'
     else if (typeof current === 'number') params[key] = Number(raw)
     else params[key] = raw
+  }
+  if (params.replay) {
+    params.skipIntro = true
+    if (!query.has('offlinePlay')) params.offlinePlay = true
   }
   eachGuiController(gui, (controller) => controller.updateDisplay())
 }

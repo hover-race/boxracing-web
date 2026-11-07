@@ -120,11 +120,24 @@ class Replay {
     this.timeLabel = document.getElementById('replay-time')
     this.screenshotBtn = document.getElementById('replay-screenshot')
     this.exportBtn = document.getElementById('replay-export')
+    this.closeBtn = document.getElementById('replay-close')
+    this.cameraSelect = document.getElementById('replay-camera')
     if (!this.overlay) throw new Error('replay-overlay element missing')
+
+    this.scene.cameraSwitcher.controllers.forEach((controller, index) => {
+      const option = document.createElement('option')
+      option.value = String(index)
+      option.textContent = controller.label
+      this.cameraSelect.appendChild(option)
+    })
 
     this.playBtn.addEventListener('click', () => this.togglePlay())
     this.screenshotBtn.addEventListener('click', () => this.screenshot())
     this.exportBtn.addEventListener('click', () => this.exportVideo())
+    this.closeBtn.addEventListener('click', () => this.exit())
+    this.cameraSelect.addEventListener('change', () => {
+      if (!this.exporting) this.scene.cameraSwitcher.setController(Number(this.cameraSelect.value))
+    })
     this.timeline.addEventListener('pointerdown', () => {
       if (!this.exporting) this.pause()
     })
@@ -160,6 +173,7 @@ class Replay {
   }
 
   startRecording() {
+    this.resetForNextRace()
     this.times = []
     this.tracks = this.vehicles().map(vehicle => ({ vehicle, poses: [] }))
     this.origin = performance.now()
@@ -194,9 +208,35 @@ class Replay {
   }
 
   enter() {
+    if (this.active) return
+    if (this.times.length === 0) {
+      const toast = document.getElementById('hud-toast')
+      toast.textContent = 'Replay starts when the race begins'
+      toast.classList.add('show')
+      setTimeout(() => toast.classList.remove('show'), 2000)
+      return
+    }
+    this._liveSnapshot = this.scene.checkpointManager.raceFinished ? null : {
+      at: performance.now(),
+      runPhysics: params.runPhysics,
+      recording: this.recording,
+      vehicles: this.vehicles().map(vehicle => {
+        const pose = new Float32Array(POSE_FLOATS)
+        writePose(vehicle, pose)
+        const body = vehicle.chassis.body.ammo
+        const linear = body.getLinearVelocity()
+        const angular = body.getAngularVelocity()
+        return {
+          vehicle, pose,
+          linear: [linear.x(), linear.y(), linear.z()],
+          angular: [angular.x(), angular.y(), angular.z()],
+        }
+      }),
+    }
     this.recording = false
-    if (this.active || this.times.length === 0) return
+    clearTimeout(this._playTimeout)
     this.active = true
+    this._cameraBeforeReplay = this.scene.cameraSwitcher._activeIndex
     params.runPhysics = false
     this.freezeAll()
     this.silenceAll()
@@ -210,17 +250,84 @@ class Replay {
     this.syncUi()
   }
 
+  exit() {
+    if (!this.active || this.exporting) return
+    this.playing = false
+    if (this._liveSnapshot) {
+      const snapshot = this._liveSnapshot
+      const elapsed = performance.now() - snapshot.at
+      this.ensureAmmo()
+      for (const state of snapshot.vehicles) {
+        applyPose(state.vehicle, state.pose, this._btQuat)
+        const body = state.vehicle.chassis.body.ammo
+        const linear = new Ammo.btVector3(...state.linear)
+        const angular = new Ammo.btVector3(...state.angular)
+        body.setLinearVelocity(linear)
+        body.setAngularVelocity(angular)
+        Ammo.destroy(linear)
+        Ammo.destroy(angular)
+      }
+      this.origin += elapsed
+      const manager = this.scene.checkpointManager
+      for (const key of ['raceStartTime', 'currentLapStartTime']) {
+        if (manager[key]) manager[key] += elapsed
+      }
+      for (const racer of manager.racers) {
+        if (racer.lapStartTime) racer.lapStartTime += elapsed
+        if (racer.finishTime) racer.finishTime += elapsed
+        racer.splitTimes = racer.splitTimes.map(time => time + elapsed)
+      }
+      params.runPhysics = snapshot.runPhysics
+      this.recording = snapshot.recording
+      this._liveSnapshot = null
+    } else {
+      this.seek(this.duration())
+      this.scene.checkpointManager.finishElement.classList.add('visible')
+    }
+    this.restorePhysics()
+    if (this.recording) {
+      for (const vehicle of this.vehicles()) vehicle.chassis.body.ammo.activate()
+    }
+    this.active = false
+    this.scene.cameraSwitcher.setController(this._cameraBeforeReplay)
+    document.body.classList.remove('replay-playing')
+    this.overlay.classList.remove('visible')
+  }
+
   freezeAll() {
     this.ensureAmmo()
     for (const vehicle of this.vehicles()) {
       const ammoBody = vehicle.chassis.body.ammo
       if (vehicle._replayCollisionFlags === undefined) {
         vehicle._replayCollisionFlags = ammoBody.getCollisionFlags()
+        vehicle._replayActivationState = ammoBody.getActivationState()
         ammoBody.setCollisionFlags(vehicle._replayCollisionFlags | CF_KINEMATIC_OBJECT)
         ammoBody.setActivationState(DISABLE_DEACTIVATION)
       }
       ammoBody.setLinearVelocity(this._btZero)
       ammoBody.setAngularVelocity(this._btZero)
+    }
+  }
+
+  resetForNextRace() {
+    clearTimeout(this._playTimeout)
+    this.playing = false
+    this.active = false
+    this._liveSnapshot = null
+    document.body.classList.remove('replay-playing')
+    this.overlay.classList.remove('visible')
+    this.restorePhysics()
+    params.runPhysics = true
+  }
+
+  restorePhysics() {
+    for (const vehicle of this.vehicles()) {
+      if (vehicle._replayCollisionFlags === undefined) continue
+      const body = vehicle.chassis.body.ammo
+      body.setCollisionFlags(vehicle._replayCollisionFlags)
+      body.setActivationState(vehicle._replayActivationState)
+      delete vehicle._replayCollisionFlags
+      delete vehicle._replayActivationState
     }
   }
 
@@ -313,6 +420,9 @@ class Replay {
     this.timeline.disabled = busy
     this.screenshotBtn.disabled = busy
     this.exportBtn.disabled = busy
+    this.closeBtn.disabled = busy
+    this.cameraSelect.disabled = busy
+    this.cameraSelect.value = String(this.scene.cameraSwitcher._activeIndex)
   }
 
   screenshot() {

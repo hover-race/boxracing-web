@@ -31,6 +31,12 @@ class UIController {
       else url.searchParams.delete('offlinePlay');
       window.location.assign(url);
     });
+    const replayBtn = document.getElementById('game-menu-replay');
+    replayBtn.addEventListener('click', () => {
+      items.hidden = true;
+      menu.classList.remove('open');
+      this.mainScene.replay?.enter();
+    });
     document.getElementById('game-menu-options').addEventListener('click', () => {
       items.hidden = true;
       menu.classList.remove('open');

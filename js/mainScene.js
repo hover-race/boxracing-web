@@ -413,6 +413,7 @@ export class MainScene extends Scene3D {
     }
     if (!this._placedForRound) {
       this._placedForRound = true;
+      this.replay?.resetForNextRace();
       this.applyRoundPlacements(this._roundPlacements);
       this.checkpointManager.reset();
       this.cameraSwitcher.setController(0);
@@ -619,7 +620,10 @@ export class MainScene extends Scene3D {
 
   updateCamera(deltaTime) {
     if (this.cameraSwitcher) {
-      this.cameraSwitcher.update(this.camera, this.car.visualRoot, deltaTime);
+      const target = this.replay?.active
+        ? (this.replay.targetRoot() ?? this.car.visualRoot)
+        : this.car.visualRoot
+      this.cameraSwitcher.update(this.camera, target, deltaTime);
     }
   }
 

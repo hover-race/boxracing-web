@@ -318,7 +318,8 @@ class CameraOrbit {
 
 // Camera rigidly attached to the car, preserving roll axis
 class CameraFixed {
-  constructor(offset, lookAtOffset, label = '', wobble = false) {
+  constructor(offset, lookAtOffset, label = '', wobble = false, id = '') {
+    this.id = id
     this.label = label
     this.offset = offset.clone()
     this.lookAtOffset = lookAtOffset.clone()
@@ -436,40 +437,273 @@ class CameraFixed {
   }
 }
 
+class CameraTrackside {
+  constructor(scene) {
+    this.id = 'trackside'
+    this.label = 'Trackside Cam'
+    this.scene = scene
+    this.posts = []
+    this._activePost = null
+    this._lookTarget = new THREE.Vector3()
+    this._lastTargetPos = new THREE.Vector3()
+    this._velocity = new THREE.Vector3()
+    this._holdTime = 0
+  }
+
+  _ensurePosts() {
+    if (this.posts.length) return
+    const line = this.scene.trackCenterline
+    if (!line) return
+    const count = 16
+    for (let i = 0; i < count; i++) {
+      const u = i / count
+      const p = line.sample(u)
+      const ahead = line.sample(u + 6 / line.length)
+      const tx = ahead.x - p.x
+      const tz = ahead.z - p.z
+      const len = Math.hypot(tx, tz) || 1
+      const nx = -tz / len
+      const nz = tx / len
+      const side = (i % 2 === 0 ? 1 : -1) * (13 + (i % 3) * 3)
+      const height = 2.6 + (i % 4) * 1.4
+      this.posts.push(new THREE.Vector3(
+        p.x + nx * side,
+        p.y + height,
+        p.z + nz * side,
+      ))
+    }
+  }
+
+  _pickPost(target) {
+    this._ensurePosts()
+    if (!this.posts.length) return null
+    const fwd = target.getWorldDirection(new THREE.Vector3())
+    const aheadX = target.position.x + fwd.x * 28
+    const aheadZ = target.position.z + fwd.z * 28
+    let best = this.posts[0]
+    let bestD2 = Infinity
+    for (const post of this.posts) {
+      const dx = post.x - aheadX
+      const dz = post.z - aheadZ
+      const d2 = dx * dx + dz * dz
+      if (d2 < bestD2) {
+        bestD2 = d2
+        best = post
+      }
+    }
+    return best
+  }
+
+  activate(camera, target) {
+    if (!target) return
+    this._activePost = this._pickPost(target)
+    this._lookTarget.copy(target.position)
+    this._lastTargetPos.copy(target.position)
+    this._velocity.set(0, 0, 0)
+    this._holdTime = 0
+    if (this._activePost) {
+      camera.position.copy(this._activePost)
+      camera.lookAt(this._lookTarget)
+    }
+  }
+
+  update(camera, target, deltaTime) {
+    if (!target) return
+    const dt = Math.min((deltaTime > 1 ? deltaTime / 1000 : deltaTime) || 1 / 60, 0.1)
+    this._holdTime += dt
+
+    if (!this._activePost) {
+      this._activePost = this._pickPost(target)
+    } else {
+      const dist = camera.position.distanceTo(target.position)
+      if ((dist > 95 && this._holdTime > 1.2) || dist > 140) {
+        this._activePost = this._pickPost(target)
+        this._holdTime = 0
+      }
+    }
+
+    if (this._activePost) {
+      camera.position.copy(this._activePost)
+    }
+
+    const stepVel = target.position.clone().sub(this._lastTargetPos).divideScalar(Math.max(dt, 1e-3))
+    this._lastTargetPos.copy(target.position)
+    if (stepVel.lengthSq() < 40000) {
+      this._velocity.lerp(stepVel, Math.min(1, dt * 8))
+    }
+
+    const aim = target.position.clone().addScaledVector(this._velocity, 0.08)
+    aim.y = target.position.y + 0.8
+    this._lookTarget.lerp(aim, Math.min(1, dt * 12))
+    camera.lookAt(this._lookTarget)
+  }
+}
+
+class CameraDrone {
+  constructor() {
+    this.id = 'drone'
+    this.label = 'Drone Cam'
+    this.radius = 12
+    this.baseHeight = 5.5
+    this.phase = 0
+    this._pos = new THREE.Vector3()
+    this._lookTarget = new THREE.Vector3()
+    this._lastTargetPos = new THREE.Vector3()
+    this._velocity = new THREE.Vector3()
+  }
+
+  activate(camera, target) {
+    if (!target) return
+    const fwd = target.getWorldDirection(new THREE.Vector3())
+    this.phase = Math.atan2(-fwd.x, -fwd.z) + 0.4
+    this._lastTargetPos.copy(target.position)
+    this._velocity.set(0, 0, 0)
+    this._pos.set(
+      target.position.x + Math.sin(this.phase) * this.radius,
+      target.position.y + this.baseHeight,
+      target.position.z + Math.cos(this.phase) * this.radius,
+    )
+    this._lookTarget.copy(target.position)
+    camera.position.copy(this._pos)
+    camera.lookAt(this._lookTarget)
+  }
+
+  update(camera, target, deltaTime) {
+    if (!target) return
+    const dt = Math.min((deltaTime > 1 ? deltaTime / 1000 : deltaTime) || 1 / 60, 0.1)
+    this.phase += dt * 0.35
+
+    const stepVel = target.position.clone().sub(this._lastTargetPos).divideScalar(Math.max(dt, 1e-3))
+    this._lastTargetPos.copy(target.position)
+    if (stepVel.lengthSq() < 40000) {
+      this._velocity.lerp(stepVel, Math.min(1, dt * 5))
+    }
+
+    const r = this.radius + Math.sin(this.phase * 1.7) * 3.0
+    const h = this.baseHeight + Math.sin(this.phase * 1.1) * 2.2
+    const desired = new THREE.Vector3(
+      target.position.x + Math.sin(this.phase) * r,
+      target.position.y + h,
+      target.position.z + Math.cos(this.phase) * r,
+    )
+    this._pos.lerp(desired, Math.min(1, dt * 4.5))
+    camera.position.copy(this._pos)
+
+    const lookAhead = target.position.clone().addScaledVector(this._velocity, 0.15)
+    lookAhead.y = target.position.y + 0.7
+    this._lookTarget.lerp(lookAhead, Math.min(1, dt * 8))
+    camera.lookAt(this._lookTarget)
+  }
+}
+
+class CameraRotate {
+  constructor() {
+    this.id = 'rotate'
+    this.label = 'Rotate Cam'
+    this.distance = 6.2
+    this.height = 1.9
+    this.angularSpeed = 0.65
+    this.angle = 0
+    this.selfHeight = 0
+  }
+
+  activate(camera, target) {
+    if (!target) return
+    const fwd = target.getWorldDirection(new THREE.Vector3())
+    this.angle = Math.atan2(fwd.x, fwd.z) + Math.PI * 0.25
+    this.selfHeight = target.position.y + this.height
+  }
+
+  update(camera, target, deltaTime) {
+    if (!target) return
+    const dt = Math.min((deltaTime > 1 ? deltaTime / 1000 : deltaTime) || 1 / 60, 0.1)
+    this.angle += this.angularSpeed * dt
+    const wantedHeight = target.position.y + this.height
+    this.selfHeight += (wantedHeight - this.selfHeight) * Math.min(1, dt * 4)
+
+    camera.position.set(
+      target.position.x + Math.sin(this.angle) * this.distance,
+      this.selfHeight,
+      target.position.z + Math.cos(this.angle) * this.distance,
+    )
+    camera.lookAt(target.position.x, target.position.y + 0.65, target.position.z)
+  }
+}
+
 class CameraSwitcher {
   constructor(scene) {
     this.scene = scene
     this.follow = new CameraFollow()
+    this.follow.id = 'follow'
     this.helicopter = new CameraHelicopter()
+    this.helicopter.id = 'overhead'
     this.orbit = new CameraOrbit()
+    this.orbit.id = 'orbit'
+    this.trackside = new CameraTrackside(scene)
+    this.drone = new CameraDrone()
+    this.rotate = new CameraRotate()
     // Bumper cam: low on the front of the car, looking forward
     this.bumper = new CameraFixed(
       new THREE.Vector3(0, 0.56, 2.8),
       new THREE.Vector3(0, 0.3, 10),
       'Bumper Cam',
       true,
+      'bumper',
     )
     this.side = new CameraFixed(
       new THREE.Vector3(1.12, 0.56, 0),
       new THREE.Vector3(0.5, 0.3, 2),
       'Side Cam',
       true,
+      'side',
     )
     this.hood = new CameraFixed(
       new THREE.Vector3(0, 1.12, 0.7),
       new THREE.Vector3(0, 0.7, 10),
       'Hood Cam',
       true,
+      'hood',
+    )
+    this.rear = new CameraFixed(
+      new THREE.Vector3(0, 1.35, 1.8),
+      new THREE.Vector3(0, 0.6, -10),
+      'Rear Look Cam',
+      true,
+      'rear',
     )
 
     // Ordered list of controllers; index drives everything.
-    this.controllers = [this.follow, this.helicopter, this.orbit, this.bumper, this.hood, this.side]
+    this.controllers = [
+      this.follow,
+      this.helicopter,
+      this.orbit,
+      this.bumper,
+      this.hood,
+      this.side,
+      this.rear,
+      this.trackside,
+      this.drone,
+      this.rotate,
+    ]
     this._activeIndex = 0
     this.createUI()
   }
 
   get _activeController() {
     return this.controllers[this._activeIndex]
+  }
+
+  resolveIndex(idOrIndex) {
+    if (typeof idOrIndex === 'number' && Number.isFinite(idOrIndex)) {
+      return Math.max(0, Math.min(this.controllers.length - 1, Math.trunc(idOrIndex)))
+    }
+    const raw = String(idOrIndex ?? '').trim().toLowerCase()
+    if (!raw) return this._activeIndex
+    if (/^\d+$/.test(raw)) {
+      return Math.max(0, Math.min(this.controllers.length - 1, Number(raw)))
+    }
+    const idx = this.controllers.findIndex(c => c.id === raw || c.label.toLowerCase() === raw || c.label.toLowerCase().startsWith(raw))
+    return idx >= 0 ? idx : this._activeIndex
   }
 
   initFollow(camera, target) {
@@ -527,14 +761,16 @@ class CameraSwitcher {
 
     this._onKeyDown = (e) => {
       if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
+      if (this.scene.replay?.exporting || e.target?.closest?.('input, select, textarea')) return
       // C cycles to next camera
       if (e.code === 'KeyC') {
         this.setController((this._activeIndex + 1) % this.controllers.length)
       }
-      // 1–9 selects camera by index
+      // 1–9 selects camera by index, 0 selects 10th
       const digit = e.code.match(/^Digit(\d)$/)?.[1]
       if (digit !== undefined) {
-        const i = Number(digit) - 1
+        const d = Number(digit)
+        const i = d === 0 ? 9 : d - 1
         if (i >= 0 && i < this.controllers.length) this.setController(i)
       }
     }
@@ -552,7 +788,8 @@ class CameraSwitcher {
     }
   }
 
-  setController(index) {
+  setController(idOrIndex) {
+    const index = this.resolveIndex(idOrIndex)
     this._activeController?.deactivate?.(this.scene.camera)
     this._activeIndex = index
     this._activeController.activate?.(this.scene.camera, this._lastTarget)
@@ -561,9 +798,12 @@ class CameraSwitcher {
 
   update(camera, target, deltaTime) {
     if (!target) return
-    this._lastTarget = target
+    if (this._lastTarget !== target) {
+      this._lastTarget = target
+      this._activeController?.activate?.(camera, target)
+    }
     this._activeController.update(camera, target, deltaTime)
   }
 }
 
-export { CameraFollow, CameraHelicopter, CameraOrbit, CameraFixed, CameraSwitcher };
+export { CameraFollow, CameraHelicopter, CameraOrbit, CameraFixed, CameraTrackside, CameraDrone, CameraRotate, CameraSwitcher };
