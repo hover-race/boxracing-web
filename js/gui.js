@@ -170,6 +170,7 @@ const params = new RememberedParams({
   replayLoop: false,
   replayExport: false,
   autosaveReplay: false,
+  simRecordSec: 0,
 })
 
 let playerNameController
@@ -381,6 +382,22 @@ function eachGuiController(g, fn) {
 // Debug overrides from URL query, e.g. ?throttleInput=1&engineTorque=900&autoStopPhysics=true
 // Applied after gui.remember/localStorage restore so the URL is authoritative.
 function applyUrlParamOverrides() {
+  Object.assign(params, {
+    skipIntro: false,
+    throttleInput: 0,
+    runPhysics: true,
+    autoStopPhysicsAfterSec: 0,
+    simRecordSec: 0,
+    replay: '',
+    replayCam: '',
+    replayCar: '',
+    replayTime: -1,
+    replaySpeed: 1,
+    replayPlaying: true,
+    replayLoop: false,
+    replayExport: false,
+    autosaveReplay: false,
+  })
   const query = new URLSearchParams(window.location.search)
   for (const [key, raw] of query) {
     if (!Object.hasOwn(params, key)) continue
@@ -389,7 +406,7 @@ function applyUrlParamOverrides() {
     else if (typeof current === 'number') params[key] = Number(raw)
     else params[key] = raw
   }
-  if (params.replay) {
+  if (params.replay || params.simRecordSec > 0) {
     params.skipIntro = true
     if (!query.has('offlinePlay')) params.offlinePlay = true
   }

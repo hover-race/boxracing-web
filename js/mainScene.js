@@ -7,7 +7,7 @@ import { CameraSwitcher } from './camera.js';
 import { ControlsManager } from './controls.js';
 import { CheckpointManager } from './checkpointManager.js';
 import { UIController } from './ui.js';
-import { Replay } from './replays.js';
+import { Replay, LAST_REPLAY_STORAGE_KEY } from './replays.js';
 import { LapPathRecorder } from './lapPath.js';
 import { RacingLine } from './racingLine.js';
 import { Bot } from './bot.js';
@@ -163,12 +163,30 @@ export class MainScene extends Scene3D {
     if (!this.trackCenterline) throw new Error('Failed to extract track centerline')
     console.log('Track centerline:', this.trackCenterline.count, 'points,', this.trackCenterline.length.toFixed(0), 'm')
 
-    const botCount = params.numBots
+    let preloadedReplay = null
+    const replayParam = String(params.replay || '').trim()
+    if (replayParam) {
+      if (['1', 'true', 'last'].includes(replayParam.toLowerCase())) {
+        const saved = localStorage.getItem(LAST_REPLAY_STORAGE_KEY)
+        if (saved && !(params.autoStopPhysicsAfterSec > 0)) {
+          preloadedReplay = JSON.parse(saved)
+        }
+      } else {
+        const res = await fetch(replayParam)
+        if (!res.ok) throw new Error(`Failed to load replay "${replayParam}": ${res.status}`)
+        preloadedReplay = await res.json()
+      }
+    }
+
+    const botCount = preloadedReplay?.tracks?.length
+      ? Math.max(0, preloadedReplay.tracks.length - 1)
+      : params.numBots
     const useRaceGrid = params.numLaps > 0 && params.debugSpawnU < 0
     const raceGrid = useRaceGrid ? this.buildRaceGrid(botCount) : null
     const playerTransform = raceGrid?.playerTransform ?? this.startTransform
 
-    const selectedCarModel = getCarModel(params.car_id)
+    const playerCarId = preloadedReplay?.tracks?.[0]?.carId || params.car_id
+    const selectedCarModel = getCarModel(playerCarId)
     const selectedPrefab = this.carModels.get(selectedCarModel.car_id).prefab
     this.car = await Vehicle.setup(
       this,
@@ -189,6 +207,9 @@ export class MainScene extends Scene3D {
       totalLaps: params.numLaps,
       trackLine: this.trackCenterline,
     })
+    if (preloadedReplay?.tracks?.[0]?.name && this.checkpointManager.playerRacer) {
+      this.checkpointManager.playerRacer.name = preloadedReplay.tracks[0].name
+    }
     this.autoSteer = new AutoSteer([this.trackCenterline])
     if (params.debugSpawnU >= 0) {
       const backU = params.debugSpawnBackM / this.trackCenterline.length;
@@ -212,7 +233,10 @@ export class MainScene extends Scene3D {
         const botSpawn = raceGrid?.botSpawns[i]
         const transform = botSpawn?.transform ?? this.botStartTransform
         const bot = new Bot(this.racingLines)
-        const botCarModel = CAR_MODELS[Math.floor(Math.random() * CAR_MODELS.length)]
+        const savedBotTrack = preloadedReplay?.tracks?.[i + 1]
+        const botCarModel = savedBotTrack?.carId
+          ? getCarModel(savedBotTrack.carId)
+          : CAR_MODELS[Math.floor(Math.random() * CAR_MODELS.length)]
         if (botSpawn) {
           for (const lap of bot.laps) {
             lap.u = lap.line.project(transform.position.x, transform.position.z)
@@ -225,10 +249,12 @@ export class MainScene extends Scene3D {
           botCarModel,
           { isBot: true, botColor: botColorForIndex(i, botCount) }
         )
-        let name
-        do {
-          name = generateDefaultPlayerName() + '[bot]'
-        } while (usedNames.has(name))
+        let name = savedBotTrack?.name
+        if (!name) {
+          do {
+            name = generateDefaultPlayerName() + '[bot]'
+          } while (usedNames.has(name))
+        }
         usedNames.add(name)
         this.checkpointManager.registerRacer(botCar, { name })
         this.bots.push({ car: botCar, bot })
@@ -257,7 +283,16 @@ export class MainScene extends Scene3D {
       this.networkManager.addSender(this.carsender)
     }
 
-    this.startRaceCountdown()
+    if (preloadedReplay) {
+      this.replay.loadJSON(preloadedReplay)
+      this.replay.enterFromParams()
+    } else if (params.simRecordSec > 0) {
+      emitRaceEvent('raceStart')
+      this.replay.recordSimulation(params.simRecordSec)
+      this.replay.enterFromParams()
+    } else {
+      this.startRaceCountdown()
+    }
 
     onRaceEvent('raceFinished', () => {
       if (this.isRoundHost()) this.hostScheduleStart()
@@ -314,14 +349,15 @@ export class MainScene extends Scene3D {
   _scheduleAutoStop() {
     if (this._autoStopScheduled || params.autoStopPhysicsAfterSec <= 0) return;
     this._autoStopScheduled = true;
-    this._autoStopAt = performance.now() + params.autoStopPhysicsAfterSec * 1000;
   }
 
   _checkAutoStop() {
-    if (!this._autoStopAt || performance.now() < this._autoStopAt) return;
-    this._autoStopAt = null;
+    if (!this._autoStopScheduled || params.autoStopPhysicsAfterSec <= 0) return;
+    if (this._physicsElapsed < params.autoStopPhysicsAfterSec) return;
+    this._autoStopScheduled = false;
     params.runPhysics = false;
     this.autoSteer?.dumpLog();
+    this.replay?.onAutoStop();
   }
 
   teleportVehicle(vehicle, transform) {
