@@ -1283,7 +1283,7 @@ body.replay-exporting .dg.ac {
 #recordings-modal {
     position: fixed;
     inset: 0;
-    z-index: 6000;
+    z-index: 25000;
     display: flex;
     align-items: center;
     justify-content: center;

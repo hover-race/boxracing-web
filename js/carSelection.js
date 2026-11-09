@@ -5,13 +5,8 @@ function selectCar(scene) {
   const overlay = document.getElementById('car-selection')
   const options = document.getElementById('car-selection-options')
   const startButton = document.getElementById('car-selection-start')
-  const recordingsButton = document.getElementById('car-selection-recordings')
   const nameInput = document.getElementById('player-name-input')
   let selectedCar = getCarModel(params.car_id)
-
-  recordingsButton?.addEventListener('click', () => {
-    recordingsBrowser.open()
-  })
 
   nameInput.value = playerControl.name
   nameInput.addEventListener('input', () => {

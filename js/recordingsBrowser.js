@@ -68,6 +68,7 @@ class RecordingsBrowser {
           <div id="recordings-header">
             <h2 id="recordings-title">Recordings</h2>
             <div id="recordings-header-actions">
+              <button type="button" id="recordings-sample-btn" title="Watch built-in 4-car sample replay">▶ Sample Replay</button>
               <button type="button" id="recordings-import-btn" title="Import replay .json file">Import JSON</button>
               <input type="file" id="recordings-import-input" accept=".json,application/json" hidden>
               <button type="button" id="recordings-close-btn" aria-label="Close">✕</button>
@@ -90,6 +91,12 @@ class RecordingsBrowser {
     document.getElementById('recordings-backdrop')?.addEventListener('click', () => this.close())
     document.getElementById('recordings-close-btn')?.addEventListener('click', () => this.close())
     document.getElementById('recordings-import-btn')?.addEventListener('click', () => this.fileInput?.click())
+    document.getElementById('recordings-sample-btn')?.addEventListener('click', () => {
+      const url = new URL(window.location.href)
+      url.searchParams.set('replay', 'replays/sample-race.json')
+      url.searchParams.set('skipIntro', '1')
+      window.location.assign(url)
+    })
 
     this.fileInput?.addEventListener('change', async (e) => {
       const file = e.target.files?.[0]
@@ -268,6 +275,12 @@ class RecordingsBrowser {
 }
 
 const recordingsBrowser = new RecordingsBrowser()
+
+document.getElementById('car-selection-recordings')?.addEventListener('click', (e) => {
+  e.preventDefault()
+  e.stopPropagation()
+  recordingsBrowser.open()
+})
 
 window.openRecordingsBrowser = () => recordingsBrowser.open()
 window.__replays = {
