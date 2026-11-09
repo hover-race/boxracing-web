@@ -1079,6 +1079,7 @@ body.replay-playing #mobile-controls,
 body.replay-playing #race-hud,
 body.replay-playing #top-left-controls,
 body.replay-playing #race-finish,
+body.replay-playing #race-countdown,
 body.replay-playing #offscreen-markers {
     visibility: hidden;
 }

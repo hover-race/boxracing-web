@@ -430,8 +430,22 @@ export class MainScene extends Scene3D {
     this.onScheduleStart(detail);
   }
 
+  cancelRoundCountdown() {
+    clearTimeout(this._roundTimer);
+    this._roundTimer = null;
+    this._goAt = 0;
+    const countdownEl = document.getElementById('race-countdown');
+    countdownEl?.classList.remove('visible', 'fade-out', 'next-round');
+    const finishNextEl = document.getElementById('race-finish-next');
+    if (finishNextEl) finishNextEl.textContent = '';
+  }
+
   onScheduleStart({ goAt, placements }) {
     clearTimeout(this._roundTimer);
+    if (this.replay?.active) {
+      this.cancelRoundCountdown();
+      return;
+    }
     this._goAt = goAt;
     this._roundPlacements = placements;
     this._placedForRound = false;
@@ -440,6 +454,10 @@ export class MainScene extends Scene3D {
   }
 
   tickRoundClock() {
+    if (this.replay?.active) {
+      this.cancelRoundCountdown();
+      return;
+    }
     const remain = this._goAt - Date.now();
     if (remain > RESTART_COUNTDOWN_MS) {
       emitRaceEvent('nextRound', Math.ceil((remain - RESTART_COUNTDOWN_MS) / 1000));

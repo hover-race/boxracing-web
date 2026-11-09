@@ -212,7 +212,14 @@ class Replay {
       this.seek(Number(this.timeline.value))
     })
     this._onKeyDown = (e) => {
-      if (!this.active || this.exporting || e.repeat) return
+      if (!this.active || e.repeat) return
+      if (this.exporting) {
+        if (e.code === 'Escape') {
+          e.preventDefault()
+          this.cancelExport()
+        }
+        return
+      }
       if (e.target?.closest?.('input, button, select, textarea')) return
       if (e.code === 'Space') {
         e.preventDefault()
@@ -933,6 +940,7 @@ class Replay {
     }
     this.recording = false
     clearTimeout(this._playTimeout)
+    this.scene.cancelRoundCountdown?.()
     this.active = true
     this._cameraBeforeReplay = this.scene.cameraSwitcher._activeIndex
     params.runPhysics = false
@@ -1026,6 +1034,9 @@ class Replay {
     this.scene.cameraSwitcher.setController(this._cameraBeforeReplay)
     document.body.classList.remove('replay-playing')
     this.overlay.classList.remove('visible')
+    if (this.scene.checkpointManager.raceFinished && this.scene.isRoundHost?.()) {
+      this.scene.hostScheduleStart()
+    }
   }
 
   freezeAll() {
@@ -1262,12 +1273,36 @@ class Replay {
     })
   }
 
+  cancelExport() {
+    if (!this.exporting) return false
+    this._exportCanceled = true
+    this.playing = false
+    if (this._exportRecorder && this._exportRecorder.state !== 'inactive') {
+      this._exportRecorder.stop()
+    }
+    if (this._exportStream) {
+      for (const track of this._exportStream.getTracks()) track.stop()
+    }
+    if (this._exportDone) {
+      const done = this._exportDone
+      this._exportDone = null
+      done()
+    }
+    document.body.classList.remove('replay-exporting')
+    const cameraPanel = this.scene.cameraSwitcher?.panel
+    if (cameraPanel) cameraPanel.style.visibility = ''
+    this.exporting = false
+    this.syncUi()
+    return true
+  }
+
   async exportVideo() {
     if (!this.active || this.exporting || this.times.length === 0) return
     const mimeType = pickRecorderMime()
     if (!mimeType) throw new Error('No supported MediaRecorder mime type')
 
     this.exporting = true
+    this._exportCanceled = false
     this.playing = false
     this._activeCutIndex = -1
     this.seek(0)
@@ -1282,10 +1317,13 @@ class Replay {
     this.syncUi()
 
     await new Promise(resolve => requestAnimationFrame(resolve))
+    if (this._exportCanceled) return
 
     const canvas = this.scene.renderer.domElement
     const stream = canvas.captureStream(60)
     const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 })
+    this._exportRecorder = recorder
+    this._exportStream = stream
     const chunks = []
     recorder.addEventListener('dataavailable', e => {
       if (e.data.size > 0) chunks.push(e.data)
@@ -1301,17 +1339,23 @@ class Replay {
     this.playing = true
     this.syncUi()
     await ended
-    recorder.stop()
+    if (recorder.state !== 'inactive') recorder.stop()
     await stopped
     for (const track of stream.getTracks()) track.stop()
+    this._exportRecorder = null
+    this._exportStream = null
 
-    const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
-    downloadBlob(new Blob(chunks, { type: mimeType }), `boxracing-replay.${ext}`)
-
+    const canceled = this._exportCanceled
+    this._exportCanceled = false
     document.body.classList.remove('replay-exporting')
     if (cameraPanel) cameraPanel.style.visibility = ''
     this.exporting = false
     this.syncUi()
+
+    if (!canceled) {
+      const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
+      downloadBlob(new Blob(chunks, { type: mimeType }), `boxracing-replay.${ext}`)
+    }
   }
 
   dispose() {
