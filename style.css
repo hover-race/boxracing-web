@@ -909,13 +909,13 @@ canvas {
 #replay-bar {
     position: absolute;
     left: 50%;
-    bottom: 20px;
+    bottom: 18px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     box-sizing: border-box;
-    width: min(1140px, calc(100vw - 24px));
-    padding: 12px 16px;
+    width: min(980px, calc(100vw - 24px));
+    padding: 10px 14px;
     border-radius: 12px;
     transform: translateX(-50%);
     background: rgba(10, 0, 22, 0.92);
@@ -935,18 +935,35 @@ canvas {
     width: 100%;
 }
 
+#replay-controls-row {
+    justify-content: space-between;
+}
+
+.replay-bar-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.replay-bar-right {
+    margin-left: auto;
+}
+
 #replay-timeline-wrap {
+    position: relative;
     flex: 1 1 240px;
-    min-width: 160px;
+    min-width: 180px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
+    user-select: none;
 }
 
 #replay-cut-track {
     position: relative;
-    height: 22px;
-    border-radius: 5px;
+    height: 20px;
+    border-radius: 4px;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(196, 77, 255, 0.3);
     overflow: hidden;
@@ -962,14 +979,14 @@ canvas {
     bottom: 1px;
     min-width: 14px;
     padding: 0 6px;
-    border-radius: 4px;
+    border-radius: 3px;
     border: 1px solid rgba(196, 77, 255, 0.7);
     background: rgba(196, 77, 255, 0.24);
     color: #f3e5ff;
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
     font-weight: 700;
-    line-height: 18px;
+    line-height: 16px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -990,11 +1007,100 @@ canvas {
     z-index: 2;
 }
 
-.replay-divider {
-    width: 1px;
+#replay-scrubber {
+    position: relative;
     height: 22px;
-    background: rgba(196, 77, 255, 0.35);
-    margin: 0 2px;
+    display: flex;
+    align-items: center;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.07);
+    padding: 0 4px;
+    box-sizing: border-box;
+}
+
+#replay-timeline-wrap.clip-mode,
+#replay-timeline-wrap.clip-mode #replay-scrubber,
+#replay-timeline-wrap.clip-mode #replay-timeline,
+#replay-timeline-wrap.clip-mode .replay-cut-marker {
+    cursor: crosshair;
+}
+
+#replay-timeline {
+    width: 100%;
+    margin: 0;
+    accent-color: #c44dff;
+    position: relative;
+    z-index: 2;
+    cursor: pointer;
+}
+
+#replay-timeline-wrap.clip-mode #replay-timeline {
+    pointer-events: none;
+}
+
+#replay-clip-dim-left,
+#replay-clip-dim-right {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: rgba(5, 0, 12, 0.72);
+    pointer-events: none;
+    z-index: 3;
+}
+
+#replay-clip-dim-left {
+    left: 0;
+    border-radius: 5px 0 0 5px;
+}
+
+#replay-clip-dim-right {
+    right: 0;
+    border-radius: 0 5px 5px 0;
+}
+
+#replay-clip-range {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-top: 2px solid #ffb300;
+    border-bottom: 2px solid #ffb300;
+    background: rgba(255, 179, 0, 0.1);
+    pointer-events: none;
+    z-index: 3;
+    box-sizing: border-box;
+}
+
+#replay-clip-in,
+#replay-clip-out {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 10px;
+    transform: translateX(-50%);
+    border-radius: 3px;
+    background: #ffb300;
+    border: 1px solid #fff3cd;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.7);
+    cursor: ew-resize;
+    z-index: 4;
+    box-sizing: border-box;
+}
+
+#replay-clip-in::after,
+#replay-clip-out::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    bottom: 5px;
+    left: 3px;
+    width: 2px;
+    background: rgba(18, 0, 36, 0.75);
+    border-radius: 1px;
+}
+
+#replay-clip-in:hover,
+#replay-clip-out:hover {
+    background: #ffd54f;
 }
 
 #replay-bar button {
@@ -1022,6 +1128,13 @@ canvas {
     box-shadow: 0 0 12px rgba(196, 77, 255, 0.6);
 }
 
+#replay-bar #replay-clip-mode.active {
+    background: #ffb300;
+    border-color: #ffe082;
+    color: #1a0900;
+    box-shadow: 0 0 12px rgba(255, 179, 0, 0.6);
+}
+
 #replay-bar #replay-rec-cuts.active {
     background: #ff3b5c;
     border-color: #ffc2cd;
@@ -1029,15 +1142,71 @@ canvas {
     box-shadow: 0 0 12px rgba(255, 59, 92, 0.65);
 }
 
+#replay-bar .replay-primary-btn {
+    background: linear-gradient(135deg, #c44dff, #8c1eff);
+    border-color: #e6b3ff;
+    color: #fff;
+    box-shadow: 0 0 14px rgba(196, 77, 255, 0.45);
+}
+
+#replay-bar .replay-primary-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #d270ff, #9d3bff);
+}
+
 #replay-bar button:disabled {
     opacity: 0.45;
     cursor: default;
 }
 
-#replay-timeline {
+#replay-more-wrap {
+    position: relative;
+}
+
+#replay-more-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    min-width: 175px;
+    padding: 6px;
+    border-radius: 8px;
+    background: rgba(16, 4, 32, 0.97);
+    border: 1px solid rgba(196, 77, 255, 0.7);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 20;
+}
+
+#replay-more-menu[hidden] {
+    display: none;
+}
+
+#replay-more-menu button {
     width: 100%;
-    margin: 0;
-    accent-color: #c44dff;
+    text-align: left;
+    background: transparent;
+    border-color: transparent;
+    padding: 6px 10px;
+}
+
+#replay-more-menu button:hover:not(:disabled) {
+    background: rgba(196, 77, 255, 0.28);
+    border-color: rgba(196, 77, 255, 0.45);
+}
+
+#replay-more-menu button.active {
+    background: rgba(196, 77, 255, 0.35);
+    border-color: #c44dff;
+    color: #fff;
+    box-shadow: none;
+}
+
+.replay-menu-sep {
+    width: 100%;
+    border: 0;
+    border-top: 1px solid rgba(196, 77, 255, 0.3);
+    margin: 2px 0;
 }
 
 #replay-time {
@@ -1046,17 +1215,16 @@ canvas {
     font-family: 'JetBrains Mono', monospace;
     font-style: italic;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
 
 #replay-camera-label,
-#replay-car-label,
-#replay-speed-label {
-    color: #fff;
+#replay-car-label {
+    color: rgba(255, 255, 255, 0.78);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-size: 11px;
 }
 
 #replay-camera,

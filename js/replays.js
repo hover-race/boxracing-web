@@ -132,6 +132,11 @@ class Replay {
     this.times = []
     this.tracks = []
     this.cuts = []
+    this.clipInMs = 0
+    this.clipOutMs = null
+    this.clipMode = false
+    this._dragKind = null
+    this._dragAnchorMs = 0
     this.directorMode = true
     this.recordCuts = false
     this._activeCutIndex = -1
@@ -145,12 +150,24 @@ class Replay {
     this.overlay = document.getElementById('replay-overlay')
     this.badge = document.getElementById('replay-badge')
     this.playBtn = document.getElementById('replay-play')
+    this.timelineWrap = document.getElementById('replay-timeline-wrap')
+    this.scrubber = document.getElementById('replay-scrubber')
     this.timeline = document.getElementById('replay-timeline')
     this.cutTrack = document.getElementById('replay-cut-track')
+    this.clipDimLeft = document.getElementById('replay-clip-dim-left')
+    this.clipDimRight = document.getElementById('replay-clip-dim-right')
+    this.clipRangeEl = document.getElementById('replay-clip-range')
+    this.clipInEl = document.getElementById('replay-clip-in')
+    this.clipOutEl = document.getElementById('replay-clip-out')
     this.timeLabel = document.getElementById('replay-time')
     this.speedSelect = document.getElementById('replay-speed')
     this.carSelect = document.getElementById('replay-car')
     this.cameraSelect = document.getElementById('replay-camera')
+    this.clipModeBtn = document.getElementById('replay-clip-mode')
+    this.clearClipBtn = document.getElementById('replay-clear-clip')
+    this.moreWrap = document.getElementById('replay-more-wrap')
+    this.moreBtn = document.getElementById('replay-more-btn')
+    this.moreMenu = document.getElementById('replay-more-menu')
     this.directorBtn = document.getElementById('replay-director')
     this.recCutsBtn = document.getElementById('replay-rec-cuts')
     this.addCutBtn = document.getElementById('replay-add-cut')
@@ -175,11 +192,20 @@ class Replay {
     this.refreshCarOptions()
 
     this.playBtn.addEventListener('click', () => this.togglePlay())
-    this.screenshotBtn.addEventListener('click', () => this.screenshot())
+    this.screenshotBtn.addEventListener('click', () => {
+      this.setMoreOpen(false)
+      this.screenshot()
+    })
     this.exportBtn.addEventListener('click', () => this.exportVideo())
     this.closeBtn.addEventListener('click', () => this.exit())
-    this.saveBtn?.addEventListener('click', () => this.downloadJson())
-    this.loadBtn?.addEventListener('click', () => this.fileInput?.click())
+    this.saveBtn?.addEventListener('click', () => {
+      this.setMoreOpen(false)
+      this.downloadJson()
+    })
+    this.loadBtn?.addEventListener('click', () => {
+      this.setMoreOpen(false)
+      this.fileInput?.click()
+    })
     this.fileInput?.addEventListener('change', async (e) => {
       const file = e.target.files?.[0]
       if (!file) return
@@ -188,12 +214,38 @@ class Replay {
       this.enter()
       e.target.value = ''
     })
-    this.directorBtn?.addEventListener('click', () => this.setDirectorMode(!this.directorMode))
+    this.directorBtn?.addEventListener('click', () => {
+      this.setDirectorMode(!this.directorMode)
+      this.setMoreOpen(false)
+    })
     this.recCutsBtn?.addEventListener('click', () => this.setRecordCuts(!this.recordCuts))
     this.addCutBtn?.addEventListener('click', () => this.addCut())
     this.delCutBtn?.addEventListener('click', () => this.removeCut())
-    this.autoCutBtn?.addEventListener('click', () => this.autoGenerateCuts())
-    this.clearCutsBtn?.addEventListener('click', () => this.clearCuts())
+    this.autoCutBtn?.addEventListener('click', () => {
+      this.autoGenerateCuts()
+      this.setMoreOpen(false)
+    })
+    this.clearCutsBtn?.addEventListener('click', () => {
+      this.clearCuts()
+      this.setMoreOpen(false)
+    })
+    this.clipModeBtn?.addEventListener('click', () => this.setClipMode(!this.clipMode))
+    this.clearClipBtn?.addEventListener('click', () => {
+      this.clearClip()
+      this.setMoreOpen(false)
+    })
+    this.moreBtn?.addEventListener('click', (e) => {
+      e.stopPropagation()
+      this.setMoreOpen(Boolean(this.moreMenu?.hidden))
+    })
+    this._onDocClick = (e) => {
+      if (this.moreWrap && !this.moreWrap.contains(e.target)) {
+        this.setMoreOpen(false)
+      }
+    }
+    document.addEventListener('click', this._onDocClick)
+
+    this._setupClipScrubberInteractions()
 
     this.cameraSelect.addEventListener('change', () => {
       if (!this.exporting) this.setCamera(Number(this.cameraSelect.value), { fromUser: true })
@@ -205,10 +257,10 @@ class Replay {
       if (!this.exporting) this.setSpeed(Number(this.speedSelect.value), { fromUser: true })
     })
     this.timeline.addEventListener('pointerdown', () => {
-      if (!this.exporting) this.pause()
+      if (!this.exporting && !this.clipMode) this.pause()
     })
     this.timeline.addEventListener('input', () => {
-      if (this.exporting) return
+      if (this.exporting || this.clipMode) return
       this.seek(Number(this.timeline.value))
     })
     this._onKeyDown = (e) => {
@@ -224,6 +276,18 @@ class Replay {
       if (e.code === 'Space') {
         e.preventDefault()
         this.togglePlay()
+      } else if (e.code === 'KeyC' && e.shiftKey) {
+        e.preventDefault()
+        this.setClipMode(!this.clipMode)
+      } else if (e.code === 'KeyI') {
+        e.preventDefault()
+        this.setClipIn(this.time)
+      } else if (e.code === 'KeyO') {
+        e.preventDefault()
+        this.setClipOut(this.time)
+      } else if (e.code === 'KeyX') {
+        e.preventDefault()
+        this.clearClip()
       } else if (e.code === 'BracketRight' || e.code === 'KeyN') {
         this.setTargetCar((this.targetCarIndex + 1) % Math.max(1, this.vehicles().length), { fromUser: true })
       } else if (e.code === 'BracketLeft' || e.code === 'KeyP') {
@@ -660,6 +724,185 @@ class Replay {
     return this.vehicles().map((v, i) => this.vehicleMeta(v, i))
   }
 
+  setMoreOpen(open) {
+    if (!this.moreMenu || !this.moreBtn) return
+    this.moreMenu.hidden = !open
+    this.moreBtn.setAttribute('aria-expanded', String(Boolean(open)))
+  }
+
+  _clientXToTimeMs(clientX) {
+    const el = this.scrubber || this.timeline
+    const rect = el.getBoundingClientRect()
+    const frac = rect.width > 0 ? Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) : 0
+    return frac * this.duration()
+  }
+
+  _setupClipScrubberInteractions() {
+    if (!this.scrubber) return
+
+    const onHandleDown = (kind) => (e) => {
+      if (this.exporting) return
+      e.preventDefault()
+      e.stopPropagation()
+      this.pause()
+      this._dragKind = kind
+    }
+    this.clipInEl?.addEventListener('pointerdown', onHandleDown('in'))
+    this.clipOutEl?.addEventListener('pointerdown', onHandleDown('out'))
+
+    this.scrubber.addEventListener('pointerdown', (e) => {
+      if (this.exporting || !this.clipMode) return
+      if (e.target === this.clipInEl || e.target === this.clipOutEl) return
+      e.preventDefault()
+      e.stopPropagation()
+      this.pause()
+      const ms = this._clientXToTimeMs(e.clientX)
+      this._dragKind = 'range'
+      this._dragAnchorMs = ms
+      this._dragMoved = false
+      this.seek(ms)
+    })
+
+    this._onPointerMove = (e) => {
+      if (!this._dragKind || this.exporting) return
+      const ms = this._clientXToTimeMs(e.clientX)
+      if (this._dragKind === 'in') {
+        this.setClipIn(ms)
+        this.seek(this.clipIn())
+      } else if (this._dragKind === 'out') {
+        this.setClipOut(ms)
+        this.seek(this.clipOut())
+      } else if (this._dragKind === 'range') {
+        if (Math.abs(ms - this._dragAnchorMs) > 60) {
+          this._dragMoved = true
+        }
+        if (this._dragMoved) {
+          const lo = Math.min(this._dragAnchorMs, ms)
+          const hi = Math.max(this._dragAnchorMs, ms)
+          this.setClipMs(lo, hi)
+        }
+        this.seek(ms)
+      }
+    }
+
+    this._onPointerUp = () => {
+      this._dragKind = null
+      this._dragMoved = false
+    }
+
+    window.addEventListener('pointermove', this._onPointerMove)
+    window.addEventListener('pointerup', this._onPointerUp)
+  }
+
+  clipIn() {
+    const total = this.duration()
+    return Math.max(0, Math.min(total, Number(this.clipInMs) || 0))
+  }
+
+  clipOut() {
+    const total = this.duration()
+    if (this.clipOutMs === null || this.clipOutMs === undefined || !Number.isFinite(this.clipOutMs)) {
+      return total
+    }
+    return Math.max(this.clipIn(), Math.min(total, Number(this.clipOutMs)))
+  }
+
+  hasCustomClip() {
+    const total = this.duration()
+    if (total <= 0) return false
+    return this.clipIn() > 10 || (this.clipOutMs !== null && this.clipOut() < total - 10)
+  }
+
+  setClipMs(inMs, outMs) {
+    const total = this.duration()
+    const minSpan = Math.min(200, Math.max(20, total))
+    let a = Number.isFinite(Number(inMs)) ? Number(inMs) : 0
+    let b = outMs === null || outMs === undefined || !Number.isFinite(Number(outMs)) ? total : Number(outMs)
+    if (total > 0) {
+      a = Math.max(0, Math.min(total, a))
+      b = Math.max(0, Math.min(total, b))
+      if (b < a) {
+        const tmp = a
+        a = b
+        b = tmp
+      }
+      if (b - a < minSpan) {
+        if (b + minSpan <= total) b = a + minSpan
+        else a = Math.max(0, b - minSpan)
+      }
+    } else {
+      a = Math.max(0, a)
+      b = Math.max(a, b)
+    }
+    this.clipInMs = Math.round(a)
+    this.clipOutMs = total > 0 && b >= total - 5 && a <= 5 ? null : Math.round(b)
+    this.syncUi()
+    return this.getClip()
+  }
+
+  setClipIn(ms = this.time) {
+    const total = this.duration()
+    const minSpan = Math.min(200, Math.max(20, total))
+    const clamped = Math.max(0, Math.min(total, Number(ms) || 0))
+    const curOut = this.clipOut()
+    const nextOut = clamped > curOut - minSpan ? total : curOut
+    return this.setClipMs(clamped, nextOut)
+  }
+
+  setClipOut(ms = this.time) {
+    const total = this.duration()
+    const minSpan = Math.min(200, Math.max(20, total))
+    const clamped = Math.max(0, Math.min(total, Number(ms) || 0))
+    const curIn = this.clipIn()
+    const nextIn = clamped < curIn + minSpan ? 0 : curIn
+    return this.setClipMs(nextIn, clamped)
+  }
+
+  setClip(inVal, outVal) {
+    if (inVal && typeof inVal === 'object') {
+      const inMs = inVal.inMs !== undefined ? Number(inVal.inMs) : Number(inVal.inSec ?? inVal.in ?? 0) * 1000
+      const outRaw = inVal.outMs !== undefined ? inVal.outMs : (inVal.outSec ?? inVal.out)
+      const outMs = outRaw === undefined || outRaw === null ? this.duration() : (inVal.outMs !== undefined ? Number(outRaw) : Number(outRaw) * 1000)
+      return this.setClipMs(inMs, outMs)
+    }
+    const total = this.duration()
+    const toMs = (v, fallback) => {
+      if (v === undefined || v === null || v === '' || Number(v) < 0) return fallback
+      const n = Number(v)
+      if (!Number.isFinite(n)) return fallback
+      return n <= Math.max(600, total / 1000) ? n * 1000 : n
+    }
+    return this.setClipMs(toMs(inVal, 0), toMs(outVal, total))
+  }
+
+  clearClip() {
+    this.clipInMs = 0
+    this.clipOutMs = null
+    this.syncUi()
+    return this.getClip()
+  }
+
+  getClip() {
+    const inMs = Math.round(this.clipIn())
+    const outMs = Math.round(this.clipOut())
+    const durationMs = Math.max(0, outMs - inMs)
+    return {
+      inMs,
+      outMs,
+      durationMs,
+      inSec: Number((inMs / 1000).toFixed(2)),
+      outSec: Number((outMs / 1000).toFixed(2)),
+      durationSec: Number((durationMs / 1000).toFixed(2)),
+      custom: this.hasCustomClip(),
+    }
+  }
+
+  setClipMode(enabled) {
+    this.clipMode = Boolean(enabled)
+    this.syncUi()
+    return this.clipMode
+  }
+
   status() {
     const ctrl = this.scene.cameraSwitcher._activeController
     return {
@@ -672,6 +915,8 @@ class Replay {
       frames: this.times.length,
       speed: this.speed,
       loop: this.loop,
+      clip: this.getClip(),
+      clipMode: this.clipMode,
       directorMode: this.directorMode,
       recordCuts: this.recordCuts,
       activeCutIndex: this._activeCutIndex,
@@ -696,6 +941,9 @@ class Replay {
     this.resetForNextRace()
     this.times = []
     this.cuts = []
+    this.clipInMs = 0
+    this.clipOutMs = null
+    this.clipMode = false
     this._cutTrackKey = ''
     this.tracks = this.vehicles().map((vehicle, index) => {
       const meta = this.vehicleMeta(vehicle, index)
@@ -815,11 +1063,13 @@ class Replay {
   }
 
   toJSON() {
+    const clip = this.getClip()
     return {
       version: 1,
       recordedAt: new Date().toISOString(),
       duration: Math.round(this.duration()),
       cuts: this.getCuts(),
+      ...(clip.custom ? { clip: { inMs: clip.inMs, outMs: clip.outMs, inSec: clip.inSec, outSec: clip.outSec } } : {}),
       times: this.times.map(t => Math.round(t * 10) / 10),
       tracks: this.tracks.map((track, index) => {
         const meta = this.vehicleMeta(track.vehicle, index)
@@ -864,6 +1114,12 @@ class Replay {
       this.cuts = []
       this.directorMode = false
     }
+    if (data.clip && typeof data.clip === 'object') {
+      this.setClip(data.clip)
+    } else {
+      this.clipInMs = 0
+      this.clipOutMs = null
+    }
     this._activeCutIndex = -1
     this._cutTrackKey = ''
     return this.status()
@@ -898,6 +1154,12 @@ class Replay {
   enterFromParams() {
     if (params.replayCuts) {
       this.setCuts(params.replayCuts)
+    }
+    if (Number(params.replayIn) >= 0 || Number(params.replayOut) >= 0) {
+      this.setClip(
+        Number(params.replayIn) >= 0 ? Number(params.replayIn) : 0,
+        Number(params.replayOut) >= 0 ? Number(params.replayOut) : this.duration() / 1000,
+      )
     }
     const hasExplicitSingleCam = Boolean((params.replayCam || params.replayCar) && !params.replayCuts)
     this.enter({
@@ -955,6 +1217,9 @@ class Replay {
     if (options.cuts !== undefined) {
       this.setCuts(options.cuts)
     }
+    if (options.clip !== undefined) {
+      this.setClip(options.clip)
+    }
     if (options.directorMode !== undefined) {
       this.directorMode = Boolean(options.directorMode)
     } else if (this.cuts.length > 0) {
@@ -974,7 +1239,7 @@ class Replay {
     const initialCamera = options.camera !== undefined && options.camera !== '' ? options.camera : 0
     this.scene.cameraSwitcher.setController(initialCamera)
 
-    let initialTimeMs = 0
+    let initialTimeMs = this.clipIn()
     if (options.time !== undefined && Number(options.time) >= 0) {
       const rawTime = Number(options.time)
       initialTimeMs = rawTime <= this.duration() / 1000 ? rawTime * 1000 : rawTime
@@ -1098,10 +1363,12 @@ class Replay {
 
   play() {
     if (!this.active || this.times.length === 0) return
-    if (this.time >= this.duration()) {
-      this.time = 0
+    const inMs = this.clipIn()
+    const outMs = this.clipOut()
+    if (this.time >= outMs || (this.hasCustomClip() && this.time < inMs)) {
+      this.time = inMs
       this._activeCutIndex = -1
-      this.applyCutAt(0, true)
+      this.applyCutAt(this.time, true)
       const root = this.targetRoot()
       if (root) this.scene.cameraSwitcher._activeController?.activate?.(this.scene.camera, root)
     }
@@ -1130,19 +1397,21 @@ class Replay {
   tick(deltaMs) {
     if (!this.active) return
     if (this.playing) {
+      const inMs = this.clipIn()
+      const outMs = this.clipOut()
       this.time += deltaMs * this.speed
-      if (this.time >= this.duration()) {
+      if (this.time >= outMs) {
         if (this._exportDone) {
-          this.time = this.duration()
+          this.time = outMs
           this.playing = false
           const done = this._exportDone
           this._exportDone = null
           done()
         } else if (this.loop) {
-          this.time = 0
+          this.time = inMs
           this._activeCutIndex = -1
         } else {
-          this.time = this.duration()
+          this.time = outMs
           this.playing = false
         }
       }
@@ -1217,8 +1486,39 @@ class Replay {
     }
   }
 
+  renderClipOverlay() {
+    const total = Math.max(1, this.duration())
+    const inMs = this.clipIn()
+    const outMs = this.clipOut()
+    const inPct = Math.max(0, Math.min(100, (inMs / total) * 100))
+    const outPct = Math.max(inPct, Math.min(100, (outMs / total) * 100))
+    const custom = this.hasCustomClip()
+    const showHandles = custom || this.clipMode
+
+    if (this.clipDimLeft) {
+      this.clipDimLeft.style.width = custom ? `${inPct.toFixed(2)}%` : '0%'
+    }
+    if (this.clipDimRight) {
+      this.clipDimRight.style.width = custom ? `${(100 - outPct).toFixed(2)}%` : '0%'
+    }
+    if (this.clipRangeEl) {
+      this.clipRangeEl.style.display = showHandles ? '' : 'none'
+      this.clipRangeEl.style.left = `${inPct.toFixed(2)}%`
+      this.clipRangeEl.style.width = `${Math.max(0.5, outPct - inPct).toFixed(2)}%`
+    }
+    if (this.clipInEl) {
+      this.clipInEl.style.display = showHandles ? '' : 'none'
+      this.clipInEl.style.left = `${inPct.toFixed(2)}%`
+    }
+    if (this.clipOutEl) {
+      this.clipOutEl.style.display = showHandles ? '' : 'none'
+      this.clipOutEl.style.left = `${outPct.toFixed(2)}%`
+    }
+  }
+
   syncUi() {
     const total = this.duration()
+    const clip = this.getClip()
     this.timeline.max = String(Math.max(1, total))
     this.timeline.value = String(this.time)
     this.timeLabel.textContent = `${formatReplayTime(this.time)} / ${formatReplayTime(total)}`
@@ -1228,24 +1528,41 @@ class Replay {
     const modeTag = this.recordCuts
       ? ' · REC CUTS'
       : (this.directorMode && this.cuts.length ? ` · CUT ${this.activeCutIndexAt(this.time) + 1}/${this.cuts.length}` : '')
+    const clipTag = clip.custom ? ` · CLIP ${formatReplayTime(clip.inMs)}–${formatReplayTime(clip.outMs)}` : ''
     this.badge.textContent = this.exporting
       ? 'EXPORTING'
-      : `REPLAY · ${carMeta.name} · ${ctrl?.label || ''}${modeTag}`
+      : `REPLAY · ${carMeta.name} · ${ctrl?.label || ''}${modeTag}${clipTag}`
     const busy = this.exporting
     this.playBtn.disabled = busy
     this.timeline.disabled = busy
     this.screenshotBtn.disabled = busy
     this.exportBtn.disabled = busy
+    this.exportBtn.textContent = this.exporting
+      ? 'Exporting…'
+      : `Export ${formatReplayTime(clip.durationMs)}`
     this.closeBtn.disabled = busy
+    if (this.moreBtn) this.moreBtn.disabled = busy
     if (this.saveBtn) this.saveBtn.disabled = busy
     if (this.loadBtn) this.loadBtn.disabled = busy
+    if (this.clipModeBtn) {
+      this.clipModeBtn.disabled = busy
+      this.clipModeBtn.classList.toggle('active', this.clipMode)
+      this.clipModeBtn.setAttribute('aria-pressed', String(this.clipMode))
+    }
+    if (this.clearClipBtn) {
+      this.clearClipBtn.disabled = busy || !clip.custom
+    }
+    this.timelineWrap?.classList.toggle('clip-mode', this.clipMode)
     if (this.directorBtn) {
       this.directorBtn.disabled = busy
-      this.directorBtn.classList.toggle('active', this.directorMode && this.cuts.length > 0)
+      const dirActive = this.directorMode && this.cuts.length > 0
+      this.directorBtn.classList.toggle('active', dirActive)
+      this.directorBtn.setAttribute('aria-checked', String(dirActive))
     }
     if (this.recCutsBtn) {
       this.recCutsBtn.disabled = busy
       this.recCutsBtn.classList.toggle('active', this.recordCuts)
+      this.recCutsBtn.setAttribute('aria-pressed', String(this.recordCuts))
     }
     if (this.addCutBtn) this.addCutBtn.disabled = busy
     if (this.delCutBtn) this.delCutBtn.disabled = busy || this.cuts.length === 0
@@ -1262,6 +1579,7 @@ class Replay {
       this.speedSelect.value = String(this.speed)
     }
     this.renderCutTrack()
+    this.renderClipOverlay()
   }
 
   screenshot(filename = `boxracing-${Date.now()}.png`) {
@@ -1301,11 +1619,13 @@ class Replay {
     const mimeType = pickRecorderMime()
     if (!mimeType) throw new Error('No supported MediaRecorder mime type')
 
+    const clip = this.getClip()
+    this.setMoreOpen(false)
     this.exporting = true
     this._exportCanceled = false
     this.playing = false
     this._activeCutIndex = -1
-    this.seek(0)
+    this.seek(clip.inMs)
     const root = this.targetRoot()
     this.scene.cameraSwitcher._activeController?.activate?.(
       this.scene.camera,
@@ -1354,7 +1674,10 @@ class Replay {
 
     if (!canceled) {
       const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
-      downloadBlob(new Blob(chunks, { type: mimeType }), `boxracing-replay.${ext}`)
+      const rangeSuffix = clip.custom
+        ? `-${clip.inSec}s-${clip.outSec}s`
+        : ''
+      downloadBlob(new Blob(chunks, { type: mimeType }), `boxracing-replay${rangeSuffix}.${ext}`)
     }
   }
 
@@ -1365,6 +1688,9 @@ class Replay {
     clearTimeout(this._playTimeout)
     off('raceStart', this._onRaceStart)
     window.removeEventListener('keydown', this._onKeyDown)
+    window.removeEventListener('pointermove', this._onPointerMove)
+    window.removeEventListener('pointerup', this._onPointerUp)
+    document.removeEventListener('click', this._onDocClick)
     document.body.classList.remove('replay-playing', 'replay-exporting')
     this.overlay.classList.remove('visible')
   }

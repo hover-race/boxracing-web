@@ -221,40 +221,58 @@
       <div id="replay-badge">REPLAY</div>
       <div id="replay-bar">
         <div id="replay-timeline-row">
-          <button type="button" id="replay-play">Pause</button>
+          <button type="button" id="replay-play" title="Play / Pause (Space)">Pause</button>
+          <span id="replay-time" title="Current time / Total duration">0:00.0 / 0:00.0</span>
           <div id="replay-timeline-wrap">
             <div id="replay-cut-track" aria-label="Camera cuts timeline"></div>
-            <input id="replay-timeline" type="range" min="0" max="1" value="0" step="1">
+            <div id="replay-scrubber">
+              <input id="replay-timeline" type="range" min="0" max="1" value="0" step="1" title="Scrub timeline (Arrow Left / Right)">
+              <div id="replay-clip-dim-left" aria-hidden="true"></div>
+              <div id="replay-clip-dim-right" aria-hidden="true"></div>
+              <div id="replay-clip-range" aria-hidden="true"></div>
+              <div id="replay-clip-in" role="slider" tabindex="0" aria-label="Clip in point" title="Clip In handle (drag or press I)"></div>
+              <div id="replay-clip-out" role="slider" tabindex="0" aria-label="Clip out point" title="Clip Out handle (drag or press O)"></div>
+            </div>
           </div>
-          <span id="replay-time">0:00 / 0:00</span>
-        </div>
-        <div id="replay-controls-row">
-          <label id="replay-car-label" for="replay-car">Car</label>
-          <select id="replay-car" aria-label="Replay target car"></select>
-          <label id="replay-camera-label" for="replay-camera">Cam</label>
-          <select id="replay-camera" aria-label="Replay camera"></select>
-          <label id="replay-speed-label" for="replay-speed">Speed</label>
-          <select id="replay-speed" aria-label="Replay speed">
+          <select id="replay-speed" aria-label="Replay speed" title="Playback speed">
             <option value="0.25">0.25x</option>
             <option value="0.5">0.5x</option>
             <option value="1" selected>1x</option>
             <option value="2">2x</option>
             <option value="4">4x</option>
           </select>
-          <span class="replay-divider" aria-hidden="true"></span>
-          <button type="button" id="replay-director" title="Follow timeline camera cuts (D)">Director</button>
-          <button type="button" id="replay-rec-cuts" title="Auto-record cuts when switching camera or car (R)">Rec Cuts</button>
-          <button type="button" id="replay-add-cut" title="Add or update camera cut at playhead (K)">+ Cut</button>
-          <button type="button" id="replay-del-cut" title="Delete camera cut at playhead (Backspace/Delete)">- Cut</button>
-          <button type="button" id="replay-auto-cut" title="Generate smart multi-camera broadcast cuts">Auto-Cut</button>
-          <button type="button" id="replay-clear-cuts" title="Clear all camera cuts">Clear</button>
-          <span class="replay-divider" aria-hidden="true"></span>
-          <button type="button" id="replay-save">Save JSON</button>
-          <button type="button" id="replay-load">Load JSON</button>
-          <input type="file" id="replay-file-input" accept=".json,application/json" hidden>
-          <button type="button" id="replay-screenshot">Screenshot</button>
-          <button type="button" id="replay-export">Export Video</button>
-          <button type="button" id="replay-close">Exit</button>
+        </div>
+        <div id="replay-controls-row">
+          <div class="replay-bar-group">
+            <label id="replay-car-label" for="replay-car">Car</label>
+            <select id="replay-car" aria-label="Replay target car" title="Target car ([ / ] or P / N)"></select>
+            <label id="replay-camera-label" for="replay-camera">Cam</label>
+            <select id="replay-camera" aria-label="Replay camera" title="Camera mode (1–0 or C)"></select>
+          </div>
+          <div class="replay-bar-group">
+            <button type="button" id="replay-clip-mode" aria-pressed="false" title="Clip selection mode: drag timeline to select range (Shift+C) · Set In (I) · Set Out (O) · Clear (X)">✂ Clip</button>
+            <button type="button" id="replay-rec-cuts" aria-pressed="false" title="Auto-record cuts when switching camera or car (R)">Rec Cuts</button>
+            <button type="button" id="replay-add-cut" title="Add or update camera cut at playhead (K or M)">+ Cut</button>
+            <button type="button" id="replay-del-cut" title="Delete camera cut at playhead (Backspace / Delete)">− Cut</button>
+            <div id="replay-more-wrap">
+              <button type="button" id="replay-more-btn" aria-haspopup="menu" aria-expanded="false" title="More replay actions">⋯</button>
+              <div id="replay-more-menu" role="menu" hidden>
+                <button type="button" id="replay-director" role="menuitemcheckbox" title="Follow timeline camera cuts (D)">Director Mode</button>
+                <button type="button" id="replay-auto-cut" role="menuitem" title="Generate smart multi-camera broadcast cuts">Auto-Cut</button>
+                <button type="button" id="replay-clear-cuts" role="menuitem" title="Clear all camera cuts">Clear Cuts</button>
+                <button type="button" id="replay-clear-clip" role="menuitem" title="Reset clip range to full replay (X)">Clear Clip Range</button>
+                <hr class="replay-menu-sep">
+                <button type="button" id="replay-screenshot" role="menuitem" title="Capture PNG screenshot">Screenshot</button>
+                <button type="button" id="replay-save" role="menuitem" title="Download replay JSON file">Save JSON</button>
+                <button type="button" id="replay-load" role="menuitem" title="Load replay JSON file">Load JSON</button>
+              </div>
+            </div>
+            <input type="file" id="replay-file-input" accept=".json,application/json" hidden>
+          </div>
+          <div class="replay-bar-group replay-bar-right">
+            <button type="button" id="replay-export" class="replay-primary-btn" title="Export selected clip range to video (Esc to cancel)">Export 0:00</button>
+            <button type="button" id="replay-close" title="Exit replay">Exit</button>
+          </div>
         </div>
       </div>
     </div>

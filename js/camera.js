@@ -763,7 +763,7 @@ class CameraSwitcher {
       if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
       if (this.scene.replay?.exporting || e.target?.closest?.('input, select, textarea')) return
       // C cycles to next camera
-      if (e.code === 'KeyC') {
+      if (e.code === 'KeyC' && !e.shiftKey) {
         const next = (this._activeIndex + 1) % this.controllers.length
         if (this.scene.replay?.active) this.scene.replay.setCamera(next, { fromUser: true })
         else this.setController(next)
