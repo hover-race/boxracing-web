@@ -99,7 +99,10 @@
                 </label>
               </div>
             </div>
-            <button id="car-selection-start" type="button">Race</button>
+            <div id="car-selection-actions">
+              <button id="car-selection-start" type="button">Race</button>
+              <button id="car-selection-recordings" type="button">Recordings</button>
+            </div>
           </div>
         </div>
       </div>
@@ -113,6 +116,7 @@
           <button type="button" id="create-server-btn">Create Server</button>
           <button type="button" id="game-menu-offline">Offline Mode</button>
           <button type="button" id="game-menu-replay">Replay</button>
+          <button type="button" id="game-menu-recordings">Recordings</button>
           <button type="button" id="game-menu-options">Options</button>
         </div>
       </div>
@@ -262,6 +266,7 @@
                 <button type="button" id="replay-clear-cuts" role="menuitem" title="Clear all camera cuts">Clear Cuts</button>
                 <button type="button" id="replay-clear-clip" role="menuitem" title="Reset clip range to full replay (X)">Clear Clip Range</button>
                 <hr class="replay-menu-sep">
+                <button type="button" id="replay-recordings" role="menuitem" title="Browse past recordings">Recordings…</button>
                 <button type="button" id="replay-screenshot" role="menuitem" title="Capture PNG screenshot">Screenshot</button>
                 <button type="button" id="replay-save" role="menuitem" title="Download replay JSON file">Save JSON</button>
                 <button type="button" id="replay-load" role="menuitem" title="Load replay JSON file">Load JSON</button>

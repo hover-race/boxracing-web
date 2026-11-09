@@ -1,11 +1,16 @@
 import { on, off } from './raceEvents.js'
 import { refreshAllBotShaders } from './botShaders.js'
+import {
+  saveReplay as saveReplayToStore,
+  updateReplay as updateReplayInStore,
+  captureThumbnail,
+} from './replayStore.js'
+import { recordingsBrowser } from './recordingsBrowser.js'
 
 const POSE_FLOATS = 7 + 4 * 7
 const WHEEL_COUNT = 4
 const CF_KINEMATIC_OBJECT = 2
 const DISABLE_DEACTIVATION = 4
-const LAST_REPLAY_STORAGE_KEY = 'boxracing.lastReplay'
 
 const _qa = new THREE.Quaternion()
 const _qb = new THREE.Quaternion()
@@ -135,6 +140,8 @@ class Replay {
     this.clipInMs = 0
     this.clipOutMs = null
     this.clipMode = false
+    this.currentRecordId = null
+    this._persistTimer = 0
     this._dragKind = null
     this._dragAnchorMs = 0
     this.directorMode = true
@@ -174,6 +181,7 @@ class Replay {
     this.delCutBtn = document.getElementById('replay-del-cut')
     this.autoCutBtn = document.getElementById('replay-auto-cut')
     this.clearCutsBtn = document.getElementById('replay-clear-cuts')
+    this.recordingsBtn = document.getElementById('replay-recordings')
     this.saveBtn = document.getElementById('replay-save')
     this.loadBtn = document.getElementById('replay-load')
     this.fileInput = document.getElementById('replay-file-input')
@@ -192,6 +200,10 @@ class Replay {
     this.refreshCarOptions()
 
     this.playBtn.addEventListener('click', () => this.togglePlay())
+    this.recordingsBtn?.addEventListener('click', () => {
+      this.setMoreOpen(false)
+      recordingsBrowser.open()
+    })
     this.screenshotBtn.addEventListener('click', () => {
       this.setMoreOpen(false)
       this.screenshot()
@@ -210,7 +222,9 @@ class Replay {
       const file = e.target.files?.[0]
       if (!file) return
       const text = await file.text()
-      this.loadJSON(JSON.parse(text))
+      const data = JSON.parse(text)
+      const saved = await recordingsBrowser.importJson(data, file.name.replace(/\.json$/i, ''))
+      this.loadJSON(data, { recordId: saved?.id })
       this.enter()
       e.target.value = ''
     })
@@ -524,6 +538,19 @@ class Replay {
     return this.recordCuts
   }
 
+  _schedulePersistEdits() {
+    if (!this.currentRecordId) return
+    clearTimeout(this._persistTimer)
+    const id = this.currentRecordId
+    this._persistTimer = setTimeout(() => {
+      const clip = this.getClip()
+      updateReplayInStore(id, {
+        cuts: this.getCuts(),
+        clip: clip.custom ? { inMs: clip.inMs, outMs: clip.outMs, inSec: clip.inSec, outSec: clip.outSec } : null,
+      })
+    }, 250)
+  }
+
   addCut(raw = {}) {
     const cut = this.normalizeCut(raw)
     const existingIdx = this.cuts.findIndex(c => Math.abs(c.t - cut.t) <= 150)
@@ -538,6 +565,7 @@ class Replay {
     this.applyCutAt(this.time, true)
     this.renderImmediate()
     this.syncUi()
+    this._schedulePersistEdits()
     return this.serializeCut(cut)
   }
 
@@ -569,6 +597,7 @@ class Replay {
         this.renderImmediate()
       }
       this.syncUi()
+      this._schedulePersistEdits()
     }
     return this.getCuts()
   }
@@ -579,6 +608,7 @@ class Replay {
     this.directorMode = false
     this._cutTrackKey = ''
     this.syncUi()
+    this._schedulePersistEdits()
     return []
   }
 
@@ -593,6 +623,7 @@ class Replay {
       this.renderImmediate()
     }
     this.syncUi()
+    this._schedulePersistEdits()
     return this.getCuts()
   }
 
@@ -643,6 +674,7 @@ class Replay {
       this.renderImmediate()
     }
     this.syncUi()
+    this._schedulePersistEdits()
     return this.getCuts()
   }
 
@@ -666,6 +698,7 @@ class Replay {
           speed: this.speed,
         })
         this._cutTrackKey = ''
+        this._schedulePersistEdits()
       }
     }
   }
@@ -837,6 +870,7 @@ class Replay {
     this.clipInMs = Math.round(a)
     this.clipOutMs = total > 0 && b >= total - 5 && a <= 5 ? null : Math.round(b)
     this.syncUi()
+    this._schedulePersistEdits()
     return this.getClip()
   }
 
@@ -879,6 +913,7 @@ class Replay {
     this.clipInMs = 0
     this.clipOutMs = null
     this.syncUi()
+    this._schedulePersistEdits()
     return this.getClip()
   }
 
@@ -910,6 +945,7 @@ class Replay {
       playing: this.playing,
       recording: this.recording,
       exporting: this.exporting,
+      recordId: this.currentRecordId,
       time: Math.round(this.time),
       duration: Math.round(this.duration()),
       frames: this.times.length,
@@ -944,6 +980,7 @@ class Replay {
     this.clipInMs = 0
     this.clipOutMs = null
     this.clipMode = false
+    this.currentRecordId = null
     this._cutTrackKey = ''
     this.tracks = this.vehicles().map((vehicle, index) => {
       const meta = this.vehicleMeta(vehicle, index)
@@ -1086,10 +1123,11 @@ class Replay {
     }
   }
 
-  loadJSON(data) {
+  loadJSON(data, { recordId = null } = {}) {
     if (!data || !Array.isArray(data.times) || !Array.isArray(data.tracks)) {
       throw new Error('Invalid replay JSON format')
     }
+    this.currentRecordId = recordId
     const list = this.vehicles()
     this.times = data.times.map(Number)
     this.tracks = data.tracks.slice(0, list.length).map((trackData, index) => {
@@ -1136,16 +1174,31 @@ class Replay {
     if (!this.times.length) return null
     const data = this.toJSON()
     window.__lastReplayJson = data
-    const serialized = JSON.stringify(data)
-    if (serialized.length < 4_500_000) {
-      localStorage.setItem(LAST_REPLAY_STORAGE_KEY, serialized)
-    }
+    const cm = this.scene.checkpointManager
+    const ranked = cm?.rankedRacers?.() || []
+    const place = cm?.playerRacer && ranked.length ? ranked.indexOf(cm.playerRacer) + 1 : null
+    const laps = cm?.totalLaps || params.numLaps || null
+    const thumbnail = captureThumbnail(this.scene)
+    const id = this.currentRecordId || `rec_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    this.currentRecordId = id
+    saveReplayToStore({
+      id,
+      durationMs: data.duration,
+      carCount: data.tracks.length,
+      playerCarId: data.tracks[0]?.carId || params.car_id || 'mustang',
+      playerName: data.tracks[0]?.name || params.playerName || 'Player',
+      laps,
+      place: place && place > 0 ? place : null,
+      thumbnail,
+      data,
+    })
     return data
   }
 
   downloadJson(filename = `boxracing-replay-${Date.now()}.json`) {
     if (!this.times.length) return null
-    const data = this.saveLastReplay() ?? this.toJSON()
+    const data = this.toJSON()
+    if (!this.currentRecordId) this.saveLastReplay()
     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' })
     downloadBlob(blob, filename)
     return data
@@ -1199,6 +1252,9 @@ class Replay {
           angular: [angular.x(), angular.y(), angular.z()],
         }
       }),
+    }
+    if (this.recording && this.times.length > 0 && !this.currentRecordId) {
+      this.saveLastReplay()
     }
     this.recording = false
     clearTimeout(this._playTimeout)
@@ -1686,6 +1742,7 @@ class Replay {
     this.active = false
     this.playing = false
     clearTimeout(this._playTimeout)
+    clearTimeout(this._persistTimer)
     off('raceStart', this._onRaceStart)
     window.removeEventListener('keydown', this._onKeyDown)
     window.removeEventListener('pointermove', this._onPointerMove)
@@ -1696,4 +1753,4 @@ class Replay {
   }
 }
 
-export { Replay, LAST_REPLAY_STORAGE_KEY }
+export { Replay }

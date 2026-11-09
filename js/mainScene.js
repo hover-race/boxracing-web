@@ -7,7 +7,8 @@ import { CameraSwitcher } from './camera.js';
 import { ControlsManager } from './controls.js';
 import { CheckpointManager } from './checkpointManager.js';
 import { UIController } from './ui.js';
-import { Replay, LAST_REPLAY_STORAGE_KEY } from './replays.js';
+import { Replay } from './replays.js';
+import { getReplay, getLatestReplay } from './replayStore.js';
 import { LapPathRecorder } from './lapPath.js';
 import { RacingLine } from './racingLine.js';
 import { Bot } from './bot.js';
@@ -164,13 +165,22 @@ export class MainScene extends Scene3D {
     console.log('Track centerline:', this.trackCenterline.count, 'points,', this.trackCenterline.length.toFixed(0), 'm')
 
     let preloadedReplay = null
+    let preloadedRecordId = null
     const replayParam = String(params.replay || '').trim()
-    if (replayParam) {
-      if (['1', 'true', 'last'].includes(replayParam.toLowerCase())) {
-        const saved = localStorage.getItem(LAST_REPLAY_STORAGE_KEY)
-        if (saved && !(params.autoStopPhysicsAfterSec > 0)) {
-          preloadedReplay = JSON.parse(saved)
+    if (replayParam && !(params.autoStopPhysicsAfterSec > 0)) {
+      const lower = replayParam.toLowerCase()
+      if (['1', 'true', 'last'].includes(lower)) {
+        const latest = await getLatestReplay()
+        if (latest) {
+          preloadedReplay = latest.data
+          preloadedRecordId = latest.id
         }
+      } else if (lower.startsWith('rec:')) {
+        const recId = replayParam.slice(4).trim()
+        const rec = await getReplay(recId)
+        if (!rec) throw new Error(`Stored replay not found: ${recId}`)
+        preloadedReplay = rec.data
+        preloadedRecordId = rec.id
       } else {
         const res = await fetch(replayParam)
         if (!res.ok) throw new Error(`Failed to load replay "${replayParam}": ${res.status}`)
@@ -284,7 +294,7 @@ export class MainScene extends Scene3D {
     }
 
     if (preloadedReplay) {
-      this.replay.loadJSON(preloadedReplay)
+      this.replay.loadJSON(preloadedReplay, { recordId: preloadedRecordId })
       this.replay.enterFromParams()
     } else if (params.simRecordSec > 0) {
       emitRaceEvent('raceStart')

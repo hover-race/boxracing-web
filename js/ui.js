@@ -1,3 +1,5 @@
+import { recordingsBrowser } from './recordingsBrowser.js';
+
 class UIController {
   constructor(mainScene) {
     this.mainScene = mainScene;
@@ -19,6 +21,7 @@ class UIController {
     document.getElementById('game-menu-home').addEventListener('click', () => {
       const url = new URL(window.location);
       url.searchParams.delete('skipIntro');
+      url.searchParams.delete('replay');
       window.location.assign(url);
     });
     const offlineBtn = document.getElementById('game-menu-offline');
@@ -36,6 +39,12 @@ class UIController {
       items.hidden = true;
       menu.classList.remove('open');
       this.mainScene.replay?.enter();
+    });
+    const recordingsBtn = document.getElementById('game-menu-recordings');
+    recordingsBtn?.addEventListener('click', () => {
+      items.hidden = true;
+      menu.classList.remove('open');
+      recordingsBrowser.open();
     });
     document.getElementById('game-menu-options').addEventListener('click', () => {
       items.hidden = true;
